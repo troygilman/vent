@@ -10,11 +10,11 @@ func NewVentHandler(client *Client) http.Handler {
 		client:   client,
 	}
 
-	handler.HandleFunc("/groups/", handler.ventGetGroups)
+	handler.HandleFunc("/groups/", handler.getGroups)
 
-	handler.HandleFunc("/permissions/", handler.ventGetPermissions)
+	handler.HandleFunc("/permissions/", handler.getPermissions)
 
-	handler.HandleFunc("/users/", handler.ventGetUsers)
+	handler.HandleFunc("/users/", handler.getUsers)
 
 	return handler
 }
@@ -24,7 +24,7 @@ type ventHandler struct {
 	client *Client
 }
 
-func (handler *ventHandler) ventGetGroups(w http.ResponseWriter, r *http.Request) {
+func (handler *ventHandler) getGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Group.Query()
 	results, err := query.All(ctx)
@@ -35,7 +35,7 @@ func (handler *ventHandler) ventGetGroups(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(200)
 }
 
-func (handler *ventHandler) ventGetPermissions(w http.ResponseWriter, r *http.Request) {
+func (handler *ventHandler) getPermissions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Permission.Query()
 	results, err := query.All(ctx)
@@ -46,7 +46,7 @@ func (handler *ventHandler) ventGetPermissions(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(200)
 }
 
-func (handler *ventHandler) ventGetUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *ventHandler) getUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.User.Query()
 	results, err := query.All(ctx)

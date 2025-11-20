@@ -9,7 +9,7 @@ func NewVentHandler(client *Client) http.Handler {
 		client: client,
 	}
 	{{ range $node := $.Nodes }}
-	handler.HandleFunc("/{{ lower $node.Name }}s/", handler.ventGet{{ $node.Name }}s)
+	handler.HandleFunc("/{{ lower $node.Name }}s/", handler.get{{ $node.Name }}s)
 	{{ end }}
 	return handler
 }
@@ -21,7 +21,7 @@ type ventHandler struct {
 
 {{ range $node := $.Nodes }}
 {{ $receiver := $node.Receiver }}
-func (handler *ventHandler) ventGet{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
+func (handler *ventHandler) get{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
    	query := handler.client.{{ $node.Name }}.Query()
    	results, err := query.All(ctx)
