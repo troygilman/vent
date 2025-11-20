@@ -3,51 +3,47 @@
 {{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
 
-type VentConfig struct {
-	Client    *Client
-	SecretKey string
-	AdminPath string
+import (
+	"context"
+	"net/http"
+	"vent"
+)
+
+func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+    	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    		tokenCookie, err := r.Cookie("vent-auth-token")
+    		if err != nil {
+    			http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}", http.StatusSeeOther)
+    			return
+    		}
+
+    		claims, err := vent.ParseSignedToken(secret, tokenCookie.Raw)
+    		if err != nil {
+    		    http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}", http.StatusSeeOther)
+    			return
+    		}
+
+    		ctx := r.Context()
+            ctx = context.WithValue(ctx, "claims", claims)
+    		r = r.WithContext(ctx)
+    		next.ServeHTTP(w, r)
+    	})
+    }
 }
 
-type Vent struct {
-	config VentConfig
-}
-
-func NewVent(config VentConfig) (*Vent, error) {
-	v := &Vent{
-		config: config,
-	}
-	return v, nil
-}
-
-func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenCookie, err := r.Cookie("vent-auth-token")
-		if err != nil {
-			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
-			return
-		}
-
-		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
-		if err != nil {
-		    http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
-			return
-		}
-
-		ctx := r.Context()
-        ctx = context.WithValue(ctx, "claims", claims)
-		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (v *Vent) AdminHandler() http.Handler {
+func NewAdminHandler(client *Client, secret string) http.Handler {
     mux := http.NewServeMux()
 	handler := &ventAdminHandler{
-		client: v.config.Client,
+		client: client,
 	}
+
+	authMiddleware := AuthMiddleware(client, secret)
+
+	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}", http.HandlerFunc(handler.getAdmin))
+
 	{{ range $node := $.Nodes }}
-	mux.Handle(v.config.AdminPath + "{{ lower $node.Name }}s/", v.AuthMiddleware(http.HandlerFunc(handler.get{{ $node.Name }}s)))
+	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
 	{{ end }}
 	return mux
 }
@@ -56,9 +52,15 @@ type ventAdminHandler struct {
 	client *Client
 }
 
+func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
+    if r.URL.Path != "{{ $.Annotations.VentConfig.AdminPath }}" {
+        w.WriteHeader(http.StatusNotFound)
+        return
+    }
+}
+
 {{ range $node := $.Nodes }}
-{{ $receiver := $node.Receiver }}
-func (handler *ventAdminHandler) get{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
    	query := handler.client.{{ $node.Name }}.Query()
    	results, err := query.All(ctx)
@@ -66,7 +68,6 @@ func (handler *ventAdminHandler) get{{ $node.Name }}s(w http.ResponseWriter, r *
     	panic(err)
     }
     print(results)
-    w.WriteHeader(200)
 }
 {{ end }}
 

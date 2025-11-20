@@ -8,55 +8,44 @@ import (
 	"vent"
 )
 
-type VentConfig struct {
-	Client    *Client
-	SecretKey string
-	AdminPath string
-}
+func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenCookie, err := r.Cookie("vent-auth-token")
+			if err != nil {
+				http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+				return
+			}
 
-type Vent struct {
-	config VentConfig
-}
+			claims, err := vent.ParseSignedToken(secret, tokenCookie.Raw)
+			if err != nil {
+				http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+				return
+			}
 
-func NewVent(config VentConfig) (*Vent, error) {
-	v := &Vent{
-		config: config,
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, "claims", claims)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
 	}
-	return v, nil
 }
 
-func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenCookie, err := r.Cookie("vent-auth-token")
-		if err != nil {
-			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
-			return
-		}
-
-		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
-		if err != nil {
-			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
-			return
-		}
-
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, "claims", claims)
-		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (v *Vent) AdminHandler() http.Handler {
+func NewAdminHandler(client *Client, secret string) http.Handler {
 	mux := http.NewServeMux()
 	handler := &ventAdminHandler{
-		client: v.config.Client,
+		client: client,
 	}
 
-	mux.Handle(v.config.AdminPath+"groups/", v.AuthMiddleware(http.HandlerFunc(handler.getGroups)))
+	authMiddleware := AuthMiddleware(client, secret)
 
-	mux.Handle(v.config.AdminPath+"permissions/", v.AuthMiddleware(http.HandlerFunc(handler.getPermissions)))
+	mux.Handle("GET /admin/", http.HandlerFunc(handler.getAdmin))
 
-	mux.Handle(v.config.AdminPath+"users/", v.AuthMiddleware(http.HandlerFunc(handler.getUsers)))
+	mux.Handle("GET /admin/groups/", authMiddleware(http.HandlerFunc(handler.getAdminGroups)))
+
+	mux.Handle("GET /admin/permissions/", authMiddleware(http.HandlerFunc(handler.getAdminPermissions)))
+
+	mux.Handle("GET /admin/users/", authMiddleware(http.HandlerFunc(handler.getAdminUsers)))
 
 	return mux
 }
@@ -65,7 +54,14 @@ type ventAdminHandler struct {
 	client *Client
 }
 
-func (handler *ventAdminHandler) getGroups(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/admin/" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
+
+func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Group.Query()
 	results, err := query.All(ctx)
@@ -73,10 +69,9 @@ func (handler *ventAdminHandler) getGroups(w http.ResponseWriter, r *http.Reques
 		panic(err)
 	}
 	print(results)
-	w.WriteHeader(200)
 }
 
-func (handler *ventAdminHandler) getPermissions(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Permission.Query()
 	results, err := query.All(ctx)
@@ -84,10 +79,9 @@ func (handler *ventAdminHandler) getPermissions(w http.ResponseWriter, r *http.R
 		panic(err)
 	}
 	print(results)
-	w.WriteHeader(200)
 }
 
-func (handler *ventAdminHandler) getUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.User.Query()
 	results, err := query.All(ctx)
@@ -95,5 +89,4 @@ func (handler *ventAdminHandler) getUsers(w http.ResponseWriter, r *http.Request
 		panic(err)
 	}
 	print(results)
-	w.WriteHeader(200)
 }
