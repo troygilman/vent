@@ -1,0 +1,36 @@
+{{ define "admin" }}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+func NewVentHandler(client *Client) http.Handler {
+	handler := &ventHandler{
+		ServeMux: http.NewServeMux(),
+		client: client,
+	}
+	{{ range $node := $.Nodes }}
+	handler.HandleFunc("/{{ lower $node.Name }}s/", handler.ventGet{{ $node.Name }}s)
+	{{ end }}
+	return handler
+}
+
+type ventHandler struct {
+	*http.ServeMux
+	client *Client
+}
+
+{{ range $node := $.Nodes }}
+{{ $receiver := $node.Receiver }}
+func (handler *ventHandler) ventGet{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
+   	ctx := r.Context()
+   	query := handler.client.{{ $node.Name }}.Query()
+   	results, err := query.All(ctx)
+    if err != nil {
+    	panic(err)
+    }
+    print(results)
+    w.WriteHeader(200)
+}
+{{ end }}
+
+{{ end }}
