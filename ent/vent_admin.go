@@ -11,6 +11,7 @@ import (
 type VentConfig struct {
 	Client    *Client
 	SecretKey string
+	AdminPath string
 }
 
 type Vent struct {
@@ -28,12 +29,14 @@ func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenCookie, err := r.Cookie("vent-auth-token")
 		if err != nil {
-			panic(err)
+			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
+			return
 		}
 
 		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
 		if err != nil {
-			panic(err)
+			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
+			return
 		}
 
 		ctx := r.Context()
@@ -49,11 +52,11 @@ func (v *Vent) AdminHandler() http.Handler {
 		client: v.config.Client,
 	}
 
-	mux.Handle("/groups/", v.AuthMiddleware(http.HandlerFunc(handler.getGroups)))
+	mux.Handle(v.config.AdminPath+"groups/", v.AuthMiddleware(http.HandlerFunc(handler.getGroups)))
 
-	mux.Handle("/permissions/", v.AuthMiddleware(http.HandlerFunc(handler.getPermissions)))
+	mux.Handle(v.config.AdminPath+"permissions/", v.AuthMiddleware(http.HandlerFunc(handler.getPermissions)))
 
-	mux.Handle("/users/", v.AuthMiddleware(http.HandlerFunc(handler.getUsers)))
+	mux.Handle(v.config.AdminPath+"users/", v.AuthMiddleware(http.HandlerFunc(handler.getUsers)))
 
 	return mux
 }

@@ -37,13 +37,14 @@ func main() {
 	v, err := ent.NewVent(ent.VentConfig{
 		Client:    client,
 		SecretKey: "secret",
+		AdminPath: "/admin/",
 	})
 	if err != nil {
 		panic(err)
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/admin/", http.StripPrefix("/admin", v.AdminHandler()))
+	mux.Handle("/admin/", v.AdminHandler())
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}

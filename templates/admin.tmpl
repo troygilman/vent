@@ -1,4 +1,4 @@
-{{ define "admin" }}
+{{ define "vent_admin" }}
 
 {{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
@@ -6,6 +6,7 @@
 type VentConfig struct {
 	Client    *Client
 	SecretKey string
+	AdminPath string
 }
 
 type Vent struct {
@@ -23,12 +24,14 @@ func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenCookie, err := r.Cookie("vent-auth-token")
 		if err != nil {
-			panic(err)
+			http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
+			return
 		}
 
 		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
 		if err != nil {
-		    panic(err)
+		    http.Redirect(w, r, v.config.AdminPath, http.StatusSeeOther)
+			return
 		}
 
 		ctx := r.Context()
@@ -44,7 +47,7 @@ func (v *Vent) AdminHandler() http.Handler {
 		client: v.config.Client,
 	}
 	{{ range $node := $.Nodes }}
-	mux.Handle("/{{ lower $node.Name }}s/", v.AuthMiddleware(http.HandlerFunc(handler.get{{ $node.Name }}s)))
+	mux.Handle(v.config.AdminPath + "{{ lower $node.Name }}s/", v.AuthMiddleware(http.HandlerFunc(handler.get{{ $node.Name }}s)))
 	{{ end }}
 	return mux
 }
