@@ -3,8 +3,6 @@
 package ent
 
 import (
-	"vent/ent/group"
-	"vent/ent/permission"
 	"vent/ent/schema"
 	"vent/ent/user"
 )
@@ -13,28 +11,8 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	groupFields := schema.Group{}.Fields()
-	_ = groupFields
-	// groupDescName is the schema descriptor for name field.
-	groupDescName := groupFields[0].Descriptor()
-	// group.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	group.NameValidator = groupDescName.Validators[0].(func(string) error)
-	permissionFields := schema.Permission{}.Fields()
-	_ = permissionFields
-	// permissionDescName is the schema descriptor for name field.
-	permissionDescName := permissionFields[0].Descriptor()
-	// permission.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	permission.NameValidator = permissionDescName.Validators[0].(func(string) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
-	// userDescEmail is the schema descriptor for email field.
-	userDescEmail := userFields[0].Descriptor()
-	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
-	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
-	// userDescPasswordHash is the schema descriptor for password_hash field.
-	userDescPasswordHash := userFields[1].Descriptor()
-	// user.PasswordHashValidator is a validator for the "password_hash" field. It is called by the builders before save.
-	user.PasswordHashValidator = userDescPasswordHash.Validators[0].(func(string) error)
 	// userDescIsStaff is the schema descriptor for is_staff field.
 	userDescIsStaff := userFields[2].Descriptor()
 	// user.DefaultIsStaff holds the default value on creation for the is_staff field.

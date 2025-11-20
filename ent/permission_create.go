@@ -62,11 +62,6 @@ func (_c *PermissionCreate) check() error {
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Permission.name"`)}
 	}
-	if v, ok := _c.mutation.Name(); ok {
-		if err := permission.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Permission.name": %w`, err)}
-		}
-	}
 	return nil
 }
 
