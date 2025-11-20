@@ -3,25 +3,59 @@
 {{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
 
-func NewVentHandler(client *Client) http.Handler {
-	handler := &ventHandler{
-		ServeMux: http.NewServeMux(),
-		client: client,
-	}
-	{{ range $node := $.Nodes }}
-	handler.HandleFunc("/{{ lower $node.Name }}s/", handler.get{{ $node.Name }}s)
-	{{ end }}
-	return handler
+type VentConfig struct {
+	Client    *Client
+	SecretKey string
 }
 
-type ventHandler struct {
-	*http.ServeMux
+type Vent struct {
+	config VentConfig
+}
+
+func NewVent(config VentConfig) (*Vent, error) {
+	v := &Vent{
+		config: config,
+	}
+	return v, nil
+}
+
+func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCookie, err := r.Cookie("vent-auth-token")
+		if err != nil {
+			panic(err)
+		}
+
+		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
+		if err != nil {
+		    panic(err)
+		}
+
+		ctx := r.Context()
+        ctx = context.WithValue(ctx, "claims", claims)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (v *Vent) AdminHandler() http.Handler {
+    mux := http.NewServeMux()
+	handler := &ventAdminHandler{
+		client: v.config.Client,
+	}
+	{{ range $node := $.Nodes }}
+	mux.Handle("/{{ lower $node.Name }}s/", v.AuthMiddleware(http.HandlerFunc(handler.get{{ $node.Name }}s)))
+	{{ end }}
+	return mux
+}
+
+type ventAdminHandler struct {
 	client *Client
 }
 
 {{ range $node := $.Nodes }}
 {{ $receiver := $node.Receiver }}
-func (handler *ventHandler) get{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) get{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
    	query := handler.client.{{ $node.Name }}.Query()
    	results, err := query.All(ctx)

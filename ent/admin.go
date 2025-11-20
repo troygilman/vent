@@ -2,29 +2,67 @@
 
 package ent
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+	"vent"
+)
 
-func NewVentHandler(client *Client) http.Handler {
-	handler := &ventHandler{
-		ServeMux: http.NewServeMux(),
-		client:   client,
-	}
-
-	handler.HandleFunc("/groups/", handler.getGroups)
-
-	handler.HandleFunc("/permissions/", handler.getPermissions)
-
-	handler.HandleFunc("/users/", handler.getUsers)
-
-	return handler
+type VentConfig struct {
+	Client    *Client
+	SecretKey string
 }
 
-type ventHandler struct {
-	*http.ServeMux
+type Vent struct {
+	config VentConfig
+}
+
+func NewVent(config VentConfig) (*Vent, error) {
+	v := &Vent{
+		config: config,
+	}
+	return v, nil
+}
+
+func (v *Vent) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCookie, err := r.Cookie("vent-auth-token")
+		if err != nil {
+			panic(err)
+		}
+
+		claims, err := vent.ParseSignedToken(v.config.SecretKey, tokenCookie.Raw)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "claims", claims)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (v *Vent) AdminHandler() http.Handler {
+	mux := http.NewServeMux()
+	handler := &ventAdminHandler{
+		client: v.config.Client,
+	}
+
+	mux.Handle("/groups/", v.AuthMiddleware(http.HandlerFunc(handler.getGroups)))
+
+	mux.Handle("/permissions/", v.AuthMiddleware(http.HandlerFunc(handler.getPermissions)))
+
+	mux.Handle("/users/", v.AuthMiddleware(http.HandlerFunc(handler.getUsers)))
+
+	return mux
+}
+
+type ventAdminHandler struct {
 	client *Client
 }
 
-func (handler *ventHandler) getGroups(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Group.Query()
 	results, err := query.All(ctx)
@@ -35,7 +73,7 @@ func (handler *ventHandler) getGroups(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func (handler *ventHandler) getPermissions(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getPermissions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.Permission.Query()
 	results, err := query.All(ctx)
@@ -46,7 +84,7 @@ func (handler *ventHandler) getPermissions(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(200)
 }
 
-func (handler *ventHandler) getUsers(w http.ResponseWriter, r *http.Request) {
+func (handler *ventAdminHandler) getUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := handler.client.User.Query()
 	results, err := query.All(ctx)

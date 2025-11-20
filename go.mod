@@ -5,6 +5,7 @@ go 1.24.3
 require (
 	entgo.io/contrib v0.7.0
 	entgo.io/ent v0.14.5
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/mattn/go-sqlite3 v1.14.17
 )
 
