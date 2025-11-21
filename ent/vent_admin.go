@@ -6,7 +6,11 @@ import (
 	"context"
 	"net/http"
 	"vent"
+	"vent/ent/user"
 	"vent/templates/gui"
+	"vent/utils"
+
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handler {
@@ -14,13 +18,13 @@ func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handl
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenCookie, err := r.Cookie("vent-auth-token")
 			if err != nil {
-				http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+				http.Redirect(w, r, "/admin/login/", http.StatusSeeOther)
 				return
 			}
 
-			claims, err := vent.ParseSignedToken(secret, tokenCookie.Raw)
+			claims, err := utils.ParseSignedToken(secret, tokenCookie.Raw)
 			if err != nil {
-				http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+				http.Redirect(w, r, "/admin/login/", http.StatusSeeOther)
 				return
 			}
 
@@ -36,12 +40,19 @@ func NewAdminHandler(client *Client, secret string) http.Handler {
 	mux := http.NewServeMux()
 	handler := &ventAdminHandler{
 		client: client,
+		secret: secret,
 	}
 
 	authMiddleware := AuthMiddleware(client, secret)
 
-	mux.Handle("GET /admin/", http.HandlerFunc(handler.getAdmin))
+	// Unauthorized Paths
+	mux.Handle("GET /admin/static/", http.StripPrefix("/admin/", vent.StaticDirHandler()))
+
 	mux.Handle("GET /admin/login/", http.HandlerFunc(handler.getAdminLogin))
+	mux.Handle("POST /admin/login/", http.HandlerFunc(handler.postAdminLogin))
+
+	// Authorized Paths
+	mux.Handle("GET /admin/", http.HandlerFunc(handler.getAdmin))
 
 	mux.Handle("GET /admin/groups/", authMiddleware(http.HandlerFunc(handler.getAdminGroups)))
 
@@ -54,6 +65,7 @@ func NewAdminHandler(client *Client, secret string) http.Handler {
 
 type ventAdminHandler struct {
 	client *Client
+	secret string
 }
 
 func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +77,44 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
 
 func (handler *ventAdminHandler) getAdminLogin(w http.ResponseWriter, r *http.Request) {
 	gui.LoginPage().Render(r.Context(), w)
+}
+
+type postAdminSignals struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.Request) {
+	var signals postAdminSignals
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	user, err := handler.client.User.Query().
+		Where(user.EmailEQ(signals.Email)).
+		Only(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if ok := utils.CheckPasswordHash(signals.Password, user.PasswordHash); !ok {
+		http.Error(w, "Password does not match", http.StatusBadRequest)
+		return
+	}
+
+	claims := utils.NewClaims(user.ID)
+	signedToken, err := utils.CreateSignedToken(handler.secret, claims)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:  "vent-auth-token",
+		Value: signedToken,
+	})
 }
 
 func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,8 @@
-package vent
+package utils
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,11 +12,11 @@ type VentClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewClaims(userID string) VentClaims {
+func NewClaims(userID int) VentClaims {
 	now := time.Now()
 	return VentClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
+			Subject:   strconv.Itoa(userID),
 			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
