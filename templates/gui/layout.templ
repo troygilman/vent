@@ -11,8 +11,8 @@ type SchemaMetadata struct {
 }
 
 templ Layout(props LayoutProps) {
-	<div class="flex flex-row w-full h-full bg-base-200">
-		<div>
+	<div class="flex flex-row w-full h-full bg-base-100">
+		<div class="rounded-box border border-base-content/5 bg-base-200">
 			<ul class="menu bg-base-200 rounded-box w-56">
 				<li class="menu-title">Schemas</li>
 				for _, schema := range props.Schemas {

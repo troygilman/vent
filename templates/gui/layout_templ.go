@@ -39,7 +39,7 @@ func Layout(props LayoutProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-row w-full h-full bg-base-200\"><div><ul class=\"menu bg-base-200 rounded-box w-56\"><li class=\"menu-title\">Schemas</li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-row w-full h-full bg-base-100\"><div class=\"rounded-box border border-base-content/5 bg-base-200\"><ul class=\"menu bg-base-200 rounded-box w-56\"><li class=\"menu-title\">Schemas</li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
