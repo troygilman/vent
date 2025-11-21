@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"vent"
+	"vent/templates/gui"
 )
 
 func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handler {
@@ -41,6 +42,7 @@ func NewAdminHandler(client *Client, secret string) http.Handler {
 	authMiddleware := AuthMiddleware(client, secret)
 
 	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}", http.HandlerFunc(handler.getAdmin))
+	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}login/", http.HandlerFunc(handler.getAdminLogin))
 
 	{{ range $node := $.Nodes }}
 	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
@@ -57,6 +59,10 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
         w.WriteHeader(http.StatusNotFound)
         return
     }
+}
+
+func (handler *ventAdminHandler) getAdminLogin(w http.ResponseWriter, r *http.Request) {
+	gui.LoginPage().Render(r.Context(), w)
 }
 
 {{ range $node := $.Nodes }}
