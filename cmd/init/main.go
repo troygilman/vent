@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"entgo.io/contrib/schemast"
 	"entgo.io/ent"
@@ -10,10 +11,13 @@ import (
 )
 
 func main() {
+	os.MkdirAll("./ent/schema", 0755)
+
 	ctx, err := schemast.Load("./ent/schema")
 	if err != nil {
-		log.Fatalf("failed: %v", err)
+		log.Fatalf("failed to load schema: %v", err)
 	}
+
 	mutations := []schemast.Mutator{
 		&schemast.UpsertSchema{
 			Name: "User",
@@ -49,9 +53,10 @@ func main() {
 			},
 		},
 	}
+
 	err = schemast.Mutate(ctx, mutations...)
 	if err := ctx.Print("./ent/schema"); err != nil {
-		log.Fatalf("failed: %v", err)
+		log.Fatalf("failed to write schema: %v", err)
 	}
 }
 
