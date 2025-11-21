@@ -22,7 +22,7 @@ func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handl
 				return
 			}
 
-			claims, err := utils.ParseSignedToken(secret, tokenCookie.Raw)
+			claims, err := utils.ParseSignedToken(secret, tokenCookie.Value)
 			if err != nil {
 				http.Redirect(w, r, "/admin/login/", http.StatusSeeOther)
 				return
@@ -52,7 +52,7 @@ func NewAdminHandler(client *Client, secret []byte) http.Handler {
 	mux.Handle("POST /admin/login/", http.HandlerFunc(handler.postAdminLogin))
 
 	// Authorized Paths
-	mux.Handle("GET /admin/", http.HandlerFunc(handler.getAdmin))
+	mux.Handle("GET /admin/", authMiddleware(http.HandlerFunc(handler.getAdmin)))
 
 	mux.Handle("GET /admin/groups/", authMiddleware(http.HandlerFunc(handler.getAdminGroups)))
 
@@ -112,9 +112,14 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:  "vent-auth-token",
-		Value: signedToken,
+		Name:     "vent-auth-token",
+		Value:    signedToken,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
 	})
+
+	sse := datastar.NewSSE(w, r)
+	sse.Redirect("/admin/")
 }
 
 func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.Request) {

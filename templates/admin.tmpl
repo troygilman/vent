@@ -21,7 +21,7 @@ func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handl
     			return
     		}
 
-    		claims, err := utils.ParseSignedToken(secret, tokenCookie.Raw)
+    		claims, err := utils.ParseSignedToken(secret, tokenCookie.Value)
     		if err != nil {
     		    http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}login/", http.StatusSeeOther)
     			return
@@ -45,13 +45,13 @@ func NewAdminHandler(client *Client, secret []byte) http.Handler {
 	authMiddleware := AuthMiddleware(client, secret)
 
     // Unauthorized Paths
-    mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}static/",  http.StripPrefix("{{ $.Annotations.VentConfig.AdminPath }}", vent.StaticDirHandler()))
+    mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}static/", http.StripPrefix("{{ $.Annotations.VentConfig.AdminPath }}", vent.StaticDirHandler()))
 
 	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}login/", http.HandlerFunc(handler.getAdminLogin))
 	mux.Handle("POST {{ $.Annotations.VentConfig.AdminPath }}login/", http.HandlerFunc(handler.postAdminLogin))
 
     // Authorized Paths
-	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}", http.HandlerFunc(handler.getAdmin))
+	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}", authMiddleware(http.HandlerFunc(handler.getAdmin)))
 
 	{{ range $node := $.Nodes }}
 	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
@@ -110,7 +110,12 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 	http.SetCookie(w, &http.Cookie{
 		Name: "vent-auth-token",
 		Value: signedToken,
+		Path: "/",
+		SameSite: http.SameSiteLaxMode,
 	})
+
+	sse := datastar.NewSSE(w, r)
+	sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
 }
 
 {{ range $node := $.Nodes }}
