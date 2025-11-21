@@ -11,7 +11,7 @@ templ SchemaTablePage(props SchemaTablePageProps) {
 		@Layout(props.LayoutProps) {
 			<div class="w-full overflow-x-auto">
 				<table class="table table-zebra table-sm">
-					<thead>
+					<thead class="sticky top-0 bg-base-100">
 						<tr>
 							for _, column := range props.Columns {
 								<th>{ column }</th>

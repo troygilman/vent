@@ -904,6 +904,12 @@
   .static {
     position: static;
   }
+  .sticky {
+    position: sticky;
+  }
+  .top-0 {
+    top: calc(var(--spacing) * 0);
+  }
   .filter {
     @layer daisyui.l1.l2.l3 {
       display: flex;
@@ -1077,6 +1083,9 @@
   .overflow-x-auto {
     overflow-x: auto;
   }
+  .overscroll-none {
+    overscroll-behavior: none;
+  }
   .rounded-box {
     border-radius: var(--radius-box);
   }
@@ -1137,6 +1146,9 @@
   }
   .bg-base-200 {
     background-color: var(--color-base-200);
+  }
+  .bg-inherit {
+    background-color: inherit;
   }
   .menu-title {
     @layer daisyui.l1.l2.l3 {

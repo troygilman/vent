@@ -59,7 +59,7 @@ func SchemaTablePage(props SchemaTablePageProps) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"w-full overflow-x-auto\"><table class=\"table table-zebra table-sm\"><thead><tr>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"w-full overflow-x-auto\"><table class=\"table table-zebra table-sm\"><thead class=\"sticky top-0 bg-base-100\"><tr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
