@@ -137,13 +137,25 @@ func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.R
 	if err != nil {
 		panic(err)
 	}
-	print(results)
+
+	rows := make([][]string, len(results))
+	for idx, result := range results {
+		rows[idx] = []string{
+
+			utils.Stringify(result.Name, "string"),
+		}
+	}
 
 	props := gui.SchemaTablePageProps{
 		LayoutProps: gui.LayoutProps{
 			Schemas:          handler.buildSchemaMetadata(),
 			ActiveSchemaName: "Group",
 		},
+		Columns: []string{
+
+			"Name",
+		},
+		Rows: rows,
 	}
 
 	gui.SchemaTablePage(props).Render(r.Context(), w)
@@ -156,13 +168,25 @@ func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *h
 	if err != nil {
 		panic(err)
 	}
-	print(results)
+
+	rows := make([][]string, len(results))
+	for idx, result := range results {
+		rows[idx] = []string{
+
+			utils.Stringify(result.Name, "string"),
+		}
+	}
 
 	props := gui.SchemaTablePageProps{
 		LayoutProps: gui.LayoutProps{
 			Schemas:          handler.buildSchemaMetadata(),
 			ActiveSchemaName: "Permission",
 		},
+		Columns: []string{
+
+			"Name",
+		},
+		Rows: rows,
 	}
 
 	gui.SchemaTablePage(props).Render(r.Context(), w)
@@ -175,13 +199,37 @@ func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		panic(err)
 	}
-	print(results)
+
+	rows := make([][]string, len(results))
+	for idx, result := range results {
+		rows[idx] = []string{
+
+			utils.Stringify(result.Email, "string"),
+
+			utils.Stringify(result.PasswordHash, "string"),
+
+			utils.Stringify(result.IsStaff, "bool"),
+
+			utils.Stringify(result.IsActive, "bool"),
+		}
+	}
 
 	props := gui.SchemaTablePageProps{
 		LayoutProps: gui.LayoutProps{
 			Schemas:          handler.buildSchemaMetadata(),
 			ActiveSchemaName: "User",
 		},
+		Columns: []string{
+
+			"Email",
+
+			"PasswordHash",
+
+			"IsStaff",
+
+			"IsActive",
+		},
+		Rows: rows,
 	}
 
 	gui.SchemaTablePage(props).Render(r.Context(), w)

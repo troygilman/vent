@@ -2,6 +2,8 @@ package gui
 
 type SchemaTablePageProps struct {
 	LayoutProps LayoutProps
+	Columns     []string
+	Rows        [][]string
 }
 
 templ SchemaTablePage(props SchemaTablePageProps) {
@@ -9,37 +11,21 @@ templ SchemaTablePage(props SchemaTablePageProps) {
 		@Layout(props.LayoutProps) {
 			<div class="w-full overflow-x-auto">
 				<table class="table table-zebra table-sm">
-					<!-- head -->
 					<thead>
 						<tr>
-							<th></th>
-							<th>Name</th>
-							<th>Job</th>
-							<th>Favorite Color</th>
+							for _, column := range props.Columns {
+								<th>{ column }</th>
+							}
 						</tr>
 					</thead>
 					<tbody>
-						<!-- row 1 -->
-						<tr>
-							<th>1</th>
-							<td>Cy Ganderton</td>
-							<td>Quality Control Specialist</td>
-							<td>Blue</td>
-						</tr>
-						<!-- row 2 -->
-						<tr>
-							<th>2</th>
-							<td>Hart Hagerty</td>
-							<td>Desktop Support Technician</td>
-							<td>Purple</td>
-						</tr>
-						<!-- row 3 -->
-						<tr>
-							<th>3</th>
-							<td>Brice Swyre</td>
-							<td>Tax Accountant</td>
-							<td>Red</td>
-						</tr>
+						for _, row := range props.Rows {
+							<tr>
+								for _, data := range row {
+									<td>{ data }</td>
+								}
+							</tr>
+						}
 					</tbody>
 				</table>
 			</div>
