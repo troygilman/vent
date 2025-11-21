@@ -1053,6 +1053,12 @@
   .w-screen {
     width: 100vw;
   }
+  .min-w-0 {
+    min-width: calc(var(--spacing) * 0);
+  }
+  .grow {
+    flex-grow: 1;
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -1067,6 +1073,9 @@
   }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
+  }
+  .overflow-x-auto {
+    overflow-x: auto;
   }
   .rounded-box {
     border-radius: var(--radius-box);
