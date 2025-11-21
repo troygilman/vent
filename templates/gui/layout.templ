@@ -1,13 +1,22 @@
 package gui
 
-templ Layout() {
+type LayoutProps struct {
+	Schemas []SchemaMetadata
+}
+
+type SchemaMetadata struct {
+	Name string
+	Path string
+}
+
+templ Layout(props LayoutProps) {
 	<div class="flex flex-row w-full h-full bg-base-200">
 		<div>
 			<ul class="menu bg-base-200 rounded-box w-56">
-				<li class="menu-title">Title</li>
-				<li><a>Item 1</a></li>
-				<li><a>Item 2</a></li>
-				<li><a>Item 3</a></li>
+				<li class="menu-title">Schemas</li>
+				for _, schema := range props.Schemas {
+					<li><a href={ schema.Path }>{ schema.Name }</a></li>
+				}
 			</ul>
 		</div>
 	</div>

@@ -73,6 +73,30 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	props := gui.AdminPageProps{
+		LayoutProps: gui.LayoutProps{
+			Schemas: []gui.SchemaMetadata{
+
+				{
+					Name: "Group",
+					Path: "/admin/groups/",
+				},
+
+				{
+					Name: "Permission",
+					Path: "/admin/permissions/",
+				},
+
+				{
+					Name: "User",
+					Path: "/admin/users/",
+				},
+			},
+		},
+	}
+
+	gui.AdminPage(props).Render(r.Context(), w)
 }
 
 func (handler *ventAdminHandler) getAdminLogin(w http.ResponseWriter, r *http.Request) {

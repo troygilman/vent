@@ -1,0 +1,11 @@
+package gui
+
+type AdminPageProps struct {
+	LayoutProps LayoutProps
+}
+
+templ AdminPage(props AdminPageProps) {
+	@Index() {
+		@Layout(props.LayoutProps)
+	}
+}
