@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"vent/ent"
+	"vent/utils"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -24,9 +25,14 @@ func main() {
 
 	ctx := context.Background()
 
+	passwordHash, err := utils.HashPassword("test_user")
+	if err != nil {
+		panic(err)
+	}
+
 	u, err := client.User.Create().
 		SetEmail("admin@vent.com").
-		SetPasswordHash("test_user").
+		SetPasswordHash(passwordHash).
 		Save(ctx)
 	if err != nil {
 		log.Println(fmt.Errorf("failed creating user: %w", err))
@@ -35,7 +41,7 @@ func main() {
 	log.Println("user was created: ", u)
 
 	mux := http.NewServeMux()
-	mux.Handle("/admin/", ent.NewAdminHandler(client, "secret"))
+	mux.Handle("/admin/", ent.NewAdminHandler(client, []byte("secret")))
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}

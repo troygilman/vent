@@ -13,7 +13,7 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handler {
+func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenCookie, err := r.Cookie("vent-auth-token")
@@ -36,7 +36,7 @@ func AuthMiddleware(client *Client, secret string) func(http.Handler) http.Handl
 	}
 }
 
-func NewAdminHandler(client *Client, secret string) http.Handler {
+func NewAdminHandler(client *Client, secret []byte) http.Handler {
 	mux := http.NewServeMux()
 	handler := &ventAdminHandler{
 		client: client,
@@ -65,7 +65,7 @@ func NewAdminHandler(client *Client, secret string) http.Handler {
 
 type ventAdminHandler struct {
 	client *Client
-	secret string
+	secret []byte
 }
 
 func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {

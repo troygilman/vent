@@ -23,12 +23,12 @@ func NewClaims(userID int) VentClaims {
 	}
 }
 
-func CreateSignedToken(secret string, claims VentClaims) (string, error) {
+func CreateSignedToken(secret []byte, claims VentClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secret)
 }
 
-func ParseSignedToken(secret string, signedToken string) (VentClaims, error) {
+func ParseSignedToken(secret []byte, signedToken string) (VentClaims, error) {
 	claims := VentClaims{}
 	token, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (any, error) {
 		return secret, nil
