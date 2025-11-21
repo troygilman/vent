@@ -12,7 +12,7 @@ import (
 func main() {
 	err := entc.Generate("./ent/schema",
 		&gen.Config{},
-		entc.Extensions(vent.NewAdminExtension(nil)),
+		entc.Extensions(vent.NewAdminExtension()),
 	)
 	if err != nil {
 		log.Fatal("running ent codegen:", err)

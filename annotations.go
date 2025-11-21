@@ -1,7 +1,7 @@
 package vent
 
 type VentConfigAnnotation struct {
-	*VentExtensionConfig
+	VentExtensionConfig
 }
 
 func (VentConfigAnnotation) Name() string {
