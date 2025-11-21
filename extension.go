@@ -1,9 +1,14 @@
 package vent
 
 import (
+	"embed"
+
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
 )
+
+//go:embed templates
+var templates embed.FS
 
 type AdminExtension struct {
 	entc.DefaultExtension
@@ -32,7 +37,7 @@ func (ext *AdminExtension) Annotations() []entc.Annotation {
 
 func (*AdminExtension) Templates() []*gen.Template {
 	return []*gen.Template{
-		gen.MustParse(gen.NewTemplate("admin").ParseFiles("templates/admin.tmpl")),
+		gen.MustParse(gen.NewTemplate("admin").ParseFS(templates, "templates/admin.tmpl")),
 	}
 }
 
