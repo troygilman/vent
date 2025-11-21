@@ -1,7 +1,8 @@
 package gui
 
 type LayoutProps struct {
-	Schemas []SchemaMetadata
+	Schemas          []SchemaMetadata
+	ActiveSchemaName string
 }
 
 type SchemaMetadata struct {
@@ -15,7 +16,12 @@ templ Layout(props LayoutProps) {
 			<ul class="menu bg-base-200 rounded-box w-56">
 				<li class="menu-title">Schemas</li>
 				for _, schema := range props.Schemas {
-					<li><a href={ schema.Path }>{ schema.Name }</a></li>
+					<li>
+						<a
+							href={ schema.Path }
+							class={ templ.KV("menu-active", schema.Name == props.ActiveSchemaName) }
+						>{ schema.Name }</a>
+					</li>
 				}
 			</ul>
 		</div>

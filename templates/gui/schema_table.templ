@@ -1,8 +1,12 @@
 package gui
 
-templ SchemaTable() {
+type SchemaTablePageProps struct {
+	LayoutProps LayoutProps
+}
+
+templ SchemaTablePage(props SchemaTablePageProps) {
 	@Index() {
-		@Layout(LayoutProps{}) {
+		@Layout(props.LayoutProps) {
 		}
 	}
 }

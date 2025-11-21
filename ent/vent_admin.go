@@ -76,23 +76,7 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
 
 	props := gui.AdminPageProps{
 		LayoutProps: gui.LayoutProps{
-			Schemas: []gui.SchemaMetadata{
-
-				{
-					Name: "Group",
-					Path: "/admin/groups/",
-				},
-
-				{
-					Name: "Permission",
-					Path: "/admin/permissions/",
-				},
-
-				{
-					Name: "User",
-					Path: "/admin/users/",
-				},
-			},
+			Schemas: handler.buildSchemaMetadata(),
 		},
 	}
 
@@ -154,6 +138,15 @@ func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.R
 		panic(err)
 	}
 	print(results)
+
+	props := gui.SchemaTablePageProps{
+		LayoutProps: gui.LayoutProps{
+			Schemas:          handler.buildSchemaMetadata(),
+			ActiveSchemaName: "Group",
+		},
+	}
+
+	gui.SchemaTablePage(props).Render(r.Context(), w)
 }
 
 func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +157,15 @@ func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *h
 		panic(err)
 	}
 	print(results)
+
+	props := gui.SchemaTablePageProps{
+		LayoutProps: gui.LayoutProps{
+			Schemas:          handler.buildSchemaMetadata(),
+			ActiveSchemaName: "Permission",
+		},
+	}
+
+	gui.SchemaTablePage(props).Render(r.Context(), w)
 }
 
 func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Request) {
@@ -174,4 +176,33 @@ func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Re
 		panic(err)
 	}
 	print(results)
+
+	props := gui.SchemaTablePageProps{
+		LayoutProps: gui.LayoutProps{
+			Schemas:          handler.buildSchemaMetadata(),
+			ActiveSchemaName: "User",
+		},
+	}
+
+	gui.SchemaTablePage(props).Render(r.Context(), w)
+}
+
+func (handler *ventAdminHandler) buildSchemaMetadata() []gui.SchemaMetadata {
+	return []gui.SchemaMetadata{
+
+		{
+			Name: "Group",
+			Path: "/admin/groups/",
+		},
+
+		{
+			Name: "Permission",
+			Path: "/admin/permissions/",
+		},
+
+		{
+			Name: "User",
+			Path: "/admin/users/",
+		},
+	}
 }

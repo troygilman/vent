@@ -72,14 +72,7 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
 
     props := gui.AdminPageProps{
         LayoutProps: gui.LayoutProps{
-            Schemas: []gui.SchemaMetadata{
-	            {{ range $node := $.Nodes }}
-                {
-                    Name: "{{ $node.Name }}",
-                    Path: "{{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/",
-                },
-                {{ end }}
-            },
+            Schemas: handler.buildSchemaMetadata(),
         },
     }
 
@@ -142,7 +135,27 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
     	panic(err)
     }
     print(results)
+
+    props := gui.SchemaTablePageProps{
+        LayoutProps: gui.LayoutProps{
+            Schemas: handler.buildSchemaMetadata(),
+            ActiveSchemaName: "{{ $node.Name }}",
+        },
+    }
+
+    gui.SchemaTablePage(props).Render(r.Context(), w)
 }
 {{ end }}
+
+func (handler *ventAdminHandler) buildSchemaMetadata() []gui.SchemaMetadata {
+    return []gui.SchemaMetadata{
+        {{ range $node := $.Nodes }}
+        {
+            Name: "{{ $node.Name }}",
+            Path: "{{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/",
+        },
+        {{ end }}
+    }
+}
 
 {{ end }}
