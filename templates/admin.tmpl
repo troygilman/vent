@@ -6,6 +6,7 @@
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"vent"
 	"vent/utils"
 	"vent/templates/gui"
@@ -138,6 +139,7 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
     rows := make([][]string, len(results))
     for idx, result := range results {
         rows[idx] = []string{
+            strconv.Itoa(result.ID),
             {{ range $field := $node.Fields }}
             utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
             {{ end }}
@@ -150,6 +152,7 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
             ActiveSchemaName: "{{ $node.Name }}",
         },
         Columns: []string{
+            "ID",
             {{ range $field := $node.Fields }}
                 "{{ pascal $field.Name }}",
             {{ end }}

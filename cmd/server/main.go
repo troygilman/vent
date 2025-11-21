@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -13,7 +12,7 @@ import (
 )
 
 func main() {
-	client, err := ent.Open("sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client, err := ent.Open("sqlite3", "file:tmp/test.db?_fk=1")
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}
@@ -30,14 +29,10 @@ func main() {
 		panic(err)
 	}
 
-	_, err = client.User.Create().
+	client.User.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		Save(ctx)
-	if err != nil {
-		log.Println(fmt.Errorf("failed creating user: %w", err))
-		return
-	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/admin/", ent.NewAdminHandler(client, []byte("secret")))

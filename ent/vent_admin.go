@@ -5,6 +5,7 @@ package ent
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"vent"
 	"vent/ent/user"
 	"vent/templates/gui"
@@ -141,6 +142,7 @@ func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.R
 	rows := make([][]string, len(results))
 	for idx, result := range results {
 		rows[idx] = []string{
+			strconv.Itoa(result.ID),
 
 			utils.Stringify(result.Name, "string"),
 		}
@@ -152,6 +154,7 @@ func (handler *ventAdminHandler) getAdminGroups(w http.ResponseWriter, r *http.R
 			ActiveSchemaName: "Group",
 		},
 		Columns: []string{
+			"ID",
 
 			"Name",
 		},
@@ -172,6 +175,7 @@ func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *h
 	rows := make([][]string, len(results))
 	for idx, result := range results {
 		rows[idx] = []string{
+			strconv.Itoa(result.ID),
 
 			utils.Stringify(result.Name, "string"),
 		}
@@ -183,6 +187,7 @@ func (handler *ventAdminHandler) getAdminPermissions(w http.ResponseWriter, r *h
 			ActiveSchemaName: "Permission",
 		},
 		Columns: []string{
+			"ID",
 
 			"Name",
 		},
@@ -203,6 +208,7 @@ func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Re
 	rows := make([][]string, len(results))
 	for idx, result := range results {
 		rows[idx] = []string{
+			strconv.Itoa(result.ID),
 
 			utils.Stringify(result.Email, "string"),
 
@@ -220,6 +226,7 @@ func (handler *ventAdminHandler) getAdminUsers(w http.ResponseWriter, r *http.Re
 			ActiveSchemaName: "User",
 		},
 		Columns: []string{
+			"ID",
 
 			"Email",
 
