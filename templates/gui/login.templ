@@ -1,72 +1,77 @@
 package gui
 
-templ LoginPage() {
+type LoginProps struct {
+	EmailError     string
+	PasswordErrors []string
+}
+
+templ LoginPage(props LoginProps) {
 	@Index() {
-		<div class="flex w-full h-full bg-base-200 justify-center place-items-center">
-			<div class="card card-border bg-base-100 w-96 shadow">
-				<div class="card-body">
-					<h2 class="card-title text-3xl font-bold">Admin Login</h2>
-					<div class="flex flex-col py-2 gap-2">
-						<div>
-							<label class="input validator">
-								<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-									<g
-										stroke-linejoin="round"
-										stroke-linecap="round"
-										stroke-width="2.5"
-										fill="none"
-										stroke="currentColor"
-									>
-										<rect width="20" height="16" x="2" y="4" rx="2"></rect>
-										<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-									</g>
-								</svg>
-								<input type="email" data-bind="email" placeholder="mail@site.com" required/>
-							</label>
-							<div class="validator-hint hidden">Enter valid email address</div>
-						</div>
-						<div>
-							<label class="input validator">
-								<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-									<g
-										stroke-linejoin="round"
-										stroke-linecap="round"
-										stroke-width="2.5"
-										fill="none"
-										stroke="currentColor"
-									>
-										<path
-											d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"
-										></path>
-										<circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
-									</g>
-								</svg>
-								<input
-									type="password"
-									data-bind="password"
-									required
-									placeholder="Password"
-									minlength="8"
-									pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-									title="Must be more than 8 characters, including number, lowercase letter, uppercase letter"
-								/>
-							</label>
-							<p class="validator-hint hidden">
-								Must be more than 8 characters, including
-								<br/>
-								At least one number
-								<br/>
-								At least one lowercase letter
-								<br/>
-								At least one uppercase letter
-							</p>
-						</div>
+		@Login(props)
+	}
+}
+
+templ Login(props LoginProps) {
+	<div id="login" class="flex w-full h-full bg-base-200 justify-center place-items-center">
+		<div class="card card-border bg-base-100 w-96 shadow">
+			<form class="card-body" data-on:submit="@post('/admin/login/')">
+				<h2 class="card-title text-3xl font-bold">Admin Login</h2>
+				<div class="flex flex-col py-2 gap-2">
+					<div>
+						<label class={ "input", templ.KV("input-error", props.EmailError != "") }>
+							<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+								<g
+									stroke-linejoin="round"
+									stroke-linecap="round"
+									stroke-width="2.5"
+									fill="none"
+									stroke="currentColor"
+								>
+									<rect width="20" height="16" x="2" y="4" rx="2"></rect>
+									<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+								</g>
+							</svg>
+							<input type="email" data-bind="email" placeholder="mail@site.com" required/>
+						</label>
+						<div class="text-error mt-1">{ props.EmailError }</div>
 					</div>
-					<div class="card-actions">
-						<button class="btn btn-primary btn-block" data-on:click="@post('/admin/login/')">Login</button>
+					<div>
+						<label class={ "input", templ.KV("input-error", len(props.PasswordErrors) > 0) }>
+							<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+								<g
+									stroke-linejoin="round"
+									stroke-linecap="round"
+									stroke-width="2.5"
+									fill="none"
+									stroke="currentColor"
+								>
+									<path
+										d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"
+									></path>
+									<circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
+								</g>
+							</svg>
+							<input
+								type="password"
+								data-bind="password"
+								required
+								placeholder="Password"
+							/>
+						</label>
+						<p class="text-error mt-1">
+							for idx, err := range props.PasswordErrors {
+								{ err }
+								if idx != len(props.PasswordErrors)-1 {
+									<br/>
+								}
+							}
+						</p>
 					</div>
 				</div>
-			</div>
+				<div class="card-actions">
+					<button class="btn btn-primary btn-block" type="submit">Login</button>
+				</div>
+			</form>
 		</div>
-	}
+	</div>
 }

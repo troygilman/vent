@@ -6,6 +6,7 @@
 import (
 	"context"
 	"net/http"
+	"log"
 	"strconv"
 	"vent"
 	"vent/utils"
@@ -81,7 +82,8 @@ func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *ventAdminHandler) getAdminLogin(w http.ResponseWriter, r *http.Request) {
-	gui.LoginPage().Render(r.Context(), w)
+    props := gui.LoginProps{}
+	gui.LoginPage(props).Render(r.Context(), w)
 }
 
 type postAdminSignals struct {
@@ -92,39 +94,53 @@ type postAdminSignals struct {
 func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.Request) {
     var signals postAdminSignals
     if err := datastar.ReadSignals(r, &signals); err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-
-    user, err := handler.client.User.Query().
-		Where(user.EmailEQ(signals.Email)).
-		Only(r.Context())
-	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-
-	if ok := utils.CheckPasswordHash(signals.Password, user.PasswordHash); !ok {
-	    http.Error(w, "Password does not match", http.StatusBadRequest)
-		return
-	}
-
-    claims := utils.NewClaims(user.ID)
-    signedToken, err := utils.CreateSignedToken(handler.secret, claims)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-		return
     }
 
-	http.SetCookie(w, &http.Cookie{
-		Name: "vent-auth-token",
-		Value: signedToken,
-		Path: "/",
-		SameSite: http.SameSiteLaxMode,
-	})
+    sse := datastar.NewSSE(w, r)
+    err := func() error {
+        user, err := handler.client.User.Query().
+    		Where(user.EmailEQ(signals.Email)).
+    		Only(r.Context())
+    	if err != nil {
+    		return err
+    	}
 
-	sse := datastar.NewSSE(w, r)
-	sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
+    	if err := utils.CheckPasswordHash(signals.Password, user.PasswordHash); err != nil {
+    	    return err
+    	}
+
+        claims := utils.NewClaims(user.ID)
+        signedToken, err := utils.CreateSignedToken(handler.secret, claims)
+        if err != nil {
+            return err
+        }
+
+    	http.SetCookie(w, &http.Cookie{
+    		Name: "vent-auth-token",
+    		Value: signedToken,
+    		Path: "/",
+    		SameSite: http.SameSiteLaxMode,
+    	})
+
+    	sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
+        return nil
+	}()
+	if err != nil {
+		log.Println(err.Error())
+		if IsNotFound(err) {
+			sse.PatchElementTempl(gui.Login(gui.LoginProps{
+				EmailError: "User with email not found",
+			}))
+		} else if errors.Is(err, vent.ErrPasswordMismatch) {
+			sse.PatchElementTempl(gui.Login(gui.LoginProps{
+				PasswordErrors: []string{
+					"Invalid password",
+				},
+			}))
+		}
+	}
 }
 
 {{ range $node := $.Nodes }}
