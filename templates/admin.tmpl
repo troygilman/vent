@@ -211,7 +211,7 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}Detail(w http.ResponseW
             Schemas: handler.buildSchemaMetadata(),
             ActiveSchemaName: "{{ $node.Name }}",
         },
-        Fields: []gui.SchemaDetailField{
+        Fields: []gui.SchemaDetailFieldProps{
             {{ range $field := $node.Fields }}
             {
                 Name: "{{ $field.Name }}",

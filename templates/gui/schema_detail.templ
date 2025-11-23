@@ -2,10 +2,10 @@ package gui
 
 type SchemaDetailProps struct {
 	LayoutProps LayoutProps
-	Fields      []SchemaDetailField
+	Fields      []SchemaDetailFieldProps
 }
 
-type SchemaDetailField struct {
+type SchemaDetailFieldProps struct {
 	Name  string
 	Label string
 	Desc  string
@@ -18,12 +18,16 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 		@Layout(props.LayoutProps) {
 			<form class="flex flex-col">
 				for _, field := range props.Fields {
-					<label>
-						{ field.Label }
-						<input class="input" name={ field.Name } value={ field.Value }/>
-					</label>
+					@SchemaDetailField(field)
 				}
 			</form>
 		}
 	}
+}
+
+templ SchemaDetailField(props SchemaDetailFieldProps) {
+	<label>
+		{ props.Label }
+		<input class="input" name={ props.Name } value={ props.Value }/>
+	</label>
 }
