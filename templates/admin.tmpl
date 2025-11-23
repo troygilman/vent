@@ -165,16 +165,24 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
         }
     }
 
-    props := gui.SchemaTablePageProps{
+    props := gui.SchemaTableProps{
         LayoutProps: gui.LayoutProps{
             Schemas: handler.buildSchemaMetadata(),
             ActiveSchemaName: "{{ $node.Name }}",
         },
-        Columns: []string{
-            "ID",
+        Columns: []gui.SchemaTableColumn{
+            {
+                Name: "id",
+                Label: "ID",
+                Type: "int",
+            },
             {{ range $field := $node.Fields }}
             {{ if showField $node $field }}
-            "{{ pascal $field.Name }}",
+            {
+                Name: "{{ $field.Name }}",
+                Label: "{{ pascal $field.Name }}",
+                Type: "{{ $field.Type.Type }}",
+            },
             {{ end }}
             {{ end }}
         },

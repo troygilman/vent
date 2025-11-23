@@ -2,22 +2,28 @@ package gui
 
 import "fmt"
 
-type SchemaTablePageProps struct {
+type SchemaTableProps struct {
 	LayoutProps   LayoutProps
-	Columns       []string
+	Columns       []SchemaTableColumn
 	Rows          [][]string
 	DetailPathStr string
 }
 
-templ SchemaTablePage(props SchemaTablePageProps) {
+type SchemaTableColumn struct {
+	Name  string
+	Label string
+	Type  string
+}
+
+templ SchemaTablePage(props SchemaTableProps) {
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<div class="w-full overflow-x-auto">
-				<table class="table table-zebra table-sm">
+				<table class="table table-zebra">
 					<thead class="sticky top-0 bg-base-100">
 						<tr>
 							for _, column := range props.Columns {
-								<th>{ column }</th>
+								<th>{ column.Label }</th>
 							}
 						</tr>
 					</thead>
@@ -26,7 +32,7 @@ templ SchemaTablePage(props SchemaTablePageProps) {
 							<tr>
 								for cIdx, data := range row {
 									{{ column := props.Columns[cIdx] }}
-									if column == "ID" {
+									if column.Name == "id" {
 										<td><a class="link link-info" href={ fmt.Sprintf(props.DetailPathStr, data) }>{ data }</a></td>
 									} else {
 										<td>{ data }</td>

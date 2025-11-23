@@ -1001,17 +1001,6 @@
       font-weight: 600;
     }
   }
-  .table-sm {
-    @layer daisyui.l1.l2 {
-      :not(thead, tfoot) tr {
-        font-size: 0.75rem;
-      }
-      :where(th, td) {
-        padding-inline: calc(0.25rem * 3);
-        padding-block: calc(0.25rem * 2);
-      }
-    }
-  }
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
   }
@@ -1064,6 +1053,9 @@
       }
     }
   }
+}
+@view-transition {
+  navigation: auto;
 }
 @layer base {
   :where(:root),:root:has(input.theme-controller[value=light]:checked),[data-theme=light] {
