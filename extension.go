@@ -2,6 +2,8 @@ package vent
 
 import (
 	"embed"
+	"slices"
+	"text/template"
 
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
@@ -37,7 +39,13 @@ func (ext *AdminExtension) Annotations() []entc.Annotation {
 
 func (*AdminExtension) Templates() []*gen.Template {
 	return []*gen.Template{
-		gen.MustParse(gen.NewTemplate("admin").ParseFS(templates, "templates/admin.tmpl")),
+		gen.MustParse(
+			gen.NewTemplate("admin").
+				Funcs(template.FuncMap{
+					"contains": slices.Contains[[]any],
+				}).
+				ParseFS(templates, "templates/admin.tmpl"),
+		),
 	}
 }
 

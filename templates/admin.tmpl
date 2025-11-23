@@ -157,10 +157,8 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
         rows[idx] = []string{
             strconv.Itoa(result.ID),
             {{ range $field := $node.Fields }}
-            {{ range $column := $node.Annotations.VentSchema.TableColumns }}
-            {{ if eq $field.Name $column }}
+            {{ if contains $node.Annotations.VentSchema.TableColumns $field.Name }}
             utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
-            {{ end }}
             {{ end }}
             {{ end }}
         }
@@ -174,10 +172,8 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
         Columns: []string{
             "ID",
             {{ range $field := $node.Fields }}
-            {{ range $column := $node.Annotations.VentSchema.TableColumns }}
-            {{ if eq $field.Name $column }}
+            {{ if contains $node.Annotations.VentSchema.TableColumns $field.Name }}
             "{{ pascal $field.Name }}",
-            {{ end }}
             {{ end }}
             {{ end }}
         },
