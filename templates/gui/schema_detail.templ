@@ -1,0 +1,29 @@
+package gui
+
+type SchemaDetailProps struct {
+	LayoutProps LayoutProps
+	Fields      []SchemaDetailField
+}
+
+type SchemaDetailField struct {
+	Name  string
+	Label string
+	Desc  string
+	Type  string
+	Value string
+}
+
+templ SchemaDetailPage(props SchemaDetailProps) {
+	@Index() {
+		@Layout(props.LayoutProps) {
+			<form class="flex flex-col">
+				for _, field := range props.Fields {
+					<label>
+						{ field.Label }
+						<input class="input" name={ field.Name } value={ field.Value }/>
+					</label>
+				}
+			</form>
+		}
+	}
+}

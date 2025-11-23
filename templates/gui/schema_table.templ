@@ -1,9 +1,12 @@
 package gui
 
+import "fmt"
+
 type SchemaTablePageProps struct {
-	LayoutProps LayoutProps
-	Columns     []string
-	Rows        [][]string
+	LayoutProps   LayoutProps
+	Columns       []string
+	Rows          [][]string
+	DetailPathStr string
 }
 
 templ SchemaTablePage(props SchemaTablePageProps) {
@@ -21,8 +24,13 @@ templ SchemaTablePage(props SchemaTablePageProps) {
 					<tbody>
 						for _, row := range props.Rows {
 							<tr>
-								for _, data := range row {
-									<td>{ data }</td>
+								for cIdx, data := range row {
+									{{ column := props.Columns[cIdx] }}
+									if column == "ID" {
+										<td><a class="link link-info" href={ fmt.Sprintf(props.DetailPathStr, data) }>{ data }</a></td>
+									} else {
+										<td>{ data }</td>
+									}
 								}
 							</tr>
 						}
