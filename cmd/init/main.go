@@ -33,6 +33,15 @@ func main() {
 			Edges: []ent.Edge{
 				newEdgeTo("groups", "Group"),
 			},
+			// Annotations: []schema.Annotation{
+			// 	vent.VentSchemaAnnotation{
+			// 		TableColumns: []string{
+			// 			"email",
+			// 			"is_staff",
+			// 			"is_active",
+			// 		},
+			// 	},
+			// },
 		},
 		&schemast.UpsertSchema{
 			Name: "Group",
@@ -44,6 +53,13 @@ func main() {
 				newEdgeTo("permissions", "Permission"),
 				newEdgeFrom("users", "User", "groups"),
 			},
+			// Annotations: []schema.Annotation{
+			// 	vent.VentSchemaAnnotation{
+			// 		TableColumns: []string{
+			// 			"name",
+			// 		},
+			// 	},
+			// },
 		},
 		&schemast.UpsertSchema{
 			Name: "Permission",
@@ -51,6 +67,13 @@ func main() {
 				field.String("name").
 					Unique(),
 			},
+			// Annotations: []schema.Annotation{
+			// 	vent.VentSchemaAnnotation{
+			// 		TableColumns: []string{
+			// 			"name",
+			// 		},
+			// 	},
+			// },
 		},
 	}
 
