@@ -1,5 +1,11 @@
 package vent
 
+import (
+	"slices"
+
+	"entgo.io/ent/entc/gen"
+)
+
 type VentConfigAnnotation struct {
 	VentExtensionConfig
 }
@@ -14,6 +20,10 @@ type VentSchemaAnnotation struct {
 
 func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
+}
+
+func (a VentSchemaAnnotation) showField(f gen.Field) bool {
+	return slices.Contains(a.TableColumns, f.Name)
 }
 
 type VentFieldAnnotation struct {

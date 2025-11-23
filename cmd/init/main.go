@@ -24,7 +24,8 @@ func main() {
 			Fields: []ent.Field{
 				field.String("email").
 					Unique(),
-				field.String("password_hash"),
+				field.String("password_hash").
+					Sensitive(),
 				field.Bool("is_staff").
 					Default(false),
 				field.Bool("is_active").
@@ -33,15 +34,6 @@ func main() {
 			Edges: []ent.Edge{
 				newEdgeTo("groups", "Group"),
 			},
-			// Annotations: []schema.Annotation{
-			// 	vent.VentSchemaAnnotation{
-			// 		TableColumns: []string{
-			// 			"email",
-			// 			"is_staff",
-			// 			"is_active",
-			// 		},
-			// 	},
-			// },
 		},
 		&schemast.UpsertSchema{
 			Name: "Group",
@@ -53,13 +45,6 @@ func main() {
 				newEdgeTo("permissions", "Permission"),
 				newEdgeFrom("users", "User", "groups"),
 			},
-			// Annotations: []schema.Annotation{
-			// 	vent.VentSchemaAnnotation{
-			// 		TableColumns: []string{
-			// 			"name",
-			// 		},
-			// 	},
-			// },
 		},
 		&schemast.UpsertSchema{
 			Name: "Permission",
@@ -67,13 +52,6 @@ func main() {
 				field.String("name").
 					Unique(),
 			},
-			// Annotations: []schema.Annotation{
-			// 	vent.VentSchemaAnnotation{
-			// 		TableColumns: []string{
-			// 			"name",
-			// 		},
-			// 	},
-			// },
 		},
 	}
 

@@ -2,6 +2,7 @@ package vent
 
 import (
 	"embed"
+	"encoding/json"
 	"slices"
 	"text/template"
 
@@ -37,16 +38,36 @@ func (ext *AdminExtension) Annotations() []entc.Annotation {
 	}
 }
 
-func (*AdminExtension) Templates() []*gen.Template {
+func (e *AdminExtension) Templates() []*gen.Template {
 	return []*gen.Template{
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"contains": slices.Contains[[]any],
+					"contains":  slices.Contains[[]any],
+					"showField": e.showField,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
 	}
+}
+
+func (e *AdminExtension) showField(t *gen.Type, f gen.Field) bool {
+	a, ok := t.Annotations["VentSchema"]
+	if !ok {
+		return !f.Sensitive()
+	}
+
+	jsonBytes, err := json.Marshal(a)
+	if err != nil {
+		return !f.Sensitive()
+	}
+
+	var annotation VentSchemaAnnotation
+	if err := json.Unmarshal(jsonBytes, &annotation); err != nil {
+		return !f.Sensitive()
+	}
+
+	return annotation.showField(f)
 }
 
 type VentExtensionConfig struct {
