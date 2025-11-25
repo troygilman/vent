@@ -99,7 +99,6 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 		return
     }
 
-    sse := datastar.NewSSE(w, r)
     err := func() error {
         user, err := handler.client.User.Query().
     		Where(user.EmailEQ(signals.Email)).
@@ -125,11 +124,13 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     		SameSite: http.SameSiteLaxMode,
     	})
 
-    	sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
         return nil
 	}()
 	if err != nil {
 		log.Println(err.Error())
+		sse := datastar.NewSSE(w, r)
 		if IsNotFound(err) {
 			sse.PatchElementTempl(gui.Login(gui.LoginProps{
 				EmailError: "User with email not found",
@@ -145,6 +146,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 }
 
 {{ range $node := $.Nodes }}
+{{ $tableFields := tableFields $node }}
 func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
    	query := handler.client.{{ $node.Name }}.Query()
@@ -157,10 +159,8 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
     for idx, result := range results {
         rows[idx] = []string{
             strconv.Itoa(result.ID),
-            {{ range $field := $node.Fields }}
-            {{ if showField $node $field }}
+            {{ range $field := $tableFields }}
             utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
-            {{ end }}
             {{ end }}
         }
     }
@@ -176,14 +176,12 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
                 Label: "ID",
                 Type: "int",
             },
-            {{ range $field := $node.Fields }}
-            {{ if showField $node $field }}
+            {{ range $field := $tableFields }}
             {
                 Name: "{{ $field.Name }}",
                 Label: "{{ pascal $field.Name }}",
                 Type: "{{ $field.Type.Type }}",
             },
-            {{ end }}
             {{ end }}
         },
         Rows: rows,

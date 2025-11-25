@@ -43,31 +43,41 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"contains":  slices.Contains[[]any],
-					"showField": e.showField,
+					"contains":    slices.Contains[[]any],
+					"tableFields": tableFields,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
 	}
 }
 
-func (e *AdminExtension) showField(t *gen.Type, f gen.Field) bool {
-	a, ok := t.Annotations["VentSchema"]
+func tableFields(node *gen.Type) []*gen.Field {
+	a, ok := node.Annotations["VentSchema"]
 	if !ok {
-		return !f.Sensitive()
+		return insensitiveFields(node)
 	}
 
 	jsonBytes, err := json.Marshal(a)
 	if err != nil {
-		return !f.Sensitive()
+		return insensitiveFields(node)
 	}
 
 	var annotation VentSchemaAnnotation
 	if err := json.Unmarshal(jsonBytes, &annotation); err != nil {
-		return !f.Sensitive()
+		return insensitiveFields(node)
 	}
 
-	return annotation.showField(f)
+	return annotation.tableFields(node)
+}
+
+func insensitiveFields(node *gen.Type) []*gen.Field {
+	result := []*gen.Field{}
+	for _, f := range node.Fields {
+		if !f.Sensitive() {
+			result = append(result, f)
+		}
+	}
+	return result
 }
 
 type VentExtensionConfig struct {
