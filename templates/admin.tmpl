@@ -14,7 +14,12 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handler {
+type AdminConfig struct {
+    Client *Client
+    Secret []byte
+}
+
+func AuthMiddleware(config AdminConfig) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
     	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     		tokenCookie, err := r.Cookie("vent-auth-token")
@@ -23,7 +28,7 @@ func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handl
     			return
     		}
 
-    		claims, err := utils.ParseSignedToken(secret, tokenCookie.Value)
+    		claims, err := utils.ParseSignedToken(config.Secret, tokenCookie.Value)
     		if err != nil {
     		    http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}login/", http.StatusSeeOther)
     			return
@@ -37,14 +42,13 @@ func AuthMiddleware(client *Client, secret []byte) func(http.Handler) http.Handl
     }
 }
 
-func NewAdminHandler(client *Client, secret []byte) http.Handler {
+func NewAdminHandler(config AdminConfig) http.Handler {
     mux := http.NewServeMux()
 	handler := &ventAdminHandler{
-		client: client,
-		secret: secret,
+		AdminConfig: config,
 	}
 
-	authMiddleware := AuthMiddleware(client, secret)
+	authMiddleware := AuthMiddleware(config)
 
     // Unauthorized Paths
     mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}static/", http.StripPrefix("{{ $.Annotations.VentConfig.AdminPath }}", vent.StaticDirHandler()))
@@ -63,8 +67,7 @@ func NewAdminHandler(client *Client, secret []byte) http.Handler {
 }
 
 type ventAdminHandler struct {
-	client *Client
-	secret []byte
+	AdminConfig
 }
 
 func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +103,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     }
 
     err := func() error {
-        user, err := handler.client.User.Query().
+        user, err := handler.Client.User.Query().
     		Where(user.EmailEQ(signals.Email)).
     		Only(r.Context())
     	if err != nil {
@@ -112,7 +115,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     	}
 
         claims := utils.NewClaims(user.ID)
-        signedToken, err := utils.CreateSignedToken(handler.secret, claims)
+        signedToken, err := utils.CreateSignedToken(handler.Secret, claims)
         if err != nil {
             return err
         }
@@ -149,7 +152,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 {{ $tableFields := tableFields $node }}
 func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
-   	query := handler.client.{{ $node.Name }}.Query()
+   	query := handler.Client.{{ $node.Name }}.Query()
    	results, err := query.All(ctx)
     if err != nil {
     	panic(err)
@@ -199,7 +202,7 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}Detail(w http.ResponseW
 		panic(err)
 	}
 
-   	result, err := handler.client.{{ $node.Name }}.Get(ctx, id)
+   	result, err := handler.Client.{{ $node.Name }}.Get(ctx, id)
     if err != nil {
     	panic(err)
     }

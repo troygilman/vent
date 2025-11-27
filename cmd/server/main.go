@@ -40,7 +40,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/admin/", ent.NewAdminHandler(client, []byte("secret")))
+	mux.Handle("/admin/", ent.NewAdminHandler(ent.AdminConfig{
+		Client: client,
+		Secret: []byte("secret"),
+	}))
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}
