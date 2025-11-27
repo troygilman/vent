@@ -1,8 +1,13 @@
 package gui
 
+import "github.com/starfederation/datastar-go/datastar"
+
 type SchemaDetailProps struct {
 	LayoutProps LayoutProps
 	Fields      []SchemaDetailFieldProps
+	AdminPath   string
+	SchemaName  string
+	EntityID    int
 }
 
 type SchemaDetailFieldProps struct {
@@ -16,12 +21,19 @@ type SchemaDetailFieldProps struct {
 templ SchemaDetailPage(props SchemaDetailProps) {
 	@Index() {
 		@Layout(props.LayoutProps) {
-			<form class="flex flex-col p-4 gap-2 w-full">
-				<div class="text-xl font-bold mb-4">Change { props.LayoutProps.ActiveSchemaName }</div>
+			<form
+				data-on:submit={ datastar.PostSSE("%s%ss/%d/", props.AdminPath, props.SchemaName, props.EntityID) }
+				class="flex flex-col px-12 py-4 gap-2 w-full"
+			>
+				<div class="text-xl font-bold mb-4">Change { props.SchemaName }</div>
 				<fieldset class="fieldset w-full">
 					for _, field := range props.Fields {
 						@SchemaDetailField(field)
 					}
+					<div class="flex mt-4 justify-between">
+						<button class="btn btn-neutral" type="submit">Save</button>
+						<button class="btn btn-error" type="none">Delete</button>
+					</div>
 				</fieldset>
 			</form>
 		}

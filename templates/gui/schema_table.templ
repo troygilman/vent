@@ -3,10 +3,11 @@ package gui
 import "fmt"
 
 type SchemaTableProps struct {
-	LayoutProps   LayoutProps
-	Columns       []SchemaTableColumn
-	Rows          [][]string
-	DetailPathStr string
+	LayoutProps LayoutProps
+	Columns     []SchemaTableColumn
+	Rows        [][]string
+	AdminPath   string
+	SchemaName  string
 }
 
 type SchemaTableColumn struct {
@@ -33,7 +34,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								for cIdx, data := range row {
 									{{ column := props.Columns[cIdx] }}
 									if column.Name == "id" {
-										<td><a class="link link-info" href={ fmt.Sprintf(props.DetailPathStr, data) }>{ data }</a></td>
+										<td><a class="link link-info" href={ fmt.Sprintf("%s%ss/%s/", props.AdminPath, props.SchemaName, data) }>{ data }</a></td>
 									} else {
 										<td>{ data }</td>
 									}

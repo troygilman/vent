@@ -3,6 +3,8 @@
 {{ $pkg := base $.Config.Package }}
 {{ template "header" $ }}
 
+{{ $adminPath := $.Annotations.VentConfig.AdminPath }}
+
 import (
 	"context"
 	"net/http"
@@ -24,13 +26,13 @@ func AuthMiddleware(config AdminConfig) func(http.Handler) http.Handler {
     	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     		tokenCookie, err := r.Cookie("vent-auth-token")
     		if err != nil {
-    			http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}login/", http.StatusSeeOther)
+    			http.Redirect(w, r, "{{ $adminPath }}login/", http.StatusSeeOther)
     			return
     		}
 
     		claims, err := utils.ParseSignedToken(config.Secret, tokenCookie.Value)
     		if err != nil {
-    		    http.Redirect(w, r, "{{ $.Annotations.VentConfig.AdminPath }}login/", http.StatusSeeOther)
+    		    http.Redirect(w, r, "{{ $adminPath }}login/", http.StatusSeeOther)
     			return
     		}
 
@@ -51,17 +53,17 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 	authMiddleware := AuthMiddleware(config)
 
     // Unauthorized Paths
-    mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}static/", http.StripPrefix("{{ $.Annotations.VentConfig.AdminPath }}", vent.StaticDirHandler()))
+    mux.Handle("GET {{ $adminPath }}static/", http.StripPrefix("{{ $adminPath }}", vent.StaticDirHandler()))
 
-	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}login/", http.HandlerFunc(handler.getAdminLogin))
-	mux.Handle("POST {{ $.Annotations.VentConfig.AdminPath }}login/", http.HandlerFunc(handler.postAdminLogin))
+	mux.Handle("GET {{ $adminPath }}login/", http.HandlerFunc(handler.getAdminLogin))
+	mux.Handle("POST {{ $adminPath }}login/", http.HandlerFunc(handler.postAdminLogin))
 
     // Authorized Paths
-	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}", authMiddleware(http.HandlerFunc(handler.getAdmin)))
+	mux.Handle("GET {{ $adminPath }}", authMiddleware(http.HandlerFunc(handler.getAdmin)))
 
 	{{ range $node := $.Nodes }}
-	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
-	mux.Handle("GET {{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/{id}/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}Detail)))
+	mux.Handle("GET {{ $adminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
+	mux.Handle("GET {{ $adminPath }}{{ lower $node.Name }}s/{id}/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}Detail)))
 	{{ end }}
 	return mux
 }
@@ -71,7 +73,7 @@ type ventAdminHandler struct {
 }
 
 func (handler *ventAdminHandler) getAdmin(w http.ResponseWriter, r *http.Request) {
-    if r.URL.Path != "{{ $.Annotations.VentConfig.AdminPath }}" {
+    if r.URL.Path != "{{ $adminPath }}" {
         w.WriteHeader(http.StatusNotFound)
         return
     }
@@ -128,7 +130,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     	})
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect("{{ $.Annotations.VentConfig.AdminPath }}")
+		sse.Redirect("{{ $adminPath }}")
         return nil
 	}()
 	if err != nil {
@@ -188,7 +190,8 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
             {{ end }}
         },
         Rows: rows,
-        DetailPathStr: "/admin/{{ lower $node.Name }}s/%s/",
+        AdminPath: "{{ $adminPath }}",
+        SchemaName: "{{ lower $node.Name }}",
     }
 
     gui.SchemaTablePage(props).Render(r.Context(), w)
@@ -222,6 +225,9 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}Detail(w http.ResponseW
             },
             {{ end }}
         },
+        AdminPath: "{{ $adminPath }}",
+        SchemaName: "{{ lower $node.Name }}",
+        EntityID: result.ID,
     }
 
     gui.SchemaDetailPage(props).Render(r.Context(), w)
@@ -233,7 +239,7 @@ func (handler *ventAdminHandler) buildSchemaMetadata() []gui.SchemaMetadata {
         {{ range $node := $.Nodes }}
         {
             Name: "{{ $node.Name }}",
-            Path: "{{ $.Annotations.VentConfig.AdminPath }}{{ lower $node.Name }}s/",
+            Path: "{{ $adminPath }}{{ lower $node.Name }}s/",
         },
         {{ end }}
     }
