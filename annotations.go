@@ -29,6 +29,14 @@ func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
 }
 
+func (a VentSchemaAnnotation) PermissionMap() map[string]Permission {
+	permissions := make(map[string]Permission)
+	for _, permission := range a.Permissions {
+		permissions[permission.Name] = permission
+	}
+	return permissions
+}
+
 func (a VentSchemaAnnotation) MustParse(data string) VentSchemaAnnotation {
 	if err := json.Unmarshal([]byte(data), &a); err != nil {
 		panic("could not unmarshal annotation: " + err.Error())

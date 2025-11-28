@@ -6,7 +6,7 @@ type Metadata struct {
 	Schemas map[string]vent.VentSchemaAnnotation `json:"schemas"`
 }
 
-var metadata = &Metadata{
+var metadata = Metadata{
 	Schemas: map[string]vent.VentSchemaAnnotation{
 	    {{ range $node := $.Nodes }}
         "{{ lower $node.Name }}": vent.VentSchemaAnnotation{}.MustParse(`{{ stringify $node.Annotations.VentSchema }}`),
@@ -19,23 +19,45 @@ func UpdateAuthPermissions(dir *migrate.LocalDir) error {
 	if err != nil {
 		return err
 	}
-	log.Println(prevMetadata)
-	log.Println(metadata)
 
 	ctx := context.Background()
 	w := &schema.DirWriter{Dir: dir}
 	client := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
+	isChanged := false
 
-	permissions := []string{}
-	client.AuthPermission.MapCreateBulk(permissions, func(apc *ent.AuthPermissionCreate, i int) {
-		apc.SetName(permissions[i]).OnConflict().UpdateNewValues().Exec(ctx)
-	})
+	for schemaName, annotation := range metadata.Schemas {
+		prevAnnotation, ok := prevMetadata.Schemas[schemaName]
+		if ok {
+			prevPermissions := prevAnnotation.PermissionMap()
+			for _, permission := range annotation.Permissions {
+				_, ok := prevPermissions[permission.Name]
+				if !ok {
+					isChanged = true
+					_, err := client.AuthPermission.Create().SetName(permission.Name).Save(ctx)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+		} else {
+			isChanged = true
+			defaultPermNames := []string{"create", "read", "update", "delete"}
+			client.AuthPermission.MapCreateBulk(defaultPermNames, func(apc *ent.AuthPermissionCreate, i int) {
+				_, err := apc.SetName(fmt.Sprintf("%s_%s", defaultPermNames[i], schemaName)).Save(ctx)
+				if err != nil {
+					panic(err)
+				}
+			})
+		}
+	}
 
-	if err := w.FlushChange(
-		"update_auth_permissions",
-		"Backfill all empty user names with default value 'unknown'.",
-	); err != nil {
-		return err
+	if isChanged {
+		if err := w.FlushChange(
+			"update_auth_permissions",
+			"Backfill all empty user names with default value 'unknown'.",
+		); err != nil {
+			return err
+		}
 	}
 
 	buf, err := json.Marshal(&metadata)
@@ -50,25 +72,25 @@ func UpdateAuthPermissions(dir *migrate.LocalDir) error {
 	return nil
 }
 
-func loadPrevMetadata(name string) (*Metadata, error) {
+func loadPrevMetadata(name string) (meta Metadata, err error) {
 	file, err := os.OpenFile(name, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return nil, err
+		return meta, err
 	}
 	defer file.Close()
 
 	buf, err := io.ReadAll(file)
 	if err != nil {
-		return nil, err
+		return meta, err
 	}
 
 	if len(buf) == 0 {
-		return nil, nil
+		return meta, nil
 	}
 
-	prevMetadata := &Metadata{}
-	if err := json.Unmarshal(buf, prevMetadata); err != nil {
-		return nil, err
+	prevMetadata := Metadata{}
+	if err := json.Unmarshal(buf, &prevMetadata); err != nil {
+		return meta, err
 	}
 
 	return prevMetadata, nil
