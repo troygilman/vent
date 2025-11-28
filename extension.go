@@ -48,25 +48,27 @@ func (e *AdminExtension) Templates() []*gen.Template {
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
+		gen.MustParse(
+			gen.NewTemplate("migratedata").
+				Funcs(template.FuncMap{
+					"stringify": func(v any) (string, error) {
+						buf, err := json.Marshal(v)
+						if err != nil {
+							return "", err
+						}
+						return string(buf), nil
+					},
+				}).
+				ParseFS(templates, "templates/migratedata.tmpl"),
+		),
 	}
 }
 
 func tableFields(node *gen.Type) []*gen.Field {
-	a, ok := node.Annotations["VentSchema"]
-	if !ok {
-		return insensitiveFields(node)
-	}
-
-	jsonBytes, err := json.Marshal(a)
-	if err != nil {
-		return insensitiveFields(node)
-	}
-
 	var annotation VentSchemaAnnotation
-	if err := json.Unmarshal(jsonBytes, &annotation); err != nil {
+	if err := annotation.parse(node); err != nil {
 		return insensitiveFields(node)
 	}
-
 	return annotation.tableFields(node)
 }
 

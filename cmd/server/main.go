@@ -30,13 +30,13 @@ func main() {
 		panic(err)
 	}
 
-	client.User.Create().
+	client.AuthUser.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		Save(ctx)
 
 	for idx := range 1000 {
-		client.Permission.Create().SetName(strconv.Itoa(idx)).Save(ctx)
+		client.AuthPermission.Create().SetName(strconv.Itoa(idx)).Save(ctx)
 	}
 
 	mux := http.NewServeMux()

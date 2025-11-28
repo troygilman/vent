@@ -11,7 +11,13 @@ import (
 
 func main() {
 	err := entc.Generate("./ent/schema",
-		&gen.Config{},
+		&gen.Config{
+			Features: []gen.Feature{
+				gen.FeatureVersionedMigration,
+				gen.FeatureUpsert,
+				gen.FeatureSnapshot,
+			},
+		},
 		entc.Extensions(vent.NewAdminExtension()),
 	)
 	if err != nil {

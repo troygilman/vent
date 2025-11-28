@@ -105,8 +105,8 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     }
 
     err := func() error {
-        user, err := handler.Client.User.Query().
-    		Where(user.EmailEQ(signals.Email)).
+        user, err := handler.Client.AuthUser.Query().
+    		Where(authuser.EmailEQ(signals.Email)).
     		Only(r.Context())
     	if err != nil {
     		return err

@@ -3,6 +3,7 @@ module vent
 go 1.24.3
 
 require (
+	ariga.io/atlas v0.32.1-0.20250325101103-175b25e1c1b9
 	entgo.io/contrib v0.7.0
 	entgo.io/ent v0.14.5
 	github.com/a-h/templ v0.3.960
@@ -13,7 +14,6 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.32.1-0.20250325101103-175b25e1c1b9 // indirect
 	github.com/CAFxX/httpcompression v0.0.9 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect

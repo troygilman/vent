@@ -1,6 +1,11 @@
 package vent
 
-import "entgo.io/ent/entc/gen"
+import (
+	"encoding/json"
+	"errors"
+
+	"entgo.io/ent/entc/gen"
+)
 
 type VentConfigAnnotation struct {
 	VentExtensionConfig
@@ -10,12 +15,39 @@ func (VentConfigAnnotation) Name() string {
 	return "VentConfig"
 }
 
+type Permission struct {
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+}
+
 type VentSchemaAnnotation struct {
-	TableColumns []string
+	TableColumns []string     `json:"tableColumns"`
+	Permissions  []Permission `json:"permissions"`
 }
 
 func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
+}
+
+func (a VentSchemaAnnotation) MustParse(data string) VentSchemaAnnotation {
+	if err := json.Unmarshal([]byte(data), &a); err != nil {
+		panic("could not unmarshal annotation: " + err.Error())
+	}
+	return a
+}
+
+func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
+	annotation, ok := node.Annotations[a.Name()]
+	if !ok {
+		return errors.New("vent schema does not exist in node annotations")
+	}
+
+	jsonBytes, err := json.Marshal(annotation)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(jsonBytes, a)
 }
 
 func (a VentSchemaAnnotation) tableFields(node *gen.Type) []*gen.Field {

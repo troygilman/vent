@@ -20,7 +20,7 @@ func main() {
 
 	mutations := []schemast.Mutator{
 		&schemast.UpsertSchema{
-			Name: "User",
+			Name: "AuthUser",
 			Fields: []ent.Field{
 				field.String("email").
 					Unique(),
@@ -32,22 +32,22 @@ func main() {
 					Default(true),
 			},
 			Edges: []ent.Edge{
-				newEdgeTo("groups", "Group"),
+				newEdgeTo("groups", "AuthGroup"),
 			},
 		},
 		&schemast.UpsertSchema{
-			Name: "Group",
+			Name: "AuthGroup",
 			Fields: []ent.Field{
 				field.String("name").
 					Unique(),
 			},
 			Edges: []ent.Edge{
-				newEdgeTo("permissions", "Permission"),
-				newEdgeFrom("users", "User", "groups"),
+				newEdgeTo("permissions", "AuthPermission"),
+				newEdgeFrom("users", "AuthUser", "groups"),
 			},
 		},
 		&schemast.UpsertSchema{
-			Name: "Permission",
+			Name: "AuthPermission",
 			Fields: []ent.Field{
 				field.String("name").
 					Unique(),

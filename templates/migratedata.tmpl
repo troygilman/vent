@@ -1,0 +1,77 @@
+{{ define "migrate/migratedata/migratedata" }}
+
+package migratedata
+
+type Metadata struct {
+	Schemas map[string]vent.VentSchemaAnnotation `json:"schemas"`
+}
+
+var metadata = &Metadata{
+	Schemas: map[string]vent.VentSchemaAnnotation{
+	    {{ range $node := $.Nodes }}
+        "{{ lower $node.Name }}": vent.VentSchemaAnnotation{}.MustParse(`{{ stringify $node.Annotations.VentSchema }}`),
+        {{ end }}
+	},
+}
+
+func UpdateAuthPermissions(dir *migrate.LocalDir) error {
+	prevMetadata, err := loadPrevMetadata("ent/migrate/migrations/meta.json")
+	if err != nil {
+		return err
+	}
+	log.Println(prevMetadata)
+	log.Println(metadata)
+
+	ctx := context.Background()
+	w := &schema.DirWriter{Dir: dir}
+	client := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
+
+	permissions := []string{}
+	client.AuthPermission.MapCreateBulk(permissions, func(apc *ent.AuthPermissionCreate, i int) {
+		apc.SetName(permissions[i]).OnConflict().UpdateNewValues().Exec(ctx)
+	})
+
+	if err := w.FlushChange(
+		"update_auth_permissions",
+		"Backfill all empty user names with default value 'unknown'.",
+	); err != nil {
+		return err
+	}
+
+	buf, err := json.Marshal(&metadata)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("ent/migrate/migrations/meta.json", buf, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func loadPrevMetadata(name string) (*Metadata, error) {
+	file, err := os.OpenFile(name, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	buf, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buf) == 0 {
+		return nil, nil
+	}
+
+	prevMetadata := &Metadata{}
+	if err := json.Unmarshal(buf, prevMetadata); err != nil {
+		return nil, err
+	}
+
+	return prevMetadata, nil
+}
+
+{{ end }}
