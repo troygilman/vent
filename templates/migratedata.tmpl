@@ -15,7 +15,7 @@ var metadata = Metadata{
 }
 
 func UpdateAuthPermissions(dir *migrate.LocalDir) error {
-	prevMetadata, err := loadPrevMetadata("ent/migrate/migrations/meta.json")
+	prevMetadata, err := loadMetadata("ent/migrate/migrations/meta.json")
 	if err != nil {
 		return err
 	}
@@ -23,8 +23,8 @@ func UpdateAuthPermissions(dir *migrate.LocalDir) error {
 	ctx := context.Background()
 	w := &schema.DirWriter{Dir: dir}
 	client := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
-	isChanged := false
 
+	permissionBuilders := []*ent.AuthPermissionCreate{}
 	for schemaName, annotation := range metadata.Schemas {
 		prevAnnotation, ok := prevMetadata.Schemas[schemaName]
 		if ok {
@@ -32,26 +32,23 @@ func UpdateAuthPermissions(dir *migrate.LocalDir) error {
 			for _, permission := range annotation.Permissions {
 				_, ok := prevPermissions[permission.Name]
 				if !ok {
-					isChanged = true
-					_, err := client.AuthPermission.Create().SetName(permission.Name).Save(ctx)
-					if err != nil {
-						panic(err)
-					}
+					permissionBuilders = append(permissionBuilders, client.AuthPermission.Create().SetName(permission.Name))
 				}
 			}
 		} else {
-			isChanged = true
-			defaultPermNames := []string{"create", "read", "update", "delete"}
-			client.AuthPermission.MapCreateBulk(defaultPermNames, func(apc *ent.AuthPermissionCreate, i int) {
-				_, err := apc.SetName(fmt.Sprintf("%s_%s", defaultPermNames[i], schemaName)).Save(ctx)
-				if err != nil {
-					panic(err)
-				}
-			})
+			defaultPermActions := []string{"create", "read", "update", "delete"}
+			for _, action := range defaultPermActions {
+				permissionBuilders = append(permissionBuilders, client.AuthPermission.Create().SetName(fmt.Sprintf("%s_%s", action, schemaName)))
+			}
 		}
 	}
 
-	if isChanged {
+	permissions, err := client.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
+	if err != nil {
+		return err
+	}
+
+	if len(permissions) > 0 {
 		if err := w.FlushChange(
 			"update_auth_permissions",
 			"Backfill all empty user names with default value 'unknown'.",
@@ -60,19 +57,10 @@ func UpdateAuthPermissions(dir *migrate.LocalDir) error {
 		}
 	}
 
-	buf, err := json.Marshal(&metadata)
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile("ent/migrate/migrations/meta.json", buf, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return saveMetadata("ent/migrate/migrations/meta.json", metadata)
 }
 
-func loadPrevMetadata(name string) (meta Metadata, err error) {
+func loadMetadata(name string) (meta Metadata, err error) {
 	file, err := os.OpenFile(name, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return meta, err
@@ -88,12 +76,21 @@ func loadPrevMetadata(name string) (meta Metadata, err error) {
 		return meta, nil
 	}
 
-	prevMetadata := Metadata{}
-	if err := json.Unmarshal(buf, &prevMetadata); err != nil {
+	metadata := Metadata{}
+	if err := json.Unmarshal(buf, &metadata); err != nil {
 		return meta, err
 	}
 
-	return prevMetadata, nil
+	return metadata, nil
+}
+
+func saveMetadata(name string, metadata Metadata) error {
+	buf, err := json.Marshal(&metadata)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(name, buf, 0644)
 }
 
 {{ end }}
