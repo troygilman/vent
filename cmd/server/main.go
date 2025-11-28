@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"strconv"
 
 	"vent/ent"
 	"vent/utils"
@@ -34,10 +33,6 @@ func main() {
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		Save(ctx)
-
-	for idx := range 1000 {
-		client.AuthPermission.Create().SetName(strconv.Itoa(idx)).Save(ctx)
-	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/admin/", ent.NewAdminHandler(ent.AdminConfig{

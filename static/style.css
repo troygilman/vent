@@ -1249,9 +1249,6 @@
     }
   }
 }
-@view-transition {
-  navigation: auto;
-}
 @layer base {
   :where(:root),:root:has(input.theme-controller[value=light]:checked),[data-theme=light] {
     color-scheme: light;

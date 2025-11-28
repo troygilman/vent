@@ -155,7 +155,7 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
 func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter, r *http.Request) {
    	ctx := r.Context()
    	query := handler.Client.{{ $node.Name }}.Query()
-   	results, err := query.All(ctx)
+   	results, err := query.Order({{ lower $node.Name }}.ByID()).All(ctx)
     if err != nil {
     	panic(err)
     }
