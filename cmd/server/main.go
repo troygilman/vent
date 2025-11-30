@@ -18,10 +18,6 @@ func main() {
 	}
 	defer client.Close()
 
-	if err := client.Schema.Create(context.Background()); err != nil {
-		log.Fatalf("failed creating schema resources: %v", err)
-	}
-
 	ctx := context.Background()
 
 	passwordHash, err := utils.HashPassword("test_user")
