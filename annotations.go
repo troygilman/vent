@@ -16,25 +16,17 @@ func (VentConfigAnnotation) Name() string {
 }
 
 type Permission struct {
-	Name string `json:"name"`
-	Desc string `json:"desc"`
+	Name string
+	Desc string
 }
 
 type VentSchemaAnnotation struct {
-	TableColumns []string     `json:"tableColumns"`
-	Permissions  []Permission `json:"permissions"`
+	TableColumns []string
+	Permissions  []Permission
 }
 
 func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
-}
-
-func (a VentSchemaAnnotation) PermissionMap() map[string]Permission {
-	permissions := make(map[string]Permission)
-	for _, permission := range a.Permissions {
-		permissions[permission.Name] = permission
-	}
-	return permissions
 }
 
 func (a VentSchemaAnnotation) MustParse(data string) VentSchemaAnnotation {

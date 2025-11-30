@@ -2,95 +2,129 @@
 
 package migratedata
 
-type Metadata struct {
-	Schemas map[string]vent.VentSchemaAnnotation `json:"schemas"`
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/url"
+
+	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/sqlclient"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/schema"
+)
+
+var metadata = map[string]vent.VentSchemaAnnotation{
+    {{ range $node := $.Nodes }}
+    {{ $annotation := $node.Annotations.VentSchema }}
+    "{{ lower $node.Name }}": {
+        Permissions: []vent.Permission{
+            {{ range $permission := $annotation.Permissions }}
+            {
+                Name: "{{ $permission.Name }}",
+            },
+            {{ end }}
+        },
+    },
+    {{ end }}
 }
 
-var metadata = Metadata{
-	Schemas: map[string]vent.VentSchemaAnnotation{
-	    {{ range $node := $.Nodes }}
-        "{{ lower $node.Name }}": vent.VentSchemaAnnotation{}.MustParse(`{{ stringify $node.Annotations.VentSchema }}`),
-        {{ end }}
-	},
-}
-
-func UpdateAuthPermissions(dir *migrate.LocalDir) error {
-	prevMetadata, err := loadMetadata("ent/migrate/migrations/meta.json")
+func Diff(ctx context.Context, u string, dir migrate.Dir, formatter migrate.Formatter) error {
+	parsed, err := url.Parse(u)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
-	w := &schema.DirWriter{Dir: dir}
-	client := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
+	client, err := sqlclient.OpenURL(ctx, parsed)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	w := &schema.DirWriter{Dir: dir, Formatter: formatter}
+	writeClient := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
+
+	d := &Differ{
+		dir:         dir,
+		driver:      client.Driver,
+		readClient:  ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, client.DB))),
+		writeClient: writeClient,
+	}
+
+	if err := d.replayMigrations(ctx); err != nil {
+		return err
+	}
+
+	if err := d.updateAuthPermissions(ctx); err != nil {
+		return err
+	}
+
+	if d.flush {
+		return w.FlushChange("update_auth_permissions", "Update auth permissions")
+	}
+	return nil
+}
+
+type Differ struct {
+	flush       bool
+	dir         migrate.Dir
+	driver      migrate.Driver
+	readClient  *ent.Client
+	writeClient *ent.Client
+}
+
+func (d *Differ) replayMigrations(ctx context.Context) error {
+	ex, err := migrate.NewExecutor(d.driver, d.dir, &migrate.NopRevisionReadWriter{})
+	if err != nil {
+		return err
+	}
+	if err := ex.ExecuteN(ctx, 0); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
+		return err
+	}
+	return nil
+}
+
+func (d *Differ) updateAuthPermissions(ctx context.Context) error {
+	currentPermissions, err := d.readClient.AuthPermission.Query().All(ctx)
+	if err != nil {
+		return err
+
+	}
+
+	currentPermissionsMap := make(map[string]*ent.AuthPermission)
+	for _, permission := range currentPermissions {
+		currentPermissionsMap[permission.Name] = permission
+	}
 
 	permissionBuilders := []*ent.AuthPermissionCreate{}
-	for schemaName, annotation := range metadata.Schemas {
-		prevAnnotation, ok := prevMetadata.Schemas[schemaName]
-		if ok {
-			prevPermissions := prevAnnotation.PermissionMap()
-			for _, permission := range annotation.Permissions {
-				_, ok := prevPermissions[permission.Name]
-				if !ok {
-					permissionBuilders = append(permissionBuilders, client.AuthPermission.Create().SetName(permission.Name))
-				}
+	for schemaName, annotation := range metadata {
+		for _, permission := range annotation.Permissions {
+			_, ok := currentPermissionsMap[permission.Name]
+			if !ok {
+				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
 			}
-		} else {
-			defaultPermActions := []string{"create", "read", "update", "delete"}
-			for _, action := range defaultPermActions {
-				permissionBuilders = append(permissionBuilders, client.AuthPermission.Create().SetName(fmt.Sprintf("%s_%s", action, schemaName)))
+		}
+		for _, action := range []string{"create", "read", "update", "delete"} {
+			permissionName := fmt.Sprintf("%s_%s", action, schemaName)
+			_, ok := currentPermissionsMap[permissionName]
+			if !ok {
+				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permissionName))
 			}
 		}
 	}
 
-	permissions, err := client.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
+	permissions, err := d.writeClient.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
 	if err != nil {
 		return err
 	}
 
 	if len(permissions) > 0 {
-		if err := w.FlushChange(
-			"update_auth_permissions",
-			"Backfill all empty user names with default value 'unknown'.",
-		); err != nil {
-			return err
-		}
+		d.flush = true
 	}
 
-	return saveMetadata("ent/migrate/migrations/meta.json", metadata)
+	return nil
 }
 
-func loadMetadata(name string) (meta Metadata, err error) {
-	file, err := os.OpenFile(name, os.O_RDONLY|os.O_CREATE, 0666)
-	if err != nil {
-		return meta, err
-	}
-	defer file.Close()
-
-	buf, err := io.ReadAll(file)
-	if err != nil {
-		return meta, err
-	}
-
-	if len(buf) == 0 {
-		return meta, nil
-	}
-
-	metadata := Metadata{}
-	if err := json.Unmarshal(buf, &metadata); err != nil {
-		return meta, err
-	}
-
-	return metadata, nil
-}
-
-func saveMetadata(name string, metadata Metadata) error {
-	buf, err := json.Marshal(&metadata)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(name, buf, 0644)
-}
 
 {{ end }}
