@@ -31,47 +31,54 @@ var metadata = map[string]vent.VentSchemaAnnotation{
 }
 
 func Diff(ctx context.Context, u string, dir migrate.Dir, formatter migrate.Formatter) error {
-	parsed, err := url.Parse(u)
+	parsedUrl, err := url.Parse(u)
 	if err != nil {
 		return err
 	}
 
-	client, err := sqlclient.OpenURL(ctx, parsed)
+	client, err := sqlclient.OpenURL(ctx, parsedUrl)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
-	w := &schema.DirWriter{Dir: dir, Formatter: formatter}
-	writeClient := ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, w)))
-
-	d := &Differ{
-		dir:         dir,
-		driver:      client.Driver,
-		readClient:  ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, client.DB))),
-		writeClient: writeClient,
-	}
-
-	if err := d.replayMigrations(ctx); err != nil {
-		return err
-	}
-
-	if err := d.updateAuthPermissions(ctx); err != nil {
-		return err
-	}
-
-	if d.flush {
-		return w.FlushChange("update_auth_permissions", "Update auth permissions")
-	}
-	return nil
+	return NewDiffer(client, dir, formatter).Diff(ctx)
 }
 
 type Differ struct {
 	flush       bool
 	dir         migrate.Dir
+	writer      *schema.DirWriter
 	driver      migrate.Driver
 	readClient  *ent.Client
 	writeClient *ent.Client
+}
+
+func NewDiffer(client *sqlclient.Client, dir migrate.Dir, formatter migrate.Formatter) *Differ {
+	writer := &schema.DirWriter{Dir: dir, Formatter: formatter}
+	return &Differ{
+		driver:      client.Driver,
+		writer:      writer,
+		dir:         dir,
+		readClient:  ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, client.DB))),
+		writeClient: ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, writer))),
+	}
+}
+
+func (d *Differ) Diff(ctx context.Context) error {
+	if err := d.replayMigrations(ctx); err != nil {
+		return err
+	}
+
+	if err := d.diffAuthPermissions(ctx); err != nil {
+		return err
+	}
+
+	if d.flush {
+		return d.writer.Flush("update_auth_permissions")
+	}
+	return nil
+
 }
 
 func (d *Differ) replayMigrations(ctx context.Context) error {
@@ -85,11 +92,10 @@ func (d *Differ) replayMigrations(ctx context.Context) error {
 	return nil
 }
 
-func (d *Differ) updateAuthPermissions(ctx context.Context) error {
+func (d *Differ) diffAuthPermissions(ctx context.Context) error {
 	currentPermissions, err := d.readClient.AuthPermission.Query().All(ctx)
 	if err != nil {
 		return err
-
 	}
 
 	currentPermissionsMap := make(map[string]*ent.AuthPermission)
@@ -99,17 +105,17 @@ func (d *Differ) updateAuthPermissions(ctx context.Context) error {
 
 	permissionBuilders := []*ent.AuthPermissionCreate{}
 	for schemaName, annotation := range metadata {
-		for _, permission := range annotation.Permissions {
-			_, ok := currentPermissionsMap[permission.Name]
-			if !ok {
-				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
-			}
-		}
 		for _, action := range []string{"create", "read", "update", "delete"} {
 			permissionName := fmt.Sprintf("%s_%s", action, schemaName)
 			_, ok := currentPermissionsMap[permissionName]
 			if !ok {
 				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permissionName))
+			}
+		}
+		for _, permission := range annotation.Permissions {
+			_, ok := currentPermissionsMap[permission.Name]
+			if !ok {
+				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
 			}
 		}
 	}
@@ -120,11 +126,11 @@ func (d *Differ) updateAuthPermissions(ctx context.Context) error {
 	}
 
 	if len(permissions) > 0 {
+		d.writer.Change("Added permissions")
 		d.flush = true
 	}
 
 	return nil
 }
-
 
 {{ end }}
