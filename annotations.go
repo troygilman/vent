@@ -29,13 +29,6 @@ func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
 }
 
-func (a VentSchemaAnnotation) MustParse(data string) VentSchemaAnnotation {
-	if err := json.Unmarshal([]byte(data), &a); err != nil {
-		panic("could not unmarshal annotation: " + err.Error())
-	}
-	return a
-}
-
 func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
 	annotation, ok := node.Annotations[a.Name()]
 	if !ok {
