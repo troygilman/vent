@@ -206,32 +206,13 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}Detail(w http.ResponseW
 		panic(err)
 	}
 
-   	result, err := handler.Client.{{ $node.Name }}.Get(ctx, id)
+    component, err := handler.build{{ $node.Name }}DetailComponent(ctx, id)
     if err != nil {
-    	panic(err)
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
     }
 
-    props := gui.SchemaDetailProps{
-        LayoutProps: gui.LayoutProps{
-            Schemas: handler.buildSchemaMetadata(),
-            ActiveSchemaName: "{{ $node.Name }}",
-        },
-        Fields: []gui.SchemaDetailFieldProps{
-            {{ range $field := $node.Fields }}
-            {
-                Name: "{{ $field.Name }}",
-                Label: "{{ pascal $field.Name }}",
-                Type: "{{ $field.Type.Type }}",
-                Value: utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
-            },
-            {{ end }}
-        },
-        AdminPath: "{{ $adminPath }}",
-        SchemaName: "{{ lower $node.Name }}",
-        EntityID: result.ID,
-    }
-
-    gui.SchemaDetailPage(props).Render(r.Context(), w)
+    component.Render(ctx, w)
 }
 
 func (handler *ventAdminHandler) postAdmin{{ $node.Name }}Detail(w http.ResponseWriter, r *http.Request) {
@@ -247,20 +228,61 @@ func (handler *ventAdminHandler) postAdmin{{ $node.Name }}Detail(w http.Response
 		return
     }
 
-    log.Println(signals)
-
     stmt := handler.Client.{{ $node.Name }}.UpdateOneID(id)
 
     {{ range $field := $node.Fields }}
+    {{ if not $field.Sensitive }}
     stmt = stmt.Set{{ pascal $field.Name }}(signals.{{ pascal $field.Name }})
+    {{ end }}
     {{ end }}
 
     if err := stmt.Exec(r.Context()); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
     }
+
+    component, err := handler.build{{ $node.Name }}DetailComponent(r.Context(), id)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    sse := datastar.NewSSE(w, r)
+    sse.PatchElementTempl(component)
+}
+
+func (handler *ventAdminHandler) build{{ $node.Name }}DetailComponent(ctx context.Context, id int) (templ.Component, error) {
+   	result, err := handler.Client.{{ $node.Name }}.Get(ctx, id)
+    if err != nil {
+    	return nil, err
+    }
+
+    props := gui.SchemaDetailProps{
+        LayoutProps: gui.LayoutProps{
+            Schemas: handler.buildSchemaMetadata(),
+            ActiveSchemaName: "{{ $node.Name }}",
+        },
+        Fields: []gui.SchemaDetailFieldProps{
+            {{ range $field := $node.Fields }}
+            {{ if not $field.Sensitive }}
+            {
+                Name: "{{ $field.Name }}",
+                Label: "{{ pascal $field.Name }}",
+                Type: "{{ $field.Type.Type }}",
+                Value: utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
+            },
+            {{ end }}
+            {{ end }}
+        },
+        AdminPath: "{{ $adminPath }}",
+        SchemaName: "{{ lower $node.Name }}",
+        EntityID: result.ID,
+    }
+
+    return gui.SchemaDetailPage(props), nil
 }
 {{ end }}
+
 
 func (handler *ventAdminHandler) buildSchemaMetadata() []gui.SchemaMetadata {
     return []gui.SchemaMetadata{
