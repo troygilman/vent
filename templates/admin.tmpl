@@ -192,7 +192,7 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}s(w http.ResponseWriter
         },
         Rows: rows,
         AdminPath: "{{ $adminPath }}",
-        SchemaName: "{{ lower $node.Name }}",
+        SchemaName: "{{ $node.Name }}",
     }
 
     gui.SchemaTablePage(props).Render(r.Context(), w)
@@ -275,7 +275,7 @@ func (handler *ventAdminHandler) build{{ $node.Name }}DetailComponent(ctx contex
             {{ end }}
         },
         AdminPath: "{{ $adminPath }}",
-        SchemaName: "{{ lower $node.Name }}",
+        SchemaName: "{{ $node.Name }}",
         EntityID: result.ID,
     }
 

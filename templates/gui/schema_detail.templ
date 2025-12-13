@@ -1,6 +1,9 @@
 package gui
 
-import "github.com/starfederation/datastar-go/datastar"
+import (
+	"github.com/starfederation/datastar-go/datastar"
+	"strings"
+)
 
 type SchemaDetailProps struct {
 	LayoutProps LayoutProps
@@ -22,11 +25,12 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<form
-				data-on:submit={ datastar.PostSSE("%s%ss/%d/", props.AdminPath, props.SchemaName, props.EntityID) }
+				data-on:submit={ datastar.PostSSE("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID) }
+				data-indicator="updating"
 				class="flex flex-col px-12 py-4 gap-2 w-full"
 			>
 				<div class="text-xl font-bold mb-4">Change { props.SchemaName }</div>
-				<fieldset class="fieldset w-full">
+				<fieldset class="fieldset w-full gap-4">
 					for _, field := range props.Fields {
 						@SchemaDetailField(field)
 					}
@@ -36,6 +40,9 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 					</div>
 				</fieldset>
 			</form>
+			<div class="ds-indicator" data-style:display="$updating && 'flex'">
+				<span class="loading loading-bars loading-xl"></span>
+			</div>
 		}
 	}
 }
@@ -48,7 +55,7 @@ templ SchemaDetailField(props SchemaDetailFieldProps) {
 				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value }/>
 			</label>
 		case "bool":
-			<label class="label">
+			<label class="label w-fit">
 				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" }/>
 				{ props.Label }
 			</label>

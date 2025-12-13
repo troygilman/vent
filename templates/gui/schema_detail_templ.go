@@ -8,7 +8,10 @@ package gui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/starfederation/datastar-go/datastar"
+import (
+	"github.com/starfederation/datastar-go/datastar"
+	"strings"
+)
 
 type SchemaDetailProps struct {
 	LayoutProps LayoutProps
@@ -76,28 +79,28 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(datastar.PostSSE("%s%ss/%d/", props.AdminPath, props.SchemaName, props.EntityID))
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(datastar.PostSSE("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 25, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 28, Col: 118}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col px-12 py-4 gap-2 w-full\"><div class=\"text-xl font-bold mb-4\">Change ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-indicator=\"updating\" class=\"flex flex-col px-12 py-4 gap-2 w-full\"><div class=\"text-xl font-bold mb-4\">Change ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.SchemaName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 28, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 32, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><fieldset class=\"fieldset w-full\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><fieldset class=\"fieldset w-full gap-4\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -107,7 +110,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex mt-4 justify-between\"><button class=\"btn btn-neutral\" type=\"submit\">Save</button> <button class=\"btn btn-error\" type=\"none\">Delete</button></div></fieldset></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex mt-4 justify-between\"><button class=\"btn btn-neutral\" type=\"submit\">Save</button> <button class=\"btn btn-error\" type=\"none\">Delete</button></div></fieldset></form><div class=\"ds-indicator\" data-style:display=\"$updating && 'flex'\"><span class=\"loading loading-bars loading-xl\"></span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -157,7 +160,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 47, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 54, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -170,7 +173,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 55, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -183,7 +186,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(props.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 55, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -194,14 +197,14 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case "bool":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"label\"><input class=\"checkbox checkbox-sm\" type=\"checkbox\" data-bind=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"label w-fit\"><input class=\"checkbox checkbox-sm\" type=\"checkbox\" data-bind=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 52, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 59, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -224,7 +227,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 53, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 60, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {

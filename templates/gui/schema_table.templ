@@ -1,6 +1,9 @@
 package gui
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SchemaTableProps struct {
 	LayoutProps LayoutProps
@@ -34,7 +37,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								for cIdx, data := range row {
 									{{ column := props.Columns[cIdx] }}
 									if column.Name == "id" {
-										<td><a class="link link-info" href={ fmt.Sprintf("%s%ss/%s/", props.AdminPath, props.SchemaName, data) }>{ data }</a></td>
+										<td><a class="link link-info" href={ fmt.Sprintf("%s%ss/%s/", props.AdminPath, strings.ToLower(props.SchemaName), data) }>{ data }</a></td>
 									} else {
 										<td>{ data }</td>
 									}
