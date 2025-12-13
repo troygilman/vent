@@ -163,14 +163,14 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span> <input class=\"flex-1\" type=\"text\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span> <input class=\"flex-1\" type=\"text\" data-bind=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -183,7 +183,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(props.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 48, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -194,14 +194,14 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case "bool":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"label\"><input class=\"checkbox checkbox-sm\" type=\"checkbox\" name=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"label\"><input class=\"checkbox checkbox-sm\" type=\"checkbox\" data-bind=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 52, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 52, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {

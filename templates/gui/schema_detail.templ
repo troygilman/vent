@@ -45,11 +45,11 @@ templ SchemaDetailField(props SchemaDetailFieldProps) {
 		case "string":
 			<label class="input flex items-baseline gap-2 w-196 max-w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="text" name={ props.Name } value={ props.Value }/>
+				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value }/>
 			</label>
 		case "bool":
 			<label class="label">
-				<input class="checkbox checkbox-sm" type="checkbox" name={ props.Name } checked?={ props.Value == "true" }/>
+				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" }/>
 				{ props.Label }
 			</label>
 	}

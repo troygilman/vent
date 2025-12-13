@@ -64,6 +64,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 	{{ range $node := $.Nodes }}
 	mux.Handle("GET {{ $adminPath }}{{ lower $node.Name }}s/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}s)))
 	mux.Handle("GET {{ $adminPath }}{{ lower $node.Name }}s/{id}/", authMiddleware(http.HandlerFunc(handler.getAdmin{{ $node.Name }}Detail)))
+	mux.Handle("POST {{ $adminPath }}{{ lower $node.Name }}s/{id}/", authMiddleware(http.HandlerFunc(handler.postAdmin{{ $node.Name }}Detail)))
 	{{ end }}
 	return mux
 }
@@ -231,6 +232,33 @@ func (handler *ventAdminHandler) getAdmin{{ $node.Name }}Detail(w http.ResponseW
     }
 
     gui.SchemaDetailPage(props).Render(r.Context(), w)
+}
+
+func (handler *ventAdminHandler) postAdmin{{ $node.Name }}Detail(w http.ResponseWriter, r *http.Request) {
+    id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+    signals := &{{ $node.Name }}{}
+    if err := datastar.ReadSignals(r, &signals); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+    }
+
+    log.Println(signals)
+
+    stmt := handler.Client.{{ $node.Name }}.UpdateOneID(id)
+
+    {{ range $field := $node.Fields }}
+    stmt = stmt.Set{{ pascal $field.Name }}(signals.{{ pascal $field.Name }})
+    {{ end }}
+
+    if err := stmt.Exec(r.Context()); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+    }
 }
 {{ end }}
 
