@@ -5,6 +5,10 @@
     navigation: auto;
 }*/
 
+:root {
+    overscroll-behavior: none;
+}
+
 .ds-indicator {
     display: none;
     position: absolute;

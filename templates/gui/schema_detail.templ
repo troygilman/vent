@@ -2,6 +2,7 @@ package gui
 
 import (
 	"github.com/starfederation/datastar-go/datastar"
+	"strconv"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 				data-indicator="updating"
 				class="flex flex-col px-12 py-4 gap-2 w-full"
 			>
-				<div class="text-xl font-bold mb-4">Change { props.SchemaName }</div>
+				<div class="text-xl font-bold mb-4">Change { props.SchemaName } { strconv.Itoa(props.EntityID) }</div>
 				<fieldset class="fieldset w-full gap-4">
 					for _, field := range props.Fields {
 						@SchemaDetailField(field)
