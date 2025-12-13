@@ -2,8 +2,6 @@ package vent
 
 import (
 	"embed"
-	"encoding/json"
-	"slices"
 	"text/template"
 
 	"entgo.io/ent/entc"
@@ -43,23 +41,13 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"contains":    slices.Contains[[]any],
 					"tableFields": tableFields,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
 		gen.MustParse(
-			gen.NewTemplate("migratedata").
-				Funcs(template.FuncMap{
-					"stringify": func(v any) (string, error) {
-						buf, err := json.Marshal(v)
-						if err != nil {
-							return "", err
-						}
-						return string(buf), nil
-					},
-				}).
-				ParseFS(templates, "templates/migratedata.tmpl"),
+			gen.NewTemplate("migrate").
+				ParseFS(templates, "templates/migrate.tmpl"),
 		),
 	}
 }

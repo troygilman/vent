@@ -1,6 +1,6 @@
-{{ define "migrate/migratedata/migratedata" }}
+{{ define "migrate/vent/migrate" }}
 
-package migratedata
+package vent
 
 import (
 	"context"
@@ -131,6 +131,19 @@ func (d *Differ) diffAuthPermissions(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func MigrationFormatter(dir migrate.Dir) migrate.Formatter {
+    newVersionFunc := func() string {
+		files, err := dir.Files()
+		if err != nil {
+			panic(err)
+		}
+		return strconv.Itoa(len(files))
+	}
+	formatter := migrate.DefaultFormatter
+	formatter[0].N = formatter[0].N.Funcs(template.FuncMap{"now": newVersionFunc})
+	return formatter
 }
 
 {{ end }}

@@ -51,6 +51,9 @@ func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
 }
 
 func (a VentSchemaAnnotation) tableFields(node *gen.Type) []*gen.Field {
+	if a.TableColumns == nil {
+		return insensitiveFields(node)
+	}
 	fieldMap := make(map[string]*gen.Field)
 	for _, f := range node.Fields {
 		fieldMap[f.Name] = f
