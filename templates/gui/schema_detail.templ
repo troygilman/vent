@@ -31,15 +31,15 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 				class="flex flex-col px-12 py-4 gap-2 w-full"
 			>
 				<div class="text-xl font-bold mb-4">Change { props.SchemaName } { strconv.Itoa(props.EntityID) }</div>
-				<fieldset class="fieldset w-full gap-4">
+				<fieldset class="fieldset w-full max-w-196 gap-4">
 					for _, field := range props.Fields {
 						@SchemaDetailField(field)
 					}
-					<div class="flex mt-4 justify-between">
-						<button class="btn btn-neutral" type="submit">Save</button>
-						<button class="btn btn-error" type="none">Delete</button>
-					</div>
 				</fieldset>
+				<div class="flex mt-4 justify-between">
+					<button class="btn btn-neutral" type="submit">Save</button>
+					<button class="btn btn-error" type="none">Delete</button>
+				</div>
 			</form>
 			<div class="ds-indicator" data-style:display="$updating && 'flex'">
 				<span class="loading loading-bars loading-xl"></span>
@@ -51,7 +51,7 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 templ SchemaDetailField(props SchemaDetailFieldProps) {
 	switch props.Type {
 		case "string":
-			<label class="input flex items-baseline gap-2 w-196 max-w-full">
+			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value }/>
 			</label>

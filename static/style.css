@@ -1048,9 +1048,6 @@
   .w-96 {
     width: calc(var(--spacing) * 96);
   }
-  .w-196 {
-    width: calc(var(--spacing) * 196);
-  }
   .w-fit {
     width: fit-content;
   }
@@ -1060,8 +1057,8 @@
   .w-screen {
     width: 100vw;
   }
-  .max-w-full {
-    max-width: 100%;
+  .max-w-196 {
+    max-width: calc(var(--spacing) * 196);
   }
   .min-w-0 {
     min-width: calc(var(--spacing) * 0);
@@ -1119,9 +1116,6 @@
   }
   .overflow-x-auto {
     overflow-x: auto;
-  }
-  .overscroll-none {
-    overscroll-behavior: none;
   }
   .rounded-box {
     border-radius: var(--radius-box);

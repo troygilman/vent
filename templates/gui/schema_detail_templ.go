@@ -114,7 +114,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><fieldset class=\"fieldset w-full gap-4\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div><fieldset class=\"fieldset w-full max-w-196 gap-4\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -124,7 +124,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex mt-4 justify-between\"><button class=\"btn btn-neutral\" type=\"submit\">Save</button> <button class=\"btn btn-error\" type=\"none\">Delete</button></div></fieldset></form><div class=\"ds-indicator\" data-style:display=\"$updating && 'flex'\"><span class=\"loading loading-bars loading-xl\"></span></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</fieldset><div class=\"flex mt-4 justify-between\"><button class=\"btn btn-neutral\" type=\"submit\">Save</button> <button class=\"btn btn-error\" type=\"none\">Delete</button></div></form><div class=\"ds-indicator\" data-style:display=\"$updating && 'flex'\"><span class=\"loading loading-bars loading-xl\"></span></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -167,7 +167,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		switch props.Type {
 		case "string":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<label class=\"input flex items-baseline gap-2 w-196 max-w-full\"><span class=\"label w-48 flex-shrink-0 text-right\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<label class=\"input items-baseline gap-2 w-full\"><span class=\"label w-48 flex-shrink-0 text-right\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
