@@ -51,3 +51,23 @@ type TokenAuthenticatorFunc func(token string) (*VentClaims, error)
 func (f TokenAuthenticatorFunc) Authenticate(token string) (*VentClaims, error) {
 	return f(token)
 }
+
+type CredentialGenerator interface {
+	Generate(password string) (string, error)
+}
+
+type CredentialGeneratorFunc func(password string) (string, error)
+
+func (f CredentialGeneratorFunc) Generate(password string) (string, error) {
+	return f(password)
+}
+
+type CredentialAuthenticator interface {
+	Authenticate(password string, hash string) error
+}
+
+type CredentialAuthenticatorFunc func(password string, hash string) error
+
+func (f CredentialAuthenticatorFunc) Authenticate(password string, hash string) error {
+	return f(password, hash)
+}

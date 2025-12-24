@@ -8,7 +8,7 @@ import (
 
 type Middleware = func(http.Handler) http.Handler
 
-func AuthMiddleware(secretProvider auth.SecretProvider) Middleware {
+func NewAuthMiddleware(secretProvider auth.SecretProvider) Middleware {
 	authenticator := auth.NewJwtTokenAuthenticator(secretProvider)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
