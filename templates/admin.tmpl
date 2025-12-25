@@ -62,6 +62,48 @@ func NewAdminHandler(config AdminConfig) http.Handler {
         secretProvider,
         loginHandler,
     )
+
+    {{ range $node := $.Nodes }}
+    {{ $tableFields := tableFields $node }}
+    handler.RegisterSchema(vent.SchemaParams{
+        Name: "{{ $node.Name }}",
+        FilterFunc: func(ctx context.Context, order vent.OrderOption) ([]vent.DataRow, error) {
+           	query := config.Client.{{ $node.Name }}.Query()
+            results, err := query.Order(order).All(ctx)
+            if err != nil {
+           	    return nil, err
+            }
+            rows := make([]vent.DataRow, len(results))
+            for idx, result := range results {
+                rows[idx] = vent.DataRow{
+                    strconv.Itoa(result.ID),
+                    {{ range $field := $tableFields }}
+                    utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
+                    {{ end }}
+                }
+            }
+            return rows, nil
+        },
+        OrderOptionMap: vent.OrderOptionMap{
+            "id": {{ lower $node.Name }}.ByID(),
+        },
+        Columns: []gui.SchemaTableColumn{
+            {
+                Name: "id",
+                Label: "ID",
+                Type: "int",
+            },
+            {{ range $field := $tableFields }}
+            {
+                Name: "{{ $field.Name }}",
+                Label: "{{ pascal $field.Name }}",
+                Type: "{{ $field.Type.Type }}",
+            },
+            {{ end }}
+        },
+    })
+    {{ end }}
+
     return handler
 }
 

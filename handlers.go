@@ -146,7 +146,7 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		order := schema.OrderOptionMap["id"]
-		rows, err := schema.FilterFunc(order)
+		rows, err := schema.FilterFunc(r.Context(), order)
 		if err != nil {
 			panic(err)
 		}
@@ -177,7 +177,7 @@ type DataRow = []string
 
 type OrderOption = func(*sql.Selector)
 
-type FilterFunc func(order OrderOption) ([]DataRow, error)
+type FilterFunc func(ctx context.Context, order OrderOption) ([]DataRow, error)
 
 type OrderOptionMap map[string]OrderOption
 
