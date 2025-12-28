@@ -1,0 +1,38 @@
+{{ define "getters" }}
+
+{{ $pkg := base $.Config.Package }}
+{{ template "header" $ }}
+
+import (
+    "fmt"
+	"entgo.io/ent"
+	{{ range $node := $.Nodes }}
+	"{{ $.Config.Package }}/{{ lower $node.Name }}"
+	{{ end }}
+)
+
+{{ range $node := $.Nodes }}
+func (_m *{{ $node.Name}}) Get(field string) (ent.Value, error) {
+    switch field {
+    case {{ lower $node.Name }}.FieldID:
+        return _m.ID, nil
+    {{ range $field := $node.Fields }}
+    case {{ lower $node.Name }}.Field{{ pascal $field.Name }}:
+        return _m.{{ pascal $field.Name }}, nil
+    {{ end }}
+    default:
+        return nil, fmt.Errorf("field does not exists: %s", field)
+    }
+}
+
+func (q *{{ $node.Name }}Query) VentQuery() vent.Query {
+	return vent.QueryWrapper[*{{ $node.Name }}]{
+		OrderFunc: func(opt vent.OrderOption) vent.Query {
+			return q.Order(opt).VentQuery()
+		},
+		AllFunc: q.All,
+	}
+}
+{{ end }}
+
+{{ end }}

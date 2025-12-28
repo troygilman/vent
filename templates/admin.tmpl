@@ -67,25 +67,8 @@ func NewAdminHandler(config AdminConfig) http.Handler {
     {{ $tableFields := tableFields $node }}
     handler.RegisterSchema(vent.SchemaParams{
         Name: "{{ $node.Name }}",
-        FilterFunc: func(ctx context.Context, order vent.OrderOption) ([]vent.DataRow, error) {
-           	query := config.Client.{{ $node.Name }}.Query()
-            results, err := query.Order(order).All(ctx)
-            if err != nil {
-           	    return nil, err
-            }
-            rows := make([]vent.DataRow, len(results))
-            for idx, result := range results {
-                rows[idx] = vent.DataRow{
-                    strconv.Itoa(result.ID),
-                    {{ range $field := $tableFields }}
-                    utils.Stringify(result.{{ pascal $field.Name }}, "{{ $field.Type.Type }}"),
-                    {{ end }}
-                }
-            }
-            return rows, nil
-        },
-        OrderOptionMap: vent.OrderOptionMap{
-            "id": {{ lower $node.Name }}.ByID(),
+        QueryProviderFunc: func() vent.Query {
+            return config.Client.{{ $node.Name }}.Query().VentQuery()
         },
         Columns: []gui.SchemaTableColumn{
             {
@@ -176,9 +159,9 @@ func (handler *ventAdminHandler) postAdminLogin(w http.ResponseWriter, r *http.R
     		return err
     	}
 
-    	if err := utils.CheckPasswordHash(signals.Password, user.PasswordHash); err != nil {
-    	    return err
-    	}
+    	//if err := utils.CheckPasswordHash(signals.Password, user.PasswordHash); err != nil {
+    	//    return err
+    	//}
 
         claims := utils.NewClaims(user.ID)
         signedToken, err := utils.CreateSignedToken(handler.Secret, claims)

@@ -9,6 +9,9 @@ import (
 	"strings"
 	"vent/auth"
 	"vent/templates/gui"
+	"vent/utils"
+
+	"entgo.io/ent"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/starfederation/datastar-go/datastar"
@@ -144,11 +147,34 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 }
 
 func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler {
+	fieldMap := make(map[string]gui.SchemaTableColumn)
+	for _, column := range schema.Columns {
+		fieldMap[column.Name] = column
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		order := schema.OrderOptionMap["id"]
-		rows, err := schema.FilterFunc(r.Context(), order)
+		column, ok := fieldMap["id"]
+		if !ok {
+			panic("field does not exist")
+		}
+
+		query := schema.QueryProviderFunc()
+		order := OrderOption(sql.OrderByField(column.Name).ToFunc())
+		entities, err := query.Order(order).All(r.Context())
 		if err != nil {
 			panic(err)
+		}
+
+		rows := make([]DataRow, len(entities))
+		for entityIdx, entity := range entities {
+			row := make(DataRow, len(schema.Columns))
+			for columnIdx, column := range schema.Columns {
+				value, err := entity.Get(column.Name)
+				if err != nil {
+					panic(err)
+				}
+				row[columnIdx] = utils.Stringify(value, column.Type)
+			}
+			rows[entityIdx] = row
 		}
 
 		props := gui.SchemaTableProps{
@@ -167,18 +193,45 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 }
 
 type SchemaParams struct {
-	Name           string
-	FilterFunc     FilterFunc
-	OrderOptionMap OrderOptionMap
-	Columns        []gui.SchemaTableColumn
+	Name              string
+	Columns           []gui.SchemaTableColumn
+	QueryProviderFunc QueryProviderFunc
 }
 
 type DataRow = []string
 
 type OrderOption = func(*sql.Selector)
 
-type FilterFunc func(ctx context.Context, order OrderOption) ([]DataRow, error)
+type QueryWrapper[E Entity] struct {
+	OrderFunc func(OrderOption) Query
+	AllFunc   func(context.Context) ([]E, error)
+}
 
-type OrderOptionMap map[string]OrderOption
+func (q QueryWrapper[E]) Order(opt OrderOption) Query {
+	return q.OrderFunc(opt)
+}
+
+func (q QueryWrapper[E]) All(ctx context.Context) ([]Entity, error) {
+	result, err := q.AllFunc(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entityResults := make([]Entity, len(result))
+	for i, entity := range result {
+		entityResults[i] = entity
+	}
+	return entityResults, nil
+}
+
+type QueryProviderFunc func() Query
+
+type Query interface {
+	Order(opt OrderOption) Query
+	All(ctx context.Context) ([]Entity, error)
+}
+
+type Entity interface {
+	Get(field string) (ent.Value, error)
+}
 
 type LoginHandler func(ctx context.Context, credential UserCredential) (id int, err error)

@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"vent/auth"
 	"vent/ent"
-	"vent/utils"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -20,7 +20,9 @@ func main() {
 
 	ctx := context.Background()
 
-	passwordHash, err := utils.HashPassword("test_user")
+	credentialGenerator := auth.NewBCryptCredentialGenerator()
+
+	passwordHash, err := credentialGenerator.Generate("test_user")
 	if err != nil {
 		panic(err)
 	}

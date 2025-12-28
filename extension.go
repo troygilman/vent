@@ -46,6 +46,10 @@ func (e *AdminExtension) Templates() []*gen.Template {
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
 		gen.MustParse(
+			gen.NewTemplate("getters").
+				ParseFS(templates, "templates/getters.tmpl"),
+		),
+		gen.MustParse(
 			gen.NewTemplate("migrate").
 				ParseFS(templates, "templates/migrate.tmpl"),
 		),
