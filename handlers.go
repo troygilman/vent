@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"vent/auth"
 	"vent/templates/gui"
@@ -14,6 +15,7 @@ import (
 	"entgo.io/ent"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -44,12 +46,12 @@ func NewHandler(
 	}
 
 	// Unauthorized Paths
-	handler.mux.Handle("GET /admin/static/", http.StripPrefix("/admin/", http.FileServerFS(static)))
-	handler.mux.Handle("GET /admin/login/", handler.getAdminLoginHandler())
-	handler.mux.Handle("POST /admin/login/", handler.postAdminLoginHandler())
+	handler.Handle("GET /admin/static/", http.StripPrefix("/admin/", http.FileServerFS(static)))
+	handler.Handle("GET /admin/login/", handler.getAdminLoginHandler())
+	handler.Handle("POST /admin/login/", handler.postAdminLoginHandler())
 
 	// Authorized Paths
-	handler.mux.Handle("GET /admin/", handler.authMiddleware(handler.getAdminHandler()))
+	handler.Handle("GET /admin/", handler.authMiddleware(handler.getAdminHandler()))
 
 	return handler
 }
@@ -140,14 +142,20 @@ func (handler *Handler) getAdminHandler() http.Handler {
 func (handler *Handler) RegisterSchema(schema SchemaParams) {
 	metadata := gui.SchemaMetadata{
 		Name: schema.Name,
-		Path: fmt.Sprintf("/admin/%s/", strings.ToLower(schema.Name)),
+		Path: fmt.Sprintf("/admin/%ss/", strings.ToLower(schema.Name)),
 	}
 	handler.schemas = append(handler.schemas, metadata)
-	handler.mux.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
+	handler.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
+	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaDetailHandler(schema)))
+}
+
+func (handler *Handler) Handle(path string, h http.Handler) {
+	handler.mux.Handle(path, h)
+	log.Printf("Registered handler on %s", path)
 }
 
 func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler {
-	fieldMap := make(map[string]gui.SchemaTableColumn)
+	fieldMap := make(map[string]SchemaColumn)
 	for _, column := range schema.Columns {
 		fieldMap[column.Name] = column
 	}
@@ -164,51 +172,122 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 			panic(err)
 		}
 
-		rows := make([]DataRow, len(entities))
-		for entityIdx, entity := range entities {
-			row := make(DataRow, len(schema.Columns))
-			for columnIdx, column := range schema.Columns {
-				value, err := entity.Get(column.Name)
-				if err != nil {
-					panic(err)
-				}
-				row[columnIdx] = utils.Stringify(value, column.Type)
-			}
-			rows[entityIdx] = row
-		}
-
 		props := gui.SchemaTableProps{
 			LayoutProps: gui.LayoutProps{
 				Schemas:          handler.schemas,
 				ActiveSchemaName: schema.Name,
 			},
-			Columns:    schema.Columns,
-			Rows:       rows,
+			Columns:    make([]gui.SchemaTableColumn, len(schema.Columns)),
+			Rows:       make([]DataRow, len(entities)),
 			AdminPath:  "/admin/",
 			SchemaName: schema.Name,
+		}
+
+		for idx, column := range schema.Columns {
+			props.Columns[idx] = gui.SchemaTableColumn{
+				Name:  column.Name,
+				Label: column.Label,
+				Type:  column.Type,
+			}
+		}
+
+		for entityIdx, entity := range entities {
+			row := make(DataRow, len(schema.Columns))
+			for columnIdx, column := range schema.Columns {
+				row[columnIdx] = utils.Stringify(entity.Get(column.Name), column.Type)
+			}
+			props.Rows[entityIdx] = row
 		}
 
 		gui.SchemaTablePage(props).Render(r.Context(), w)
 	})
 }
 
+func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			panic(err)
+		}
+
+		component, err := handler.buildSchemaDetailComponent(ctx, schema, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := component.Render(ctx, w); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+}
+
+func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema SchemaParams, id int) (templ.Component, error) {
+	entity, err := schema.QueryProviderFunc().Where(sql.FieldEQ("id", id)).Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	props := gui.SchemaDetailProps{
+		LayoutProps: gui.LayoutProps{
+			Schemas:          handler.schemas,
+			ActiveSchemaName: schema.Name,
+		},
+		Fields:     make([]gui.SchemaDetailFieldProps, len(schema.Columns)),
+		AdminPath:  "/admin/",
+		SchemaName: schema.Name,
+		EntityID:   id,
+	}
+
+	for idx, column := range schema.Columns {
+		props.Fields[idx] = gui.SchemaDetailFieldProps{
+			Name:  column.Name,
+			Label: column.Label,
+			Type:  column.Type,
+			Value: utils.Stringify(entity.Get(column.Name), column.Type),
+		}
+	}
+
+	return gui.SchemaDetailPage(props), nil
+}
+
 type SchemaParams struct {
 	Name              string
-	Columns           []gui.SchemaTableColumn
+	Columns           []SchemaColumn
 	QueryProviderFunc QueryProviderFunc
+}
+
+type SchemaColumn struct {
+	Name  string
+	Label string
+	Type  string
 }
 
 type DataRow = []string
 
 type OrderOption = func(*sql.Selector)
 
+type Predicate = func(*sql.Selector)
+
 type QueryWrapper[E Entity] struct {
+	WhereFunc func(Predicate) Query
 	OrderFunc func(OrderOption) Query
+	OnlyFunc  func(context.Context) (E, error)
 	AllFunc   func(context.Context) ([]E, error)
+}
+
+func (q QueryWrapper[E]) Where(p Predicate) Query {
+	return q.WhereFunc(p)
 }
 
 func (q QueryWrapper[E]) Order(opt OrderOption) Query {
 	return q.OrderFunc(opt)
+}
+
+func (q QueryWrapper[E]) Only(ctx context.Context) (Entity, error) {
+	return q.OnlyFunc(ctx)
 }
 
 func (q QueryWrapper[E]) All(ctx context.Context) ([]Entity, error) {
@@ -226,12 +305,14 @@ func (q QueryWrapper[E]) All(ctx context.Context) ([]Entity, error) {
 type QueryProviderFunc func() Query
 
 type Query interface {
+	Where(p Predicate) Query
 	Order(opt OrderOption) Query
+	Only(ctx context.Context) (Entity, error)
 	All(ctx context.Context) ([]Entity, error)
 }
 
 type Entity interface {
-	Get(field string) (ent.Value, error)
+	Get(field string) ent.Value
 }
 
 type LoginHandler func(ctx context.Context, credential UserCredential) (id int, err error)

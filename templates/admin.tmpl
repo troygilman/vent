@@ -70,7 +70,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
         QueryProviderFunc: func() vent.Query {
             return config.Client.{{ $node.Name }}.Query().VentQuery()
         },
-        Columns: []gui.SchemaTableColumn{
+        Columns: []vent.SchemaColumn{
             {
                 Name: "id",
                 Label: "ID",

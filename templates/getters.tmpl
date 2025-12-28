@@ -12,24 +12,28 @@ import (
 )
 
 {{ range $node := $.Nodes }}
-func (_m *{{ $node.Name}}) Get(field string) (ent.Value, error) {
+func (_m *{{ $node.Name}}) Get(field string) ent.Value {
     switch field {
     case {{ lower $node.Name }}.FieldID:
-        return _m.ID, nil
+        return _m.ID
     {{ range $field := $node.Fields }}
     case {{ lower $node.Name }}.Field{{ pascal $field.Name }}:
-        return _m.{{ pascal $field.Name }}, nil
+        return _m.{{ pascal $field.Name }}
     {{ end }}
     default:
-        return nil, fmt.Errorf("field does not exists: %s", field)
+        panic(fmt.Errorf("field does not exists: %s", field))
     }
 }
 
 func (q *{{ $node.Name }}Query) VentQuery() vent.Query {
 	return vent.QueryWrapper[*{{ $node.Name }}]{
+        WhereFunc: func(p vent.Predicate) vent.Query {
+            return q.Where(p).VentQuery()
+        },
 		OrderFunc: func(opt vent.OrderOption) vent.Query {
 			return q.Order(opt).VentQuery()
 		},
+		OnlyFunc: q.Only,
 		AllFunc: q.All,
 	}
 }
