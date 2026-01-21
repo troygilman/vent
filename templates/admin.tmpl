@@ -67,9 +67,6 @@ func NewAdminHandler(config AdminConfig) http.Handler {
     {{ $tableFields := tableFields $node }}
     handler.RegisterSchema(vent.SchemaParams{
         Name: "{{ $node.Name }}",
-        QueryProviderFunc: func() vent.Query {
-            return config.Client.{{ $node.Name }}.Query().VentQuery()
-        },
         SchemaClient: &{{ $node.Name }}SchemaClient{
             client: config.Client.{{ $node.Name }},
         },
@@ -127,7 +124,7 @@ func (c *{{ $node.Name }}SchemaClient) Query(
 func (c *{{ $node.Name }}SchemaClient) Update(
     ctx context.Context,
     predicates []vent.Predicate,
-    mutations []vent.Mutation2,
+    mutations []vent.Mutation,
 ) error {
     q := c.client.Update()
     for _, p := range predicates {

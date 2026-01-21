@@ -241,9 +241,9 @@ func (handler *Handler) postSchemaDetailHandler(schema SchemaParams) http.Handle
 			panic(err)
 		}
 
-		mutations := []Mutation2{}
+		mutations := []Mutation{}
 		for fieldName, value := range signals {
-			mutations = append(mutations, Mutation2{
+			mutations = append(mutations, Mutation{
 				FieldName: fieldName,
 				Value:     value,
 			})
@@ -297,11 +297,9 @@ func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema S
 }
 
 type SchemaParams struct {
-	Name                 string
-	Columns              []SchemaColumn
-	QueryProviderFunc    QueryProviderFunc
-	MutationProviderFunc MutationProviderFunc
-	SchemaClient         SchemaClient2
+	Name         string
+	Columns      []SchemaColumn
+	SchemaClient SchemaClient
 }
 
 type SchemaColumn struct {
@@ -316,103 +314,18 @@ type OrderOption = func(*sql.Selector)
 
 type Predicate = func(*sql.Selector)
 
-type QueryWrapper[E Entity] struct {
-	WhereFunc func(Predicate) Query
-	OrderFunc func(OrderOption) Query
-	OnlyFunc  func(context.Context) (E, error)
-	AllFunc   func(context.Context) ([]E, error)
-}
-
-func (q QueryWrapper[E]) Where(p Predicate) Query {
-	return q.WhereFunc(p)
-}
-
-func (q QueryWrapper[E]) Order(opt OrderOption) Query {
-	return q.OrderFunc(opt)
-}
-
-func (q QueryWrapper[E]) Only(ctx context.Context) (Entity, error) {
-	return q.OnlyFunc(ctx)
-}
-
-func (q QueryWrapper[E]) All(ctx context.Context) ([]Entity, error) {
-	result, err := q.AllFunc(ctx)
-	if err != nil {
-		return nil, err
-	}
-	entityResults := make([]Entity, len(result))
-	for i, entity := range result {
-		entityResults[i] = entity
-	}
-	return entityResults, nil
-}
-
-type QueryProviderFunc func() Query
-
-type Query interface {
-	Where(p Predicate) Query
-	Order(opt OrderOption) Query
-	Only(ctx context.Context) (Entity, error)
-	All(ctx context.Context) ([]Entity, error)
-}
-
-type SchemaClient interface {
-	Query() Query
-	UpdateOneID(id int) Update
-}
-
-type Update interface {
-	Mutation() ent.Mutation
-	Save() (Entity, error)
-}
-
-type UpdateWrapper struct {
-	MutationFunc func() ent.Mutation
-	SaveFunc     func(ctx context.Context) (Entity, error)
-}
-
-func (u UpdateWrapper) Mutation() ent.Mutation {
-	return u.MutationFunc()
-}
-
-func (u UpdateWrapper) Save(ctx context.Context) (Entity, error) {
-	return u.SaveFunc(ctx)
-}
-
-type MutationProviderFunc func() ent.Mutation
-
-type Mutation interface {
-	Where(p Predicate)
-	SetField(name string, value ent.Value) error
-}
-
-type MutationWrapper struct {
-	WhereFunc    func(p Predicate)
-	SetFieldFunc func(name string, value ent.Value) error
-}
-
-func (m MutationWrapper) Where(p Predicate) {
-	m.WhereFunc(p)
-}
-
-func (m MutationWrapper) SetField(name string, value ent.Value) error {
-	return m.SetFieldFunc(name, value)
-}
-
 type Entity interface {
 	Get(field string) ent.Value
-	Set(field string, val ent.Value)
-	Save(ctx context.Context) (Entity, error)
 }
 
 type LoginHandler func(ctx context.Context, credential UserCredential) (id int, err error)
 
-type SchemaClient2 interface {
+type SchemaClient interface {
 	Query(ctx context.Context, predicates []Predicate, orders []OrderOption) (iter.Seq[Entity], error)
-	Update(ctx context.Context, predicates []Predicate, mutations []Mutation2) error
+	Update(ctx context.Context, predicates []Predicate, mutations []Mutation) error
 }
 
-type Mutation2 struct {
+type Mutation struct {
 	FieldName string
 	Value     any
 }

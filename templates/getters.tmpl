@@ -24,45 +24,6 @@ func (_m *{{ $node.Name }}) Get(field string) ent.Value {
         panic(fmt.Errorf("field does not exists: %s", field))
     }
 }
-
-func (_m *{{ $node.Name }}) Set(field string, val ent.Value) {
-    switch field {
-    case {{ lower $node.Name }}.FieldID:
-        _m.ID = val.(int)
-    {{ range $field := $node.Fields }}
-    case {{ lower $node.Name }}.Field{{ pascal $field.Name }}:
-        _m.{{ pascal $field.Name }} = val.({{ $field.Type }})
-    {{ end }}
-    default:
-        panic(fmt.Errorf("field does not exists: %s", field))
-    }
-}
-
-func (_m *{{ $node.Name }}) Save(ctx context.Context) (vent.Entity, error) {
-    return _m.Update().Save(ctx)
-}
-
-func (m *{{ $node.Name }}Mutation) VentMutation() vent.Mutation {
-	return vent.MutationWrapper{
-        WhereFunc: func(p vent.Predicate) {
-            m.Where(p)
-        },
-		SetFieldFunc: m.SetField,
-	}
-}
-
-func (q *{{ $node.Name }}Query) VentQuery() vent.Query {
-	return vent.QueryWrapper[*{{ $node.Name }}]{
-        WhereFunc: func(p vent.Predicate) vent.Query {
-            return q.Where(p).VentQuery()
-        },
-		OrderFunc: func(opt vent.OrderOption) vent.Query {
-			return q.Order(opt).VentQuery()
-		},
-		OnlyFunc: q.Only,
-		AllFunc: q.All,
-	}
-}
 {{ end }}
 
 {{ end }}
