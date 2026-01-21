@@ -3,7 +3,9 @@ package vent
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
+	"iter"
 	"log"
 	"net/http"
 	"strconv"
@@ -147,6 +149,7 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 	handler.schemas = append(handler.schemas, metadata)
 	handler.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
 	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaDetailHandler(schema)))
+	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaDetailHandler(schema)))
 }
 
 func (handler *Handler) Handle(path string, h http.Handler) {
@@ -160,14 +163,14 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 		fieldMap[column.Name] = column
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		column, ok := fieldMap["id"]
 		if !ok {
 			panic("field does not exist")
 		}
 
-		query := schema.QueryProviderFunc()
-		order := OrderOption(sql.OrderByField(column.Name).ToFunc())
-		entities, err := query.Order(order).All(r.Context())
+		entities, err := schema.SchemaClient.Query(ctx, nil, []OrderOption{sql.OrderByField(column.Name).ToFunc()})
 		if err != nil {
 			panic(err)
 		}
@@ -178,7 +181,7 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 				ActiveSchemaName: schema.Name,
 			},
 			Columns:    make([]gui.SchemaTableColumn, len(schema.Columns)),
-			Rows:       make([]DataRow, len(entities)),
+			Rows:       []DataRow{},
 			AdminPath:  "/admin/",
 			SchemaName: schema.Name,
 		}
@@ -191,12 +194,12 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 			}
 		}
 
-		for entityIdx, entity := range entities {
+		for entity := range entities {
 			row := make(DataRow, len(schema.Columns))
 			for columnIdx, column := range schema.Columns {
 				row[columnIdx] = utils.Stringify(entity.Get(column.Name), column.Type)
 			}
-			props.Rows[entityIdx] = row
+			props.Rows = append(props.Rows, row)
 		}
 
 		gui.SchemaTablePage(props).Render(r.Context(), w)
@@ -224,8 +227,48 @@ func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler
 	})
 }
 
+func (handler *Handler) postSchemaDetailHandler(schema SchemaParams) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			panic(err)
+		}
+
+		signals := make(map[string]any)
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			panic(err)
+		}
+
+		mutations := []Mutation2{}
+		for fieldName, value := range signals {
+			mutations = append(mutations, Mutation2{
+				FieldName: fieldName,
+				Value:     value,
+			})
+		}
+
+		err = schema.SchemaClient.Update(ctx, []Predicate{sql.FieldEQ("id", id)}, mutations)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func (handler *Handler) getEntityById(ctx context.Context, schema SchemaParams, id int) (Entity, error) {
+	entities, err := schema.SchemaClient.Query(ctx, []Predicate{sql.FieldEQ("id", id)}, []OrderOption{})
+	if err != nil {
+		return nil, err
+	}
+	for entity := range entities {
+		return entity, nil
+	}
+	return nil, errors.New("could not find entity")
+}
+
 func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema SchemaParams, id int) (templ.Component, error) {
-	entity, err := schema.QueryProviderFunc().Where(sql.FieldEQ("id", id)).Only(ctx)
+	entity, err := handler.getEntityById(ctx, schema, id)
 	if err != nil {
 		return nil, err
 	}
@@ -254,9 +297,11 @@ func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema S
 }
 
 type SchemaParams struct {
-	Name              string
-	Columns           []SchemaColumn
-	QueryProviderFunc QueryProviderFunc
+	Name                 string
+	Columns              []SchemaColumn
+	QueryProviderFunc    QueryProviderFunc
+	MutationProviderFunc MutationProviderFunc
+	SchemaClient         SchemaClient2
 }
 
 type SchemaColumn struct {
@@ -311,8 +356,63 @@ type Query interface {
 	All(ctx context.Context) ([]Entity, error)
 }
 
+type SchemaClient interface {
+	Query() Query
+	UpdateOneID(id int) Update
+}
+
+type Update interface {
+	Mutation() ent.Mutation
+	Save() (Entity, error)
+}
+
+type UpdateWrapper struct {
+	MutationFunc func() ent.Mutation
+	SaveFunc     func(ctx context.Context) (Entity, error)
+}
+
+func (u UpdateWrapper) Mutation() ent.Mutation {
+	return u.MutationFunc()
+}
+
+func (u UpdateWrapper) Save(ctx context.Context) (Entity, error) {
+	return u.SaveFunc(ctx)
+}
+
+type MutationProviderFunc func() ent.Mutation
+
+type Mutation interface {
+	Where(p Predicate)
+	SetField(name string, value ent.Value) error
+}
+
+type MutationWrapper struct {
+	WhereFunc    func(p Predicate)
+	SetFieldFunc func(name string, value ent.Value) error
+}
+
+func (m MutationWrapper) Where(p Predicate) {
+	m.WhereFunc(p)
+}
+
+func (m MutationWrapper) SetField(name string, value ent.Value) error {
+	return m.SetFieldFunc(name, value)
+}
+
 type Entity interface {
 	Get(field string) ent.Value
+	Set(field string, val ent.Value)
+	Save(ctx context.Context) (Entity, error)
 }
 
 type LoginHandler func(ctx context.Context, credential UserCredential) (id int, err error)
+
+type SchemaClient2 interface {
+	Query(ctx context.Context, predicates []Predicate, orders []OrderOption) (iter.Seq[Entity], error)
+	Update(ctx context.Context, predicates []Predicate, mutations []Mutation2) error
+}
+
+type Mutation2 struct {
+	FieldName string
+	Value     any
+}

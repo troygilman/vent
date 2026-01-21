@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 func Stringify(value any, typeName string) string {
@@ -15,4 +16,9 @@ func Stringify(value any, typeName string) string {
 		}
 		return string(buf)
 	}
+}
+
+func Decode(value any, typeName string) any {
+	fmt.Printf("%+T\n", value)
+	return value
 }

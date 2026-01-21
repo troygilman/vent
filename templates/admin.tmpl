@@ -70,6 +70,9 @@ func NewAdminHandler(config AdminConfig) http.Handler {
         QueryProviderFunc: func() vent.Query {
             return config.Client.{{ $node.Name }}.Query().VentQuery()
         },
+        SchemaClient: &{{ $node.Name }}SchemaClient{
+            client: config.Client.{{ $node.Name }},
+        },
         Columns: []vent.SchemaColumn{
             {
                 Name: "id",
@@ -89,6 +92,58 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 
     return handler
 }
+
+{{ range $node := $.Nodes }}
+{{ $tableFields := tableFields $node }}
+type {{ $node.Name }}SchemaClient struct {
+    client *{{ $node.Name }}Client
+}
+
+func (c *{{ $node.Name }}SchemaClient) Query(
+	ctx context.Context,
+	predicates []vent.Predicate,
+	orders []vent.OrderOption,
+) (iter.Seq[vent.Entity], error) {
+    q := c.client.Query()
+	for _, p := range predicates {
+		q = q.Where(p)
+	}
+	for _, o := range orders {
+		q = q.Order(o)
+	}
+	result, err := q.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(vent.Entity) bool) {
+		for _, entity := range result {
+			if !yield(entity) {
+				return
+			}
+		}
+	}, nil
+}
+
+func (c *{{ $node.Name }}SchemaClient) Update(
+    ctx context.Context,
+    predicates []vent.Predicate,
+    mutations []vent.Mutation2,
+) error {
+    q := c.client.Update()
+    for _, p := range predicates {
+        q = q.Where(p)
+    }
+    for _, m := range mutations {
+        switch m.FieldName {
+        {{ range $field := $tableFields }}
+        case "{{ $field.Name }}":
+            q = q.Set{{ pascal $field.Name }}(m.Value.({{ $field.Type }}))
+        {{ end }}
+        }
+    }
+    return q.Exec(ctx)
+}
+{{ end }}
 
 func NewAdminHandler2(config AdminConfig) http.Handler {
     mux := http.NewServeMux()
