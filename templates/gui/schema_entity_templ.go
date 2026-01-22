@@ -10,20 +10,19 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/starfederation/datastar-go/datastar"
 	"strconv"
 	"strings"
 )
 
-type SchemaDetailProps struct {
+type SchemaEntityProps struct {
 	LayoutProps LayoutProps
-	Fields      []SchemaDetailFieldProps
+	Fields      []SchemaEntityFieldProps
 	AdminPath   string
 	SchemaName  string
 	EntityID    int
 }
 
-type SchemaDetailFieldProps struct {
+type SchemaEntityFieldProps struct {
 	Name  string
 	Label string
 	Desc  string
@@ -31,7 +30,7 @@ type SchemaDetailFieldProps struct {
 	Value string
 }
 
-func SchemaDetailPage(props SchemaDetailProps) templ.Component {
+func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -52,7 +51,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		schemaDetailPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID)
+		schemaEntityPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID)
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -82,9 +81,9 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(datastar.PostSSE(schemaDetailPath))
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("@post('%s')", schemaEntityPath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 31, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 30, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -97,7 +96,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.SchemaName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 35, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 34, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -110,7 +109,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(props.EntityID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 35, Col: 98}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 34, Col: 98}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -121,7 +120,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, field := range props.Fields {
-					templ_7745c5c3_Err = SchemaDetailField(field).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = SchemaEntityField(field).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -131,9 +130,9 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(datastar.DeleteSSE(schemaDetailPath))
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("@delete('%s')", schemaEntityPath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 43, Col: 99}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 42, Col: 109}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -159,7 +158,7 @@ func SchemaDetailPage(props SchemaDetailProps) templ.Component {
 	})
 }
 
-func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
+func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -189,7 +188,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 57, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 56, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -202,7 +201,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 58, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 57, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -215,7 +214,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(props.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 58, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 57, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -233,7 +232,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 62, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 61, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -256,7 +255,7 @@ func SchemaDetailField(props SchemaDetailFieldProps) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_detail.templ`, Line: 63, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity.templ`, Line: 62, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {

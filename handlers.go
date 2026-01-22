@@ -148,9 +148,9 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 	}
 	handler.schemas = append(handler.schemas, metadata)
 	handler.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
-	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaDetailHandler(schema)))
-	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaDetailHandler(schema, metadata)))
-	handler.Handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaDetailHandler(schema, metadata)))
+	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaEntityHandler(schema)))
+	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaEntityHandler(schema, metadata)))
+	handler.Handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaEntityHandler(schema, metadata)))
 }
 
 func (handler *Handler) Handle(path string, h http.Handler) {
@@ -207,7 +207,7 @@ func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler 
 	})
 }
 
-func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler {
+func (handler *Handler) getSchemaEntityHandler(schema SchemaParams) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -216,7 +216,7 @@ func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler
 			panic(err)
 		}
 
-		component, err := handler.buildSchemaDetailComponent(ctx, schema, id)
+		component, err := handler.buildSchemaEntityComponent(ctx, schema, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -228,7 +228,7 @@ func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler
 	})
 }
 
-func (handler *Handler) postSchemaDetailHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
+func (handler *Handler) postSchemaEntityHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		signals := make(map[string]any)
 		if err := datastar.ReadSignals(r, &signals); err != nil {
@@ -259,7 +259,7 @@ func (handler *Handler) postSchemaDetailHandler(schema SchemaParams, metadata gu
 	})
 }
 
-func (handler *Handler) deleteSchemaDetailHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
+func (handler *Handler) deleteSchemaEntityHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sse := datastar.NewSSE(w, r)
 
@@ -296,25 +296,25 @@ func (handler *Handler) getEntityById(ctx context.Context, schema SchemaParams, 
 	return nil, errors.New("could not find entity")
 }
 
-func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema SchemaParams, id int) (templ.Component, error) {
+func (handler *Handler) buildSchemaEntityComponent(ctx context.Context, schema SchemaParams, id int) (templ.Component, error) {
 	entity, err := handler.getEntityById(ctx, schema, id)
 	if err != nil {
 		return nil, err
 	}
 
-	props := gui.SchemaDetailProps{
+	props := gui.SchemaEntityProps{
 		LayoutProps: gui.LayoutProps{
 			Schemas:          handler.schemas,
 			ActiveSchemaName: schema.Name,
 		},
-		Fields:     make([]gui.SchemaDetailFieldProps, len(schema.Columns)),
+		Fields:     make([]gui.SchemaEntityFieldProps, len(schema.Columns)),
 		AdminPath:  "/admin/",
 		SchemaName: schema.Name,
 		EntityID:   id,
 	}
 
 	for idx, column := range schema.Columns {
-		props.Fields[idx] = gui.SchemaDetailFieldProps{
+		props.Fields[idx] = gui.SchemaEntityFieldProps{
 			Name:  column.Name,
 			Label: column.Label,
 			Type:  column.Type,
@@ -322,7 +322,7 @@ func (handler *Handler) buildSchemaDetailComponent(ctx context.Context, schema S
 		}
 	}
 
-	return gui.SchemaDetailPage(props), nil
+	return gui.SchemaEntityPage(props), nil
 }
 
 type SchemaParams struct {
