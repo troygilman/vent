@@ -149,7 +149,8 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 	handler.schemas = append(handler.schemas, metadata)
 	handler.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
 	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaDetailHandler(schema)))
-	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaDetailHandler(schema)))
+	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaDetailHandler(schema, metadata)))
+	handler.Handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaDetailHandler(schema, metadata)))
 }
 
 func (handler *Handler) Handle(path string, h http.Handler) {
@@ -227,17 +228,17 @@ func (handler *Handler) getSchemaDetailHandler(schema SchemaParams) http.Handler
 	})
 }
 
-func (handler *Handler) postSchemaDetailHandler(schema SchemaParams) http.Handler {
+func (handler *Handler) postSchemaDetailHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		id, err := strconv.Atoi(r.PathValue("id"))
-		if err != nil {
+		signals := make(map[string]any)
+		if err := datastar.ReadSignals(r, &signals); err != nil {
 			panic(err)
 		}
 
-		signals := make(map[string]any)
-		if err := datastar.ReadSignals(r, &signals); err != nil {
+		sse := datastar.NewSSE(w, r)
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
 			panic(err)
 		}
 
@@ -249,10 +250,38 @@ func (handler *Handler) postSchemaDetailHandler(schema SchemaParams) http.Handle
 			})
 		}
 
-		err = schema.SchemaClient.Update(ctx, []Predicate{sql.FieldEQ("id", id)}, mutations)
+		err = schema.SchemaClient.Update(sse.Context(), []Predicate{sql.FieldEQ("id", id)}, mutations)
 		if err != nil {
 			panic(err)
 		}
+
+		sse.Redirect(metadata.Path)
+	})
+}
+
+func (handler *Handler) deleteSchemaDetailHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sse := datastar.NewSSE(w, r)
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			panic(err)
+		}
+
+		count, err := schema.SchemaClient.Delete(sse.Context(), []Predicate{sql.FieldEQ("id", id)})
+		if err != nil {
+			panic(err)
+		}
+
+		if count == 0 {
+			panic("could not delete entity")
+		}
+
+		if count > 1 {
+			panic("deleted more than 1 entity")
+		}
+
+		sse.Redirect(metadata.Path)
 	})
 }
 
@@ -323,6 +352,7 @@ type LoginHandler func(ctx context.Context, credential UserCredential) (id int, 
 type SchemaClient interface {
 	Query(ctx context.Context, predicates []Predicate, orders []OrderOption) (iter.Seq[Entity], error)
 	Update(ctx context.Context, predicates []Predicate, mutations []Mutation) error
+	Delete(ctx context.Context, predicates []Predicate) (int, error)
 }
 
 type Mutation struct {

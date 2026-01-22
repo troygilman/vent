@@ -140,6 +140,17 @@ func (c *{{ $node.Name }}SchemaClient) Update(
     }
     return q.Exec(ctx)
 }
+
+func (c *{{ $node.Name }}SchemaClient) Delete(
+    ctx context.Context,
+    predicates []vent.Predicate,
+) (int, error) {
+	q := c.client.Delete()
+	for _, p := range predicates {
+		q = q.Where(p)
+	}
+	return q.Exec(ctx)
+}
 {{ end }}
 
 func NewAdminHandler2(config AdminConfig) http.Handler {

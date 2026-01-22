@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"github.com/starfederation/datastar-go/datastar"
 	"strconv"
 	"strings"
@@ -23,10 +24,11 @@ type SchemaDetailFieldProps struct {
 }
 
 templ SchemaDetailPage(props SchemaDetailProps) {
+	{{ schemaDetailPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<form
-				data-on:submit={ datastar.PostSSE("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID) }
+				data-on:submit={ datastar.PostSSE(schemaDetailPath) }
 				data-indicator="updating"
 				class="flex flex-col px-12 py-4 gap-2 w-full"
 			>
@@ -38,7 +40,7 @@ templ SchemaDetailPage(props SchemaDetailProps) {
 				</fieldset>
 				<div class="flex mt-4 justify-between">
 					<button class="btn btn-neutral" type="submit">Save</button>
-					<button class="btn btn-error" type="none">Delete</button>
+					<button class="btn btn-error" type="none" data-on:click={ datastar.DeleteSSE(schemaDetailPath) }>Delete</button>
 				</div>
 			</form>
 			<div class="ds-indicator" data-style:display="$updating && 'flex'">
