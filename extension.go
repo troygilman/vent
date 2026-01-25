@@ -18,7 +18,8 @@ type AdminExtension struct {
 
 func NewAdminExtension(opts ...VentExtensionConfigOption) entc.Extension {
 	config := VentExtensionConfig{
-		AdminPath: "/admin/",
+		AdminPath:  "/admin/",
+		UserSchema: "AuthUser",
 	}
 	for _, opt := range opts {
 		config = opt(config)
@@ -75,7 +76,8 @@ func insensitiveFields(node *gen.Type) []*gen.Field {
 }
 
 type VentExtensionConfig struct {
-	AdminPath string
+	AdminPath  string
+	UserSchema string
 }
 
 type VentExtensionConfigOption func(VentExtensionConfig) VentExtensionConfig

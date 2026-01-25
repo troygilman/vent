@@ -29,31 +29,32 @@ func StaticDirHandler() http.Handler {
 }
 
 type Handler struct {
-	mux            *http.ServeMux
-	authMiddleware Middleware
-	schemas        []gui.SchemaMetadata
-	tokenGenerator auth.TokenGenerator
-	loginHandler   LoginHandler
+	mux                     *http.ServeMux
+	authMiddleware          Middleware
+	schemas                 []gui.SchemaMetadata
+	tokenGenerator          auth.TokenGenerator
+	credentialAuthenticator auth.CredentialAuthenticator
 }
 
 func NewHandler(
 	secretProvider auth.SecretProvider,
-	loginHandler LoginHandler,
+	credentialAuthenticator auth.CredentialAuthenticator,
+	authUserSchema SchemaParams,
 ) *Handler {
 	handler := &Handler{
-		mux:            http.NewServeMux(),
-		authMiddleware: NewAuthMiddleware(secretProvider),
-		tokenGenerator: auth.NewJwtTokenGenerator(secretProvider),
-		loginHandler:   loginHandler,
+		mux:                     http.NewServeMux(),
+		authMiddleware:          NewAuthMiddleware(secretProvider),
+		tokenGenerator:          auth.NewJwtTokenGenerator(secretProvider),
+		credentialAuthenticator: credentialAuthenticator,
 	}
 
 	// Unauthorized Paths
-	handler.Handle("GET /admin/static/", http.StripPrefix("/admin/", http.FileServerFS(static)))
-	handler.Handle("GET /admin/login/", handler.getAdminLoginHandler())
-	handler.Handle("POST /admin/login/", handler.postAdminLoginHandler())
+	handler.handle("GET /admin/static/", http.StripPrefix("/admin/", http.FileServerFS(static)))
+	handler.handle("GET /admin/login/", handler.getAdminLoginHandler())
+	handler.handle("POST /admin/login/", handler.postAdminLoginHandler(authUserSchema))
 
 	// Authorized Paths
-	handler.Handle("GET /admin/", handler.authMiddleware(handler.getAdminHandler()))
+	handler.handle("GET /admin/", handler.authMiddleware(handler.getAdminHandler()))
 
 	return handler
 }
@@ -69,22 +70,23 @@ func (handler *Handler) getAdminLoginHandler() http.Handler {
 	})
 }
 
-type UserCredential struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-func (handler *Handler) postAdminLoginHandler() http.Handler {
+func (handler *Handler) postAdminLoginHandler(schema SchemaParams) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var signals UserCredential
+		var signals struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		err := func() error {
-			userID, err := handler.loginHandler(r.Context(), signals)
-			if err != nil {
+			entity, err := schema.SchemaClient.QueryOnly(r.Context(), []Predicate{sql.FieldEQ("email", signals.Email)})
+			userID := entity.Get("id").(int)
+			passwordHash := entity.Get("password_hash").(string)
+
+			if err := handler.credentialAuthenticator.Authenticate(signals.Password, passwordHash); err != nil {
 				return err
 			}
 
@@ -147,13 +149,13 @@ func (handler *Handler) RegisterSchema(schema SchemaParams) {
 		Path: fmt.Sprintf("/admin/%ss/", strings.ToLower(schema.Name)),
 	}
 	handler.schemas = append(handler.schemas, metadata)
-	handler.Handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
-	handler.Handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaEntityHandler(schema)))
-	handler.Handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaEntityHandler(schema, metadata)))
-	handler.Handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaEntityHandler(schema, metadata)))
+	handler.handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
+	handler.handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaEntityHandler(schema)))
+	handler.handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaEntityHandler(schema, metadata)))
+	handler.handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaEntityHandler(schema, metadata)))
 }
 
-func (handler *Handler) Handle(path string, h http.Handler) {
+func (handler *Handler) handle(path string, h http.Handler) {
 	handler.mux.Handle(path, h)
 	log.Printf("Registered handler on %s", path)
 }
@@ -347,10 +349,9 @@ type Entity interface {
 	Get(field string) ent.Value
 }
 
-type LoginHandler func(ctx context.Context, credential UserCredential) (id int, err error)
-
 type SchemaClient interface {
 	Query(ctx context.Context, predicates []Predicate, orders []OrderOption) (iter.Seq[Entity], error)
+	QueryOnly(ctx context.Context, predicates []Predicate) (Entity, error)
 	Update(ctx context.Context, predicates []Predicate, mutations []Mutation) error
 	Delete(ctx context.Context, predicates []Predicate) (int, error)
 }

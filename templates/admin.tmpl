@@ -23,23 +23,10 @@ type AdminConfig struct {
 
 func NewAdminHandler(config AdminConfig) http.Handler {
     credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
-    loginHandler := func(ctx context.Context, credential vent.UserCredential) (id int, err error) {
-        user, err := config.Client.AuthUser.Query().
-    		Where(authuser.EmailEQ(credential.Email)).
-    		Only(ctx)
-    	if err != nil {
-    		return 0, err
-    	}
-        return user.ID, credentialAuthenticator.Authenticate(credential.Password, user.PasswordHash)
-    }
-    handler := vent.NewHandler(
-        config.SecretProvider,
-        loginHandler,
-    )
 
     {{ range $node := $.Nodes }}
     {{ $tableFields := tableFields $node }}
-    handler.RegisterSchema(vent.SchemaParams{
+    schema{{ $node.Name }} := vent.SchemaParams{
         Name: "{{ $node.Name }}",
         SchemaClient: &{{ $node.Name }}SchemaClient{
             client: config.Client.{{ $node.Name }},
@@ -58,7 +45,17 @@ func NewAdminHandler(config AdminConfig) http.Handler {
             },
             {{ end }}
         },
-    })
+    }
+    {{ end }}
+
+    handler := vent.NewHandler(
+        config.SecretProvider,
+        credentialAuthenticator,
+        schema{{ $.Annotations.VentConfig.UserSchema }},
+    )
+
+    {{ range $node := $.Nodes }}
+    handler.RegisterSchema(schema{{ $node.Name }})
     {{ end }}
 
     return handler
@@ -93,6 +90,17 @@ func (c *{{ $node.Name }}SchemaClient) Query(
 			}
 		}
 	}, nil
+}
+
+func (c *{{ $node.Name }}SchemaClient) QueryOnly(
+	ctx context.Context,
+	predicates []vent.Predicate,
+) (vent.Entity, error) {
+	q := c.client.Query()
+	for _, p := range predicates {
+		q = q.Where(p)
+	}
+	return q.Only(ctx)
 }
 
 func (c *{{ $node.Name }}SchemaClient) Update(
