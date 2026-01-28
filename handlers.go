@@ -1,23 +1,14 @@
 package vent
 
 import (
-	"context"
 	"embed"
-	"errors"
 	"fmt"
-	"iter"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"vent/auth"
 	"vent/templates/gui"
-	"vent/utils"
 
-	"entgo.io/ent"
-
-	"entgo.io/ent/dialect/sql"
-	"github.com/a-h/templ"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -28,335 +19,383 @@ func StaticDirHandler() http.Handler {
 	return http.FileServerFS(static)
 }
 
-type Handler struct {
-	mux                     *http.ServeMux
-	authMiddleware          Middleware
-	schemas                 []gui.SchemaMetadata
-	tokenGenerator          auth.TokenGenerator
-	credentialAuthenticator auth.CredentialAuthenticator
+// HandlerConfig contains configuration options for the admin handler
+type HandlerConfig struct {
+	SecretProvider          auth.SecretProvider
+	CredentialAuthenticator auth.CredentialAuthenticator
+	AuthUserSchema          SchemaConfig
+	AuthPasswordField       string // The field name containing the password hash (e.g., "password_hash")
+	BasePath                string // Base path for admin routes (default: "/admin/")
+	CookieName              string // Cookie name for auth token (default: "vent-auth-token")
 }
 
-func NewHandler(
-	secretProvider auth.SecretProvider,
-	credentialAuthenticator auth.CredentialAuthenticator,
-	authUserSchema SchemaParams,
-) *Handler {
+// Handler is the main HTTP handler for the admin panel
+type Handler struct {
+	mux            *http.ServeMux
+	config         HandlerConfig
+	authMiddleware Middleware
+	schemas        []SchemaConfig
+	tokenGenerator auth.TokenGenerator
+}
+
+// NewHandler creates a new admin handler with the given configuration
+func NewHandler(config HandlerConfig) *Handler {
+	// Set defaults
+	if config.BasePath == "" {
+		config.BasePath = "/admin/"
+	}
+	if config.CookieName == "" {
+		config.CookieName = "vent-auth-token"
+	}
+
 	handler := &Handler{
-		mux:                     http.NewServeMux(),
-		authMiddleware:          NewAuthMiddleware(secretProvider),
-		tokenGenerator:          auth.NewJwtTokenGenerator(secretProvider),
-		credentialAuthenticator: credentialAuthenticator,
+		mux:            http.NewServeMux(),
+		config:         config,
+		authMiddleware: NewAuthMiddleware(config.SecretProvider),
+		tokenGenerator: auth.NewJwtTokenGenerator(config.SecretProvider),
 	}
 
 	// Unauthorized Paths
-	handler.handle("GET /admin/static/", http.StripPrefix("/admin/", http.FileServerFS(static)))
-	handler.handle("GET /admin/login/", handler.getAdminLoginHandler())
-	handler.handle("POST /admin/login/", handler.postAdminLoginHandler(authUserSchema))
+	handler.handle("GET "+config.BasePath+"static/", http.StripPrefix(config.BasePath, http.FileServerFS(static)))
+	handler.handle("GET "+config.BasePath+"login/", handler.getLoginHandler())
+	handler.handle("POST "+config.BasePath+"login/", handler.postLoginHandler())
 
 	// Authorized Paths
-	handler.handle("GET /admin/", handler.authMiddleware(handler.getAdminHandler()))
+	handler.handle("GET "+config.BasePath, handler.authMiddleware(handler.getAdminHandler()))
 
 	return handler
 }
 
-func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler.mux.ServeHTTP(w, r)
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mux.ServeHTTP(w, r)
 }
 
-func (handler *Handler) getAdminLoginHandler() http.Handler {
+// RegisterSchema registers a schema with the admin panel
+func (h *Handler) RegisterSchema(schema SchemaConfig) {
+	// Set the admin path if not already set
+	if schema.AdminPath == "" {
+		schema.AdminPath = h.config.BasePath
+	}
+
+	h.schemas = append(h.schemas, schema)
+
+	path := schema.Path()
+	h.handle("GET "+path, h.authMiddleware(h.getSchemaListHandler(schema)))
+	h.handle("GET "+path+"{id}/", h.authMiddleware(h.getSchemaEntityHandler(schema)))
+	h.handle("POST "+path+"{id}/", h.authMiddleware(h.postSchemaEntityHandler(schema)))
+	h.handle("DELETE "+path+"{id}/", h.authMiddleware(h.deleteSchemaEntityHandler(schema)))
+}
+
+func (h *Handler) handle(path string, handler http.Handler) {
+	h.mux.Handle(path, handler)
+	log.Printf("Registered handler on %s", path)
+}
+
+// getLoginHandler returns the handler for GET /admin/login/
+func (h *Handler) getLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props := gui.LoginProps{}
-		gui.LoginPage(props).Render(r.Context(), w)
+		if err := gui.LoginPage(props).Render(r.Context(), w); err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
+		}
 	})
 }
 
-func (handler *Handler) postAdminLoginHandler(schema SchemaParams) http.Handler {
+// postLoginHandler returns the handler for POST /admin/login/
+func (h *Handler) postLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var signals struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			h.handleError(w, r, err, http.StatusBadRequest)
 			return
 		}
 
-		err := func() error {
-			entity, err := schema.SchemaClient.QueryOnly(r.Context(), []Predicate{sql.FieldEQ("email", signals.Email)})
-			userID := entity.Get("id").(int)
-			passwordHash := entity.Get("password_hash").(string)
+		ctx := r.Context()
 
-			if err := handler.credentialAuthenticator.Authenticate(signals.Password, passwordHash); err != nil {
-				return err
-			}
-
-			claims := auth.NewClaims(userID)
-			token, err := handler.tokenGenerator.Generate(claims)
-			if err != nil {
-				return err
-			}
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     "vent-auth-token",
-				Value:    token,
-				Path:     "/",
-				SameSite: http.SameSiteLaxMode,
-			})
-
-			sse := datastar.NewSSE(w, r)
-			sse.Redirect("/admin/")
-			return nil
-		}()
-
+		// Find user by email
+		entities, err := h.config.AuthUserSchema.Client.List(ctx, ListOptions{
+			Filters: map[string]any{"email": signals.Email},
+			Limit:   1,
+		})
 		if err != nil {
-			log.Println(err.Error())
-			// sse := datastar.NewSSE(w, r)
-			// if IsNotFound(err) {
-			// 	sse.PatchElementTempl(gui.Login(gui.LoginProps{
-			// 		EmailError: "User with email not found",
-			// 	}))
-			// } else if errors.Is(err, vent.ErrPasswordMismatch) {
-			// 	sse.PatchElementTempl(gui.Login(gui.LoginProps{
-			// 		PasswordErrors: []string{
-			// 			"Invalid password",
-			// 		},
-			// 	}))
-			// }
+			h.handleError(w, r, err, http.StatusInternalServerError)
+			return
 		}
+		if len(entities) == 0 {
+			h.handleError(w, r, fmt.Errorf("user not found"), http.StatusUnauthorized)
+			return
+		}
+
+		entity := entities[0]
+
+		// Get password hash field
+		passwordField, ok := entity.Get(h.config.AuthPasswordField)
+		if !ok {
+			h.handleError(w, r, fmt.Errorf("password field not found: %s", h.config.AuthPasswordField), http.StatusInternalServerError)
+			return
+		}
+
+		// Verify password
+		if err := h.config.CredentialAuthenticator.Authenticate(signals.Password, passwordField.StringValue()); err != nil {
+			h.handleError(w, r, fmt.Errorf("invalid password"), http.StatusUnauthorized)
+			return
+		}
+
+		// Generate token
+		claims := auth.NewClaims(entity.ID())
+		token, err := h.tokenGenerator.Generate(claims)
+		if err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		// Set cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:     h.config.CookieName,
+			Value:    token,
+			Path:     "/",
+			SameSite: http.SameSiteLaxMode,
+		})
+
+		// Redirect to admin home
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(h.config.BasePath)
 	})
 }
 
-func (handler *Handler) getAdminHandler() http.Handler {
+// getAdminHandler returns the handler for GET /admin/
+func (h *Handler) getAdminHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/admin/" {
+		if r.URL.Path != h.config.BasePath {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		props := gui.AdminPageProps{
-			LayoutProps: gui.LayoutProps{
-				Schemas: handler.schemas,
-			},
+			LayoutProps: h.buildLayoutProps(""),
 		}
 
-		gui.AdminPage(props).Render(r.Context(), w)
+		if err := gui.AdminPage(props).Render(r.Context(), w); err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
+		}
 	})
 }
 
-func (handler *Handler) RegisterSchema(schema SchemaParams) {
-	metadata := gui.SchemaMetadata{
-		Name: schema.Name,
-		Path: fmt.Sprintf("/admin/%ss/", strings.ToLower(schema.Name)),
-	}
-	handler.schemas = append(handler.schemas, metadata)
-	handler.handle(fmt.Sprintf("GET %s", metadata.Path), handler.authMiddleware(handler.getSchemaTableHandler(schema)))
-	handler.handle(fmt.Sprintf("GET %s{id}/", metadata.Path), handler.authMiddleware(handler.getSchemaEntityHandler(schema)))
-	handler.handle(fmt.Sprintf("POST %s{id}/", metadata.Path), handler.authMiddleware(handler.postSchemaEntityHandler(schema, metadata)))
-	handler.handle(fmt.Sprintf("DELETE %s{id}/", metadata.Path), handler.authMiddleware(handler.deleteSchemaEntityHandler(schema, metadata)))
-}
-
-func (handler *Handler) handle(path string, h http.Handler) {
-	handler.mux.Handle(path, h)
-	log.Printf("Registered handler on %s", path)
-}
-
-func (handler *Handler) getSchemaTableHandler(schema SchemaParams) http.Handler {
-	fieldMap := make(map[string]SchemaColumn)
-	for _, column := range schema.Columns {
-		fieldMap[column.Name] = column
-	}
+// getSchemaListHandler returns the handler for GET /admin/{schema}s/
+func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		column, ok := fieldMap["id"]
-		if !ok {
-			panic("field does not exist")
+		// Get list options from query params
+		opts := ListOptions{
+			OrderBy: "id",
 		}
 
-		entities, err := schema.SchemaClient.Query(ctx, nil, []OrderOption{sql.OrderByField(column.Name).ToFunc()})
+		entities, err := schema.Client.List(ctx, opts)
 		if err != nil {
-			panic(err)
-		}
-
-		props := gui.SchemaTableProps{
-			LayoutProps: gui.LayoutProps{
-				Schemas:          handler.schemas,
-				ActiveSchemaName: schema.Name,
-			},
-			Columns:    make([]gui.SchemaTableColumn, len(schema.Columns)),
-			Rows:       []DataRow{},
-			AdminPath:  "/admin/",
-			SchemaName: schema.Name,
-		}
-
-		for idx, column := range schema.Columns {
-			props.Columns[idx] = gui.SchemaTableColumn{
-				Name:  column.Name,
-				Label: column.Label,
-				Type:  column.Type,
-			}
-		}
-
-		for entity := range entities {
-			row := make(DataRow, len(schema.Columns))
-			for columnIdx, column := range schema.Columns {
-				row[columnIdx] = utils.Stringify(entity.Get(column.Name), column.Type)
-			}
-			props.Rows = append(props.Rows, row)
-		}
-
-		gui.SchemaTablePage(props).Render(r.Context(), w)
-	})
-}
-
-func (handler *Handler) getSchemaEntityHandler(schema SchemaParams) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		id, err := strconv.Atoi(r.PathValue("id"))
-		if err != nil {
-			panic(err)
-		}
-
-		component, err := handler.buildSchemaEntityComponent(ctx, schema, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			h.handleError(w, r, err, http.StatusInternalServerError)
 			return
 		}
 
-		if err := component.Render(ctx, w); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Build table props
+		props := gui.SchemaTableProps{
+			LayoutProps: h.buildLayoutProps(schema.Name),
+			Columns:     make([]gui.SchemaTableColumn, len(schema.Columns)),
+			Rows:        make([]gui.SchemaTableRow, 0, len(entities)),
+		}
+
+		// Build column headers
+		for i, col := range schema.Columns {
+			props.Columns[i] = gui.SchemaTableColumn{
+				Name:  col.Name,
+				Label: col.Label,
+				Type:  col.Type.String(),
+			}
+		}
+
+		// Build rows
+		for _, entity := range entities {
+			row := gui.SchemaTableRow{
+				Values: make([]gui.SchemaTableCell, len(schema.Columns)),
+			}
+
+			for i, col := range schema.Columns {
+				field, ok := entity.Get(col.Name)
+				if !ok {
+					row.Values[i] = gui.SchemaTableCell{Display: ""}
+					continue
+				}
+
+				cell := gui.SchemaTableCell{
+					Display: field.Display,
+				}
+
+				// Add link URL for ID column (link to entity detail page)
+				if col.Name == "id" {
+					cell.LinkURL = fmt.Sprintf("%s%d/", schema.Path(), entity.ID())
+				}
+
+				// Add link URL for foreign key columns
+				if field.Type == TypeForeignKey && field.Relation != nil {
+					cell.LinkURL = fmt.Sprintf("%s%d/", field.Relation.TargetPath, field.Relation.TargetID)
+				}
+
+				row.Values[i] = cell
+			}
+
+			props.Rows = append(props.Rows, row)
+		}
+
+		if err := gui.SchemaTablePage(props).Render(ctx, w); err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})
 }
 
-func (handler *Handler) postSchemaEntityHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
+// getSchemaEntityHandler returns the handler for GET /admin/{schema}s/{id}/
+func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			h.handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		entity, err := schema.Client.Get(ctx, id)
+		if err != nil {
+			h.handleError(w, r, err, http.StatusNotFound)
+			return
+		}
+
+		// Build entity props
+		props := gui.SchemaEntityProps{
+			LayoutProps: h.buildLayoutProps(schema.Name),
+			Fields:      make([]gui.SchemaEntityFieldProps, 0, len(schema.Columns)),
+			AdminPath:   h.config.BasePath,
+			SchemaName:  schema.Name,
+			EntityID:    id,
+		}
+
+		for _, col := range schema.Columns {
+			field, ok := entity.Get(col.Name)
+			if !ok {
+				continue
+			}
+
+			fieldProps := gui.SchemaEntityFieldProps{
+				Name:     col.Name,
+				Label:    col.Label,
+				Type:     col.Type.String(),
+				Value:    field.Display,
+				Editable: col.Editable,
+			}
+
+			// Add relation options if this is a foreign key
+			if col.Type == TypeForeignKey && col.Relation != nil {
+				options, err := schema.Client.GetRelationOptions(ctx, col.Relation)
+				if err != nil {
+					log.Printf("Error getting relation options for %s: %v", col.Name, err)
+				} else {
+					fieldProps.Options = make([]gui.SelectOption, len(options))
+					for i, opt := range options {
+						fieldProps.Options[i] = gui.SelectOption{
+							Value:    opt.Value,
+							Label:    opt.Label,
+							Selected: field.Type == TypeForeignKey && field.IntValue() == opt.Value,
+						}
+					}
+				}
+			}
+
+			props.Fields = append(props.Fields, fieldProps)
+		}
+
+		if err := gui.SchemaEntityPage(props).Render(ctx, w); err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// postSchemaEntityHandler returns the handler for POST /admin/{schema}s/{id}/
+func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			h.handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
 		signals := make(map[string]any)
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			panic(err)
+			h.handleError(w, r, err, http.StatusBadRequest)
+			return
 		}
 
 		sse := datastar.NewSSE(w, r)
 
-		id, err := strconv.Atoi(r.PathValue("id"))
-		if err != nil {
-			panic(err)
+		// Filter to only editable fields
+		data := make(map[string]any)
+		for _, col := range schema.Columns {
+			if col.Editable {
+				if val, ok := signals[col.Name]; ok {
+					data[col.Name] = val
+				}
+			}
 		}
 
-		mutations := []Mutation{}
-		for fieldName, value := range signals {
-			mutations = append(mutations, Mutation{
-				FieldName: fieldName,
-				Value:     value,
-			})
+		if err := schema.Client.Update(sse.Context(), id, data); err != nil {
+			log.Printf("Error updating entity: %v", err)
+			// TODO: Send error via SSE
+			return
 		}
 
-		err = schema.SchemaClient.Update(sse.Context(), []Predicate{sql.FieldEQ("id", id)}, mutations)
-		if err != nil {
-			panic(err)
-		}
-
-		sse.Redirect(metadata.Path)
+		sse.Redirect(schema.Path())
 	})
 }
 
-func (handler *Handler) deleteSchemaEntityHandler(schema SchemaParams, metadata gui.SchemaMetadata) http.Handler {
+// deleteSchemaEntityHandler returns the handler for DELETE /admin/{schema}s/{id}/
+func (h *Handler) deleteSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sse := datastar.NewSSE(w, r)
-
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			panic(err)
+			h.handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
 		}
 
-		count, err := schema.SchemaClient.Delete(sse.Context(), []Predicate{sql.FieldEQ("id", id)})
-		if err != nil {
-			panic(err)
+		sse := datastar.NewSSE(w, r)
+
+		if err := schema.Client.Delete(sse.Context(), id); err != nil {
+			log.Printf("Error deleting entity: %v", err)
+			// TODO: Send error via SSE
+			return
 		}
 
-		if count == 0 {
-			panic("could not delete entity")
-		}
-
-		if count > 1 {
-			panic("deleted more than 1 entity")
-		}
-
-		sse.Redirect(metadata.Path)
+		sse.Redirect(schema.Path())
 	})
 }
 
-func (handler *Handler) getEntityById(ctx context.Context, schema SchemaParams, id int) (Entity, error) {
-	entities, err := schema.SchemaClient.Query(ctx, []Predicate{sql.FieldEQ("id", id)}, []OrderOption{})
-	if err != nil {
-		return nil, err
-	}
-	for entity := range entities {
-		return entity, nil
-	}
-	return nil, errors.New("could not find entity")
-}
-
-func (handler *Handler) buildSchemaEntityComponent(ctx context.Context, schema SchemaParams, id int) (templ.Component, error) {
-	entity, err := handler.getEntityById(ctx, schema, id)
-	if err != nil {
-		return nil, err
-	}
-
-	props := gui.SchemaEntityProps{
-		LayoutProps: gui.LayoutProps{
-			Schemas:          handler.schemas,
-			ActiveSchemaName: schema.Name,
-		},
-		Fields:     make([]gui.SchemaEntityFieldProps, len(schema.Columns)),
-		AdminPath:  "/admin/",
-		SchemaName: schema.Name,
-		EntityID:   id,
-	}
-
-	for idx, column := range schema.Columns {
-		props.Fields[idx] = gui.SchemaEntityFieldProps{
-			Name:  column.Name,
-			Label: column.Label,
-			Type:  column.Type,
-			Value: utils.Stringify(entity.Get(column.Name), column.Type),
+// buildLayoutProps creates LayoutProps with the current schemas
+func (h *Handler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
+	schemas := make([]gui.SchemaMetadata, len(h.schemas))
+	for i, s := range h.schemas {
+		schemas[i] = gui.SchemaMetadata{
+			Name: s.Name,
+			Path: s.Path(),
 		}
 	}
-
-	return gui.SchemaEntityPage(props), nil
+	return gui.LayoutProps{
+		Schemas:          schemas,
+		ActiveSchemaName: activeSchemaName,
+	}
 }
 
-type SchemaParams struct {
-	Name         string
-	Columns      []SchemaColumn
-	SchemaClient SchemaClient
-}
-
-type SchemaColumn struct {
-	Name  string
-	Label string
-	Type  string
-}
-
-type DataRow = []string
-
-type OrderOption = func(*sql.Selector)
-
-type Predicate = func(*sql.Selector)
-
-type Entity interface {
-	Get(field string) ent.Value
-}
-
-type SchemaClient interface {
-	Query(ctx context.Context, predicates []Predicate, orders []OrderOption) (iter.Seq[Entity], error)
-	QueryOnly(ctx context.Context, predicates []Predicate) (Entity, error)
-	Update(ctx context.Context, predicates []Predicate, mutations []Mutation) error
-	Delete(ctx context.Context, predicates []Predicate) (int, error)
-}
-
-type Mutation struct {
-	FieldName string
-	Value     any
+// handleError logs the error and sends an appropriate HTTP response
+func (h *Handler) handleError(w http.ResponseWriter, r *http.Request, err error, status int) {
+	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
+	http.Error(w, err.Error(), status)
 }

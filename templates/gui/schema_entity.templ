@@ -15,11 +15,19 @@ type SchemaEntityProps struct {
 }
 
 type SchemaEntityFieldProps struct {
-	Name  string
-	Label string
-	Desc  string
-	Type  string
-	Value string
+	Name     string
+	Label    string
+	Desc     string
+	Type     string
+	Value    string
+	Editable bool
+	Options  []SelectOption // For foreign key dropdowns
+}
+
+type SelectOption struct {
+	Value    int
+	Label    string
+	Selected bool
 }
 
 templ SchemaEntityPage(props SchemaEntityProps) {
@@ -54,12 +62,45 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 		case "string":
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value }/>
+				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+			</label>
+		case "int":
+			<label class="input items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<input class="flex-1" type="number" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		case "bool":
 			<label class="label w-fit">
-				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" }/>
+				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
 				{ props.Label }
 			</label>
+		case "foreign_key":
+			<label class="flex items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable }>
+					<option value="">-- Select --</option>
+					for _, opt := range props.Options {
+						<option
+							value={ strconv.Itoa(opt.Value) }
+							selected?={ opt.Selected }
+						>
+							{ opt.Label }
+						</option>
+					}
+				</select>
+			</label>
+		case "time":
+			<label class="input items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<input class="flex-1" type="datetime-local" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+			</label>
+		default:
+			<label class="input items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+			</label>
+	}
+	if props.Desc != "" {
+		<p class="text-sm text-base-content/50 ml-50">{ props.Desc }</p>
 	}
 }

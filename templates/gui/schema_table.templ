@@ -1,16 +1,9 @@
 package gui
 
-import (
-	"fmt"
-	"strings"
-)
-
 type SchemaTableProps struct {
 	LayoutProps LayoutProps
 	Columns     []SchemaTableColumn
-	Rows        [][]string
-	AdminPath   string
-	SchemaName  string
+	Rows        []SchemaTableRow
 }
 
 type SchemaTableColumn struct {
@@ -19,12 +12,21 @@ type SchemaTableColumn struct {
 	Type  string
 }
 
+type SchemaTableRow struct {
+	Values []SchemaTableCell
+}
+
+type SchemaTableCell struct {
+	Display string
+	LinkURL string
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<div class="flex flex-col w-full px-12 py-4">
 				<div class="w-full ">
-					<div class="text-xl font-bold mb-4">{ props.SchemaName }s</div>
+					<div class="text-xl font-bold mb-4">{ props.LayoutProps.ActiveSchemaName }s</div>
 				</div>
 				<div class="w-full overflow-x-auto rounded-box border border-base-content/5 shadow">
 					<table class="table table-zebra">
@@ -38,12 +40,15 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<tbody>
 							for _, row := range props.Rows {
 								<tr>
-									for cIdx, data := range row {
-										{{ column := props.Columns[cIdx] }}
-										if column.Name == "id" {
-											<td><a class="link link-info" href={ fmt.Sprintf("%s%ss/%s/", props.AdminPath, strings.ToLower(props.SchemaName), data) }>{ data }</a></td>
+									for _, cell := range row.Values {
+										if cell.LinkURL != "" {
+											<td>
+												<a class="link link-info" href={ templ.SafeURL(cell.LinkURL) }>
+													{ cell.Display }
+												</a>
+											</td>
 										} else {
-											<td>{ data }</td>
+											<td>{ cell.Display }</td>
 										}
 									}
 								</tr>

@@ -7,132 +7,267 @@
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"log"
-	"strconv"
 	"vent"
-	"vent/utils"
-	"vent/templates/gui"
-	"github.com/starfederation/datastar-go/datastar"
+	"vent/auth"
+
+	"entgo.io/ent/dialect/sql"
 )
 
 type AdminConfig struct {
-    Client *Client
-    SecretProvider auth.SecretProvider
+	Client         *Client
+	SecretProvider auth.SecretProvider
 }
 
 func NewAdminHandler(config AdminConfig) http.Handler {
-    credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
+	credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
 
-    {{ range $node := $.Nodes }}
-    {{ $tableFields := tableFields $node }}
-    schema{{ $node.Name }} := vent.SchemaParams{
-        Name: "{{ $node.Name }}",
-        SchemaClient: &{{ $node.Name }}SchemaClient{
-            client: config.Client.{{ $node.Name }},
-        },
-        Columns: []vent.SchemaColumn{
-            {
-                Name: "id",
-                Label: "ID",
-                Type: "int",
-            },
-            {{ range $field := $tableFields }}
-            {
-                Name: "{{ $field.Name }}",
-                Label: "{{ pascal $field.Name }}",
-                Type: "{{ $field.Type.Type }}",
-            },
-            {{ end }}
-        },
-    }
-    {{ end }}
+	{{ range $node := $.Nodes }}
+	schema{{ $node.Name }} := vent.SchemaConfig{
+		Name: "{{ $node.Name }}",
+		Client: &{{ $node.Name }}SchemaClient{
+			client: config.Client,
+		},
+		Columns: []vent.ColumnConfig{
+			{
+				Name:     "id",
+				Label:    "ID",
+				Type:     vent.TypeInt,
+				Editable: false,
+			},
+			{{ range $field := tableFields $node }}
+			{
+				Name:     "{{ $field.Name }}",
+				Label:    "{{ pascal $field.Name }}",
+				Type:     vent.Type{{ pascal $field.Type.Type.String }},
+				Editable: {{ not $field.Sensitive }},
+			},
+			{{ end }}
+			{{- range $edge := $node.Edges }}
+			{{- if $edge.Unique }}
+			{
+				Name:     "{{ $edge.Name }}_id",
+				Label:    "{{ pascal $edge.Name }}",
+				Type:     vent.TypeForeignKey,
+				Editable: true,
+				Relation: &vent.RelationDef{
+					TargetSchema:  "{{ $edge.Type.Name }}",
+					TargetDisplay: "id",
+					TargetPath:    "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
+				},
+			},
+			{{- end }}
+			{{- end }}
+		},
+	}
+	{{ end }}
 
-    handler := vent.NewHandler(
-        config.SecretProvider,
-        credentialAuthenticator,
-        schema{{ $.Annotations.VentConfig.UserSchema }},
-    )
+	handler := vent.NewHandler(vent.HandlerConfig{
+		SecretProvider:          config.SecretProvider,
+		CredentialAuthenticator: credentialAuthenticator,
+		AuthUserSchema:          schema{{ $.Annotations.VentConfig.UserSchema }},
+		AuthPasswordField:       "password_hash",
+		BasePath:                "{{ $adminPath }}",
+	})
 
-    {{ range $node := $.Nodes }}
-    handler.RegisterSchema(schema{{ $node.Name }})
-    {{ end }}
+	{{ range $node := $.Nodes }}
+	handler.RegisterSchema(schema{{ $node.Name }})
+	{{ end }}
 
-    return handler
+	return handler
 }
 
 {{ range $node := $.Nodes }}
-{{ $tableFields := tableFields $node }}
+{{ $fields := $node.Fields }}
+
+// {{ $node.Name }}SchemaClient implements vent.SchemaClient for {{ $node.Name }} entities
 type {{ $node.Name }}SchemaClient struct {
-    client *{{ $node.Name }}Client
+	client *Client
 }
 
-func (c *{{ $node.Name }}SchemaClient) Query(
-	ctx context.Context,
-	predicates []vent.Predicate,
-	orders []vent.OrderOption,
-) (iter.Seq[vent.Entity], error) {
-    q := c.client.Query()
-	for _, p := range predicates {
-		q = q.Where(p)
+func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListOptions) ([]vent.EntityData, error) {
+	q := c.client.{{ $node.Name }}.Query()
+
+	// Apply ordering
+	if opts.OrderBy != "" {
+		switch opts.OrderBy {
+		case "id":
+			if opts.OrderDesc {
+				q = q.Order({{ lower $node.Name }}.ByID(sql.OrderDesc()))
+			} else {
+				q = q.Order({{ lower $node.Name }}.ByID())
+			}
+		{{ range $field := $fields }}
+		case "{{ $field.Name }}":
+			if opts.OrderDesc {
+				q = q.Order({{ lower $node.Name }}.By{{ pascal $field.Name }}(sql.OrderDesc()))
+			} else {
+				q = q.Order({{ lower $node.Name }}.By{{ pascal $field.Name }}())
+			}
+		{{ end }}
+		}
 	}
-	for _, o := range orders {
-		q = q.Order(o)
+
+	// Apply filters
+	for key, value := range opts.Filters {
+		switch key {
+		case "id":
+			q = q.Where({{ lower $node.Name }}.IDEQ(value.(int)))
+		{{ range $field := $fields }}
+		case "{{ $field.Name }}":
+			q = q.Where({{ lower $node.Name }}.{{ pascal $field.Name }}EQ(value.({{ $field.Type }})))
+		{{ end }}
+		}
 	}
-	result, err := q.All(ctx)
+
+	// Apply limit/offset
+	if opts.Limit > 0 {
+		q = q.Limit(opts.Limit)
+	}
+	if opts.Offset > 0 {
+		q = q.Offset(opts.Offset)
+	}
+
+	// Load edges for foreign keys
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	q = q.With{{ pascal $edge.Name }}()
+	{{- end }}
+	{{- end }}
+
+	entities, err := q.All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(vent.Entity) bool) {
-		for _, entity := range result {
-			if !yield(entity) {
-				return
+
+	results := make([]vent.EntityData, len(entities))
+	for i, e := range entities {
+		results[i] = c.toEntityData(e)
+	}
+	return results, nil
+}
+
+func (c *{{ $node.Name }}SchemaClient) Get(ctx context.Context, id int) (vent.EntityData, error) {
+	q := c.client.{{ $node.Name }}.Query().Where({{ lower $node.Name }}.IDEQ(id))
+
+	// Load edges for foreign keys
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	q = q.With{{ pascal $edge.Name }}()
+	{{- end }}
+	{{- end }}
+
+	e, err := q.Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.toEntityData(e), nil
+}
+
+func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[string]any) (vent.EntityData, error) {
+	builder := c.client.{{ $node.Name }}.Create()
+
+	{{ range $field := $fields }}
+	{{- if not $field.Sensitive }}
+	if v, ok := data["{{ $field.Name }}"]; ok {
+		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
+	}
+	{{ end }}
+	{{- end }}
+
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	if v, ok := data["{{ $edge.Name }}_id"]; ok {
+		builder = builder.Set{{ pascal $edge.Name }}ID(v.(int))
+	}
+	{{- end }}
+	{{- end }}
+
+	e, err := builder.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.toEntityData(e), nil
+}
+
+func (c *{{ $node.Name }}SchemaClient) Update(ctx context.Context, id int, data map[string]any) error {
+	builder := c.client.{{ $node.Name }}.UpdateOneID(id)
+
+	{{ range $field := $fields }}
+	{{- if not $field.Sensitive }}
+	if v, ok := data["{{ $field.Name }}"]; ok {
+		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
+	}
+	{{ end }}
+	{{- end }}
+
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	if v, ok := data["{{ $edge.Name }}_id"]; ok {
+		builder = builder.Set{{ pascal $edge.Name }}ID(v.(int))
+	}
+	{{- end }}
+	{{- end }}
+
+	return builder.Exec(ctx)
+}
+
+func (c *{{ $node.Name }}SchemaClient) Delete(ctx context.Context, id int) error {
+	return c.client.{{ $node.Name }}.DeleteOneID(id).Exec(ctx)
+}
+
+func (c *{{ $node.Name }}SchemaClient) GetRelationOptions(ctx context.Context, relation *vent.RelationDef) ([]vent.SelectOption, error) {
+	switch relation.TargetSchema {
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	case "{{ $edge.Type.Name }}":
+		entities, err := c.client.{{ $edge.Type.Name }}.Query().All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		options := make([]vent.SelectOption, len(entities))
+		for i, e := range entities {
+			options[i] = vent.SelectOption{
+				Value: e.ID,
+				Label: fmt.Sprintf("%d", e.ID), // TODO: Use display field
 			}
 		}
-	}, nil
-}
-
-func (c *{{ $node.Name }}SchemaClient) QueryOnly(
-	ctx context.Context,
-	predicates []vent.Predicate,
-) (vent.Entity, error) {
-	q := c.client.Query()
-	for _, p := range predicates {
-		q = q.Where(p)
+		return options, nil
+	{{- end }}
+	{{- end }}
 	}
-	return q.Only(ctx)
+	return nil, fmt.Errorf("unknown relation: %s", relation.TargetSchema)
 }
 
-func (c *{{ $node.Name }}SchemaClient) Update(
-    ctx context.Context,
-    predicates []vent.Predicate,
-    mutations []vent.Mutation,
-) error {
-    q := c.client.Update()
-    for _, p := range predicates {
-        q = q.Where(p)
-    }
-    for _, m := range mutations {
-        switch m.FieldName {
-        {{ range $field := $tableFields }}
-        case "{{ $field.Name }}":
-            q = q.Set{{ pascal $field.Name }}(m.Value.({{ $field.Type }}))
-        {{ end }}
-        }
-    }
-    return q.Exec(ctx)
-}
-
-func (c *{{ $node.Name }}SchemaClient) Delete(
-    ctx context.Context,
-    predicates []vent.Predicate,
-) (int, error) {
-	q := c.client.Delete()
-	for _, p := range predicates {
-		q = q.Where(p)
+func (c *{{ $node.Name }}SchemaClient) toEntityData(e *{{ $node.Name }}) vent.EntityData {
+	data := vent.EntityData{
+		"id": vent.NewIntFieldValue(e.ID),
+		{{ range $field := $fields }}
+		"{{ $field.Name }}": vent.New{{ pascal $field.Type.Type.String }}FieldValue(e.{{ pascal $field.Name }}),
+		{{ end }}
 	}
-	return q.Exec(ctx)
+
+	// Add foreign key fields with relation info
+	{{- range $edge := $node.Edges }}
+	{{- if $edge.Unique }}
+	if e.Edges.{{ pascal $edge.Name }} != nil {
+		data["{{ $edge.Name }}_id"] = vent.NewForeignKeyFieldValue(
+			e.Edges.{{ pascal $edge.Name }}.ID,
+			vent.RelationValue{
+				TargetSchema: "{{ $edge.Type.Name }}",
+				TargetID:     e.Edges.{{ pascal $edge.Name }}.ID,
+				TargetLabel:  fmt.Sprintf("%d", e.Edges.{{ pascal $edge.Name }}.ID), // TODO: Use display field
+				TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
+			},
+		)
+	}
+	{{- end }}
+	{{- end }}
+
+	return data
 }
+
 {{ end }}
 
 {{ end }}
