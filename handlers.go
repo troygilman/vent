@@ -113,10 +113,8 @@ func (h *Handler) postLoginHandler() http.Handler {
 			return
 		}
 
-		ctx := r.Context()
-
 		// Find user by email
-		entities, err := h.config.AuthUserSchema.Client.List(ctx, ListOptions{
+		entities, err := h.config.AuthUserSchema.Client.List(r.Context(), ListOptions{
 			Filters: map[string]any{"email": signals.Email},
 			Limit:   1,
 		})
@@ -134,7 +132,7 @@ func (h *Handler) postLoginHandler() http.Handler {
 		// Get password hash field
 		passwordField, ok := entity.Get(h.config.AuthPasswordField)
 		if !ok {
-			h.handleError(w, r, fmt.Errorf("password field not found: %s", h.config.AuthPasswordField), http.StatusInternalServerError)
+			h.handleError(w, r, fmt.Errorf("password field not found"), http.StatusInternalServerError)
 			return
 		}
 
@@ -187,14 +185,12 @@ func (h *Handler) getAdminHandler() http.Handler {
 // getSchemaListHandler returns the handler for GET /admin/{schema}s/
 func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
 		// Get list options from query params
 		opts := ListOptions{
 			OrderBy: "id",
 		}
 
-		entities, err := schema.Client.List(ctx, opts)
+		entities, err := schema.Client.List(r.Context(), opts)
 		if err != nil {
 			h.handleError(w, r, err, http.StatusInternalServerError)
 			return
@@ -249,7 +245,7 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			props.Rows = append(props.Rows, row)
 		}
 
-		if err := gui.SchemaTablePage(props).Render(ctx, w); err != nil {
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
 			h.handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})
@@ -258,15 +254,13 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 // getSchemaEntityHandler returns the handler for GET /admin/{schema}s/{id}/
 func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			h.handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
 			return
 		}
 
-		entity, err := schema.Client.Get(ctx, id)
+		entity, err := schema.Client.Get(r.Context(), id)
 		if err != nil {
 			h.handleError(w, r, err, http.StatusNotFound)
 			return
@@ -297,7 +291,7 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 			// Add relation options if this is a foreign key
 			if col.Type == TypeForeignKey && col.Relation != nil {
-				options, err := schema.Client.GetRelationOptions(ctx, col.Relation)
+				options, err := schema.Client.GetRelationOptions(r.Context(), col.Relation)
 				if err != nil {
 					log.Printf("Error getting relation options for %s: %v", col.Name, err)
 				} else {
@@ -315,7 +309,7 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			props.Fields = append(props.Fields, fieldProps)
 		}
 
-		if err := gui.SchemaEntityPage(props).Render(ctx, w); err != nil {
+		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
 			h.handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})
