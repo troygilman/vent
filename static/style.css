@@ -1691,6 +1691,12 @@
     }
   }
 }
+@view-transition {
+  navigation: auto;
+}
+::view-transition-group(root) {
+  animation-duration: 0.1s;
+}
 :root {
   overscroll-behavior: none;
 }

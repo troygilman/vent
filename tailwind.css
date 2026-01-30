@@ -1,9 +1,14 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-/*@view-transition {
+@view-transition {
     navigation: auto;
-}*/
+}
+
+/* Controls duration for the default root-level fade/move */
+::view-transition-group(root) {
+    animation-duration: 0.1s;
+}
 
 :root {
     overscroll-behavior: none;
