@@ -10,24 +10,24 @@ import (
 
 // MockSchemaClient is a mock implementation of SchemaClient for testing
 type MockSchemaClient struct {
-	ListFunc               func(ctx context.Context, opts ListOptions) ([]EntityData, error)
-	GetFunc                func(ctx context.Context, id int) (EntityData, error)
+	ListFunc               func(ctx context.Context, opts QueryOptions) ([]EntityData, error)
+	GetFunc                func(ctx context.Context, id int, opts ...GetOptions) (EntityData, error)
 	CreateFunc             func(ctx context.Context, data map[string]any) (EntityData, error)
 	UpdateFunc             func(ctx context.Context, id int, data map[string]any) error
 	DeleteFunc             func(ctx context.Context, id int) error
 	GetRelationOptionsFunc func(ctx context.Context, relation *RelationDef) ([]SelectOption, error)
 }
 
-func (m *MockSchemaClient) List(ctx context.Context, opts ListOptions) ([]EntityData, error) {
+func (m *MockSchemaClient) List(ctx context.Context, opts QueryOptions) ([]EntityData, error) {
 	if m.ListFunc != nil {
 		return m.ListFunc(ctx, opts)
 	}
 	return nil, nil
 }
 
-func (m *MockSchemaClient) Get(ctx context.Context, id int) (EntityData, error) {
+func (m *MockSchemaClient) Get(ctx context.Context, id int, opts ...GetOptions) (EntityData, error) {
 	if m.GetFunc != nil {
-		return m.GetFunc(ctx, id)
+		return m.GetFunc(ctx, id, opts...)
 	}
 	return nil, nil
 }
@@ -293,7 +293,7 @@ func TestMockSchemaClient_List(t *testing.T) {
 
 func TestMockSchemaClient_Get(t *testing.T) {
 	mockClient := &MockSchemaClient{
-		GetFunc: func(ctx context.Context, id int) (EntityData, error) {
+		GetFunc: func(ctx context.Context, id int, opts ...GetOptions) (EntityData, error) {
 			return EntityData{
 				"id":        NewIntFieldValue(id),
 				"name":      NewStringFieldValue("Test User"),
@@ -393,17 +393,17 @@ func TestMockSchemaClient_GetRelationOptions(t *testing.T) {
 	}
 }
 
-func TestListOptions(t *testing.T) {
-	var capturedOpts ListOptions
+func TestQueryOptions(t *testing.T) {
+	var capturedOpts QueryOptions
 
 	mockClient := &MockSchemaClient{
-		ListFunc: func(ctx context.Context, opts ListOptions) ([]EntityData, error) {
+		ListFunc: func(ctx context.Context, opts QueryOptions) ([]EntityData, error) {
 			capturedOpts = opts
 			return nil, nil
 		},
 	}
 
-	_, _ = mockClient.List(context.Background(), ListOptions{
+	_, _ = mockClient.List(context.Background(), QueryOptions{
 		OrderBy:   "created_at",
 		OrderDesc: true,
 		Limit:     10,
@@ -432,5 +432,269 @@ func TestListOptions(t *testing.T) {
 
 	if capturedOpts.Filters["is_active"] != true {
 		t.Error("expected is_active filter to be true")
+	}
+}
+
+func TestEntityData_GetEdges(t *testing.T) {
+	// Create an entity with eager-loaded edges
+	entity := EntityData{
+		"id":   NewIntFieldValue(1),
+		"name": NewStringFieldValue("Alice"),
+		"groups": NewRelationFieldValue(RelationData{
+			TargetSchema: "Group",
+			TargetPath:   "/admin/groups/",
+			Entities: []EntityData{
+				{"id": NewIntFieldValue(10), "name": NewStringFieldValue("Admins")},
+				{"id": NewIntFieldValue(20), "name": NewStringFieldValue("Users")},
+			},
+			Loaded: true,
+		}),
+	}
+
+	// Get edges using the new helper method
+	groups := entity.GetEdges("groups")
+	if len(groups) != 2 {
+		t.Errorf("expected 2 groups, got %d", len(groups))
+	}
+
+	if groups[0].GetString("name") != "Admins" {
+		t.Errorf("expected first group name 'Admins', got '%s'", groups[0].GetString("name"))
+	}
+
+	// Check HasEdge
+	if !entity.HasEdge("groups") {
+		t.Error("expected HasEdge('groups') to return true")
+	}
+
+	if entity.HasEdge("nonexistent") {
+		t.Error("expected HasEdge('nonexistent') to return false")
+	}
+
+	// GetEdges for non-existent edge should return nil
+	if entity.GetEdges("nonexistent") != nil {
+		t.Error("expected GetEdges('nonexistent') to return nil")
+	}
+}
+
+func TestEntityWithEdges_EagerLoaded(t *testing.T) {
+	mockClient := &MockSchemaClient{}
+
+	schema := &SchemaConfig{
+		Name:   "User",
+		Client: mockClient,
+		Edges: []EdgeConfig{
+			{Name: "groups", TargetSchema: "Group"},
+		},
+	}
+
+	// Create an entity with eager-loaded edges (as would come from Get with WithEdges)
+	entity := EntityData{
+		"id":   NewIntFieldValue(1),
+		"name": NewStringFieldValue("Alice"),
+		"groups": NewRelationFieldValue(RelationData{
+			TargetSchema: "Group",
+			TargetPath:   "/admin/groups/",
+			Entities: []EntityData{
+				{"id": NewIntFieldValue(10), "name": NewStringFieldValue("Admin Group")},
+			},
+			Loaded: true,
+		}),
+	}
+
+	entityWithEdges := NewEntityWithEdges(entity, schema)
+
+	// Edge should be detected as loaded from EntityData
+	if !entityWithEdges.IsEdgeLoaded("groups") {
+		t.Error("expected groups edge to be detected as loaded")
+	}
+
+	// GetLoadedEdge should return the eager-loaded data
+	groups := entityWithEdges.GetLoadedEdge("groups")
+	if len(groups) != 1 {
+		t.Errorf("expected 1 group, got %d", len(groups))
+	}
+
+	if groups[0].GetString("name") != "Admin Group" {
+		t.Errorf("expected group name 'Admin Group', got '%s'", groups[0].GetString("name"))
+	}
+}
+
+func TestGetOptions_WithEdges(t *testing.T) {
+	var capturedOpts []GetOptions
+
+	mockClient := &MockSchemaClient{
+		GetFunc: func(ctx context.Context, id int, opts ...GetOptions) (EntityData, error) {
+			capturedOpts = opts
+			return EntityData{
+				"id":   NewIntFieldValue(id),
+				"name": NewStringFieldValue("Test"),
+			}, nil
+		},
+	}
+
+	// Call Get with WithEdges option
+	_, _ = mockClient.Get(context.Background(), 1, GetOptions{
+		WithEdges: []string{"groups", "groups__permissions"},
+	})
+
+	if len(capturedOpts) != 1 {
+		t.Fatalf("expected 1 GetOptions, got %d", len(capturedOpts))
+	}
+
+	if len(capturedOpts[0].WithEdges) != 2 {
+		t.Errorf("expected 2 WithEdges, got %d", len(capturedOpts[0].WithEdges))
+	}
+
+	if capturedOpts[0].WithEdges[0] != "groups" {
+		t.Errorf("expected first edge 'groups', got '%s'", capturedOpts[0].WithEdges[0])
+	}
+
+	if capturedOpts[0].WithEdges[1] != "groups__permissions" {
+		t.Errorf("expected second edge 'groups__permissions', got '%s'", capturedOpts[0].WithEdges[1])
+	}
+}
+
+func TestParseEdgePaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []EdgePath
+	}{
+		{
+			name:  "single edge",
+			input: []string{"groups"},
+			expected: []EdgePath{
+				{Name: "groups", Children: nil},
+			},
+		},
+		{
+			name:  "nested edge",
+			input: []string{"groups__permissions"},
+			expected: []EdgePath{
+				{Name: "groups", Children: []EdgePath{
+					{Name: "permissions", Children: nil},
+				}},
+			},
+		},
+		{
+			name:  "multiple edges with nesting",
+			input: []string{"groups", "groups__permissions", "posts"},
+			expected: []EdgePath{
+				{Name: "groups", Children: []EdgePath{
+					{Name: "permissions", Children: nil},
+				}},
+				{Name: "posts", Children: nil},
+			},
+		},
+		{
+			name:  "deeply nested",
+			input: []string{"groups__permissions__actions"},
+			expected: []EdgePath{
+				{Name: "groups", Children: []EdgePath{
+					{Name: "permissions", Children: []EdgePath{
+						{Name: "actions", Children: nil},
+					}},
+				}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseEdgePaths(tt.input)
+
+			// Simple check: verify top-level count
+			if len(result) != len(tt.expected) {
+				t.Errorf("expected %d top-level paths, got %d", len(tt.expected), len(result))
+			}
+		})
+	}
+}
+
+func TestRelationFieldValue(t *testing.T) {
+	relatedEntities := []EntityData{
+		{"id": NewIntFieldValue(1), "name": NewStringFieldValue("Item 1")},
+		{"id": NewIntFieldValue(2), "name": NewStringFieldValue("Item 2")},
+		{"id": NewIntFieldValue(3), "name": NewStringFieldValue("Item 3")},
+	}
+
+	field := NewRelationFieldValue(RelationData{
+		TargetSchema: "Item",
+		TargetPath:   "/admin/items/",
+		Entities:     relatedEntities,
+		Loaded:       true,
+	})
+
+	if field.Type != TypeRelation {
+		t.Errorf("expected TypeRelation, got %v", field.Type)
+	}
+
+	if field.Display != "3 items" {
+		t.Errorf("expected display '3 items', got '%s'", field.Display)
+	}
+
+	entities := field.RelationEntities()
+	if len(entities) != 3 {
+		t.Errorf("expected 3 entities, got %d", len(entities))
+	}
+
+	if !field.IsRelationLoaded() {
+		t.Error("expected relation to be marked as loaded")
+	}
+}
+
+func TestRelationFieldValue_SingleItem(t *testing.T) {
+	field := NewRelationFieldValue(RelationData{
+		TargetSchema: "Item",
+		Entities: []EntityData{
+			{"id": NewIntFieldValue(1)},
+		},
+		Loaded: true,
+	})
+
+	if field.Display != "1 item" {
+		t.Errorf("expected display '1 item', got '%s'", field.Display)
+	}
+}
+
+func TestEdgeConfig(t *testing.T) {
+	schema := SchemaConfig{
+		Name: "User",
+		Edges: []EdgeConfig{
+			{Name: "groups", Label: "Groups", TargetSchema: "Group", Type: EdgeManyToMany},
+			{Name: "posts", Label: "Posts", TargetSchema: "Post", Type: EdgeHasMany},
+		},
+	}
+
+	// Test GetEdge
+	groupsEdge := schema.GetEdge("groups")
+	if groupsEdge == nil {
+		t.Fatal("expected to find 'groups' edge")
+	}
+	if groupsEdge.Type != EdgeManyToMany {
+		t.Errorf("expected EdgeManyToMany, got %v", groupsEdge.Type)
+	}
+
+	postsEdge := schema.GetEdge("posts")
+	if postsEdge == nil {
+		t.Fatal("expected to find 'posts' edge")
+	}
+	if postsEdge.Type != EdgeHasMany {
+		t.Errorf("expected EdgeHasMany, got %v", postsEdge.Type)
+	}
+
+	// Test GetEdge returns nil for unknown edge
+	unknownEdge := schema.GetEdge("unknown")
+	if unknownEdge != nil {
+		t.Error("expected nil for unknown edge")
+	}
+}
+
+func TestEdgeType_String(t *testing.T) {
+	if EdgeHasMany.String() != "has_many" {
+		t.Errorf("expected 'has_many', got '%s'", EdgeHasMany.String())
+	}
+	if EdgeManyToMany.String() != "many_to_many" {
+		t.Errorf("expected 'many_to_many', got '%s'", EdgeManyToMany.String())
 	}
 }

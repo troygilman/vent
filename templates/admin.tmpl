@@ -24,6 +24,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 	credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
 
 	{{ range $node := $.Nodes }}
+	{{ $tableFields := tableFields $node }}
 	schema{{ $node.Name }} := vent.SchemaConfig{
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
@@ -36,7 +37,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 				Type:     vent.TypeInt,
 				Editable: false,
 			},
-			{{ range $field := tableFields $node }}
+			{{ range $field := $tableFields }}
 			{
 				Name:     "{{ $field.Name }}",
 				Label:    "{{ pascal $field.Name }}",
@@ -60,6 +61,26 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			{{- end }}
 			{{- end }}
 		},
+		Edges: []vent.EdgeConfig{
+			{{- range $edge := $node.Edges }}
+			{{- if not $edge.Unique }}
+			{
+				Name:         "{{ $edge.Name }}",
+				Label:        "{{ pascal $edge.Name }}",
+				TargetSchema: "{{ $edge.Type.Name }}",
+				TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
+				{{- if $edge.M2M }}
+				Type:         vent.EdgeManyToMany,
+				{{- else }}
+				Type:         vent.EdgeHasMany,
+				{{- end }}
+				{{- if $edge.Ref }}
+				Inverse:      "{{ $edge.Ref.Name }}",
+				{{- end }}
+			},
+			{{- end }}
+			{{- end }}
+		},
 	}
 	{{ end }}
 
@@ -79,14 +100,13 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 }
 
 {{ range $node := $.Nodes }}
-{{ $fields := $node.Fields }}
 
 // {{ $node.Name }}SchemaClient implements vent.SchemaClient for {{ $node.Name }} entities
 type {{ $node.Name }}SchemaClient struct {
 	client *Client
 }
 
-func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListOptions) ([]vent.EntityData, error) {
+func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.QueryOptions) ([]vent.EntityData, error) {
 	q := c.client.{{ $node.Name }}.Query()
 
 	// Apply ordering
@@ -98,7 +118,7 @@ func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListO
 			} else {
 				q = q.Order({{ lower $node.Name }}.ByID())
 			}
-		{{ range $field := $fields }}
+		{{ range $field := $node.Fields }}
 		case "{{ $field.Name }}":
 			if opts.OrderDesc {
 				q = q.Order({{ lower $node.Name }}.By{{ pascal $field.Name }}(sql.OrderDesc()))
@@ -114,7 +134,7 @@ func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListO
 		switch key {
 		case "id":
 			q = q.Where({{ lower $node.Name }}.IDEQ(value.(int)))
-		{{ range $field := $fields }}
+		{{ range $field := $node.Fields }}
 		case "{{ $field.Name }}":
 			q = q.Where({{ lower $node.Name }}.{{ pascal $field.Name }}EQ(value.({{ $field.Type }})))
 		{{ end }}
@@ -129,12 +149,18 @@ func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListO
 		q = q.Offset(opts.Offset)
 	}
 
-	// Load edges for foreign keys
+	// Eager load foreign key edges
 	{{- range $edge := $node.Edges }}
 	{{- if $edge.Unique }}
 	q = q.With{{ pascal $edge.Name }}()
 	{{- end }}
 	{{- end }}
+
+	// Eager load requested edges (single query with nested With* calls)
+	if len(opts.WithEdges) > 0 {
+		edgePaths := vent.ParseEdgePaths(opts.WithEdges)
+		q = apply{{ $node.Name }}WithEdges(q, edgePaths)
+	}
 
 	entities, err := q.All(ctx)
 	if err != nil {
@@ -143,32 +169,39 @@ func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.ListO
 
 	results := make([]vent.EntityData, len(entities))
 	for i, e := range entities {
-		results[i] = c.toEntityData(e)
+		results[i] = {{ lower $node.Name }}ToEntityData(e)
 	}
 	return results, nil
 }
 
-func (c *{{ $node.Name }}SchemaClient) Get(ctx context.Context, id int) (vent.EntityData, error) {
+func (c *{{ $node.Name }}SchemaClient) Get(ctx context.Context, id int, opts ...vent.GetOptions) (vent.EntityData, error) {
 	q := c.client.{{ $node.Name }}.Query().Where({{ lower $node.Name }}.IDEQ(id))
 
-	// Load edges for foreign keys
+	// Eager load foreign key edges
 	{{- range $edge := $node.Edges }}
 	{{- if $edge.Unique }}
 	q = q.With{{ pascal $edge.Name }}()
 	{{- end }}
 	{{- end }}
 
+	// Eager load requested edges (single query with nested With* calls)
+	if len(opts) > 0 && len(opts[0].WithEdges) > 0 {
+		edgePaths := vent.ParseEdgePaths(opts[0].WithEdges)
+		q = apply{{ $node.Name }}WithEdges(q, edgePaths)
+	}
+
 	e, err := q.Only(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return c.toEntityData(e), nil
+
+	return {{ lower $node.Name }}ToEntityData(e), nil
 }
 
 func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[string]any) (vent.EntityData, error) {
 	builder := c.client.{{ $node.Name }}.Create()
 
-	{{ range $field := $fields }}
+	{{ range $field := $node.Fields }}
 	{{- if not $field.Sensitive }}
 	if v, ok := data["{{ $field.Name }}"]; ok {
 		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
@@ -188,13 +221,13 @@ func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[stri
 	if err != nil {
 		return nil, err
 	}
-	return c.toEntityData(e), nil
+	return {{ lower $node.Name }}ToEntityData(e), nil
 }
 
 func (c *{{ $node.Name }}SchemaClient) Update(ctx context.Context, id int, data map[string]any) error {
 	builder := c.client.{{ $node.Name }}.UpdateOneID(id)
 
-	{{ range $field := $fields }}
+	{{ range $field := $node.Fields }}
 	{{- if not $field.Sensitive }}
 	if v, ok := data["{{ $field.Name }}"]; ok {
 		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
@@ -240,10 +273,33 @@ func (c *{{ $node.Name }}SchemaClient) GetRelationOptions(ctx context.Context, r
 	return nil, fmt.Errorf("unknown relation: %s", relation.TargetSchema)
 }
 
-func (c *{{ $node.Name }}SchemaClient) toEntityData(e *{{ $node.Name }}) vent.EntityData {
+// apply{{ $node.Name }}WithEdges applies eager loading for the given edge paths
+func apply{{ $node.Name }}WithEdges(q *{{ $node.Name }}Query, edgePaths []vent.EdgePath) *{{ $node.Name }}Query {
+	for _, ep := range edgePaths {
+		switch ep.Name {
+		{{- range $edge := $node.Edges }}
+		{{- if not $edge.Unique }}
+		case "{{ $edge.Name }}":
+			q = q.With{{ pascal $edge.Name }}(func(childQ *{{ $edge.Type.Name }}Query) {
+				{{- if $edge.Type.Edges }}
+				// Apply nested eager loading
+				if len(ep.Children) > 0 {
+					apply{{ $edge.Type.Name }}WithEdges(childQ, ep.Children)
+				}
+				{{- end }}
+			})
+		{{- end }}
+		{{- end }}
+		}
+	}
+	return q
+}
+
+// {{ lower $node.Name }}ToEntityData converts a {{ $node.Name }} entity to EntityData
+func {{ lower $node.Name }}ToEntityData(e *{{ $node.Name }}) vent.EntityData {
 	data := vent.EntityData{
 		"id": vent.NewIntFieldValue(e.ID),
-		{{ range $field := $fields }}
+		{{ range $field := $node.Fields }}
 		"{{ $field.Name }}": vent.New{{ pascal $field.Type.Type.String }}FieldValue(e.{{ pascal $field.Name }}),
 		{{ end }}
 	}
@@ -261,6 +317,24 @@ func (c *{{ $node.Name }}SchemaClient) toEntityData(e *{{ $node.Name }}) vent.En
 				TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
 			},
 		)
+	}
+	{{- end }}
+	{{- end }}
+
+	// Add loaded edge relations
+	{{- range $edge := $node.Edges }}
+	{{- if not $edge.Unique }}
+	if len(e.Edges.{{ pascal $edge.Name }}) > 0 || e.Edges.loadedTypes[{{ $edge.Index }}] {
+		relatedEntities := make([]vent.EntityData, len(e.Edges.{{ pascal $edge.Name }}))
+		for i, related := range e.Edges.{{ pascal $edge.Name }} {
+			relatedEntities[i] = {{ lower $edge.Type.Name }}ToEntityData(related)
+		}
+		data["{{ $edge.Name }}"] = vent.NewRelationFieldValue(vent.RelationData{
+			TargetSchema: "{{ $edge.Type.Name }}",
+			TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
+			Entities:     relatedEntities,
+			Loaded:       true,
+		})
 	}
 	{{- end }}
 	{{- end }}

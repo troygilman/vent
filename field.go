@@ -15,6 +15,7 @@ const (
 	TypeBool
 	TypeTime
 	TypeForeignKey
+	TypeRelation // For one-to-many and many-to-many relationships
 )
 
 func (t FieldType) String() string {
@@ -29,12 +30,14 @@ func (t FieldType) String() string {
 		return "time"
 	case TypeForeignKey:
 		return "foreign_key"
+	case TypeRelation:
+		return "relation"
 	default:
 		return "unknown"
 	}
 }
 
-// RelationValue holds information about a foreign key relationship
+// RelationValue holds information about a foreign key relationship (belongs-to)
 type RelationValue struct {
 	TargetSchema string // The name of the related schema (e.g., "User")
 	TargetID     int    // The ID of the related entity
@@ -42,13 +45,22 @@ type RelationValue struct {
 	TargetPath   string // URL path to the related entity's admin page
 }
 
+// RelationData holds information about a one-to-many or many-to-many relationship
+type RelationData struct {
+	TargetSchema string       // The name of the related schema (e.g., "Group")
+	TargetPath   string       // URL path to the related schema's admin (e.g., "/admin/groups/")
+	Entities     []EntityData // The related entities (may be nil if not loaded)
+	Loaded       bool         // Whether the relation has been loaded
+}
+
 // FieldValue represents a rich field value that includes type information,
 // the raw value, a display string, and optional relation metadata
 type FieldValue struct {
-	Type     FieldType      // The type of this field
-	Raw      any            // The actual value (int, string, bool, time.Time, etc.)
-	Display  string         // Human-readable display value
-	Relation *RelationValue // Non-nil if this is a foreign key field
+	Type         FieldType      // The type of this field
+	Raw          any            // The actual value (int, string, bool, time.Time, etc.)
+	Display      string         // Human-readable display value
+	Relation     *RelationValue // Non-nil if this is a foreign key field (belongs-to)
+	RelationData *RelationData  // Non-nil if this is a relation field (has-many, many-to-many)
 }
 
 // NewStringFieldValue creates a FieldValue for a string
@@ -94,6 +106,20 @@ func NewForeignKeyFieldValue(id int, relation RelationValue) FieldValue {
 		Raw:      id,
 		Display:  relation.TargetLabel,
 		Relation: &relation,
+	}
+}
+
+// NewRelationFieldValue creates a FieldValue for a one-to-many or many-to-many relationship
+func NewRelationFieldValue(data RelationData) FieldValue {
+	display := fmt.Sprintf("%d items", len(data.Entities))
+	if len(data.Entities) == 1 {
+		display = "1 item"
+	}
+	return FieldValue{
+		Type:         TypeRelation,
+		Raw:          data.Entities,
+		Display:      display,
+		RelationData: &data,
 	}
 }
 
@@ -153,6 +179,19 @@ func (f FieldValue) TimeValue() time.Time {
 		panic(fmt.Sprintf("vent: cannot get time value from field of type %s", f.Type))
 	}
 	return f.Raw.(time.Time)
+}
+
+// RelationEntities returns the related entities, or nil if not a relation type or not loaded
+func (f FieldValue) RelationEntities() []EntityData {
+	if f.Type != TypeRelation || f.RelationData == nil {
+		return nil
+	}
+	return f.RelationData.Entities
+}
+
+// IsRelationLoaded returns true if this is a relation field and its data has been loaded
+func (f FieldValue) IsRelationLoaded() bool {
+	return f.Type == TypeRelation && f.RelationData != nil && f.RelationData.Loaded
 }
 
 // EntityData represents a single entity as a map of field names to their values

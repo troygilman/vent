@@ -22,14 +22,11 @@ func main() {
 		&schemast.UpsertSchema{
 			Name: "AuthUser",
 			Fields: []ent.Field{
-				field.String("email").
-					Unique(),
-				field.String("password_hash").
-					Sensitive(),
-				field.Bool("is_staff").
-					Default(false),
-				field.Bool("is_active").
-					Default(true),
+				field.String("email").Unique(),
+				field.String("password_hash").Sensitive(),
+				field.Bool("is_staff").Default(false),
+				field.Bool("is_superuser").Default(false),
+				field.Bool("is_active").Default(true),
 			},
 			Edges: []ent.Edge{
 				newEdgeTo("groups", "AuthGroup"),
@@ -38,8 +35,7 @@ func main() {
 		&schemast.UpsertSchema{
 			Name: "AuthGroup",
 			Fields: []ent.Field{
-				field.String("name").
-					Unique(),
+				field.String("name").Unique(),
 			},
 			Edges: []ent.Edge{
 				newEdgeTo("permissions", "AuthPermission"),
@@ -49,8 +45,7 @@ func main() {
 		&schemast.UpsertSchema{
 			Name: "AuthPermission",
 			Fields: []ent.Field{
-				field.String("name").
-					Unique(),
+				field.String("name").Unique(),
 			},
 		},
 	}

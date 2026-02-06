@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"vent/auth"
 	"vent/templates/gui"
 
@@ -34,6 +35,7 @@ type Handler struct {
 	mux            *http.ServeMux
 	config         HandlerConfig
 	authMiddleware Middleware
+	userMiddleware Middleware
 	schemas        []SchemaConfig
 	tokenGenerator auth.TokenGenerator
 }
@@ -51,7 +53,8 @@ func NewHandler(config HandlerConfig) *Handler {
 	handler := &Handler{
 		mux:            http.NewServeMux(),
 		config:         config,
-		authMiddleware: NewAuthMiddleware(config.SecretProvider),
+		authMiddleware: AuthentificationMiddleware(auth.NewJwtTokenAuthenticator(config.SecretProvider)),
+		userMiddleware: UserMiddleware(config.AuthUserSchema),
 		tokenGenerator: auth.NewJwtTokenGenerator(config.SecretProvider),
 	}
 
@@ -80,10 +83,14 @@ func (h *Handler) RegisterSchema(schema SchemaConfig) {
 	h.schemas = append(h.schemas, schema)
 
 	path := schema.Path()
-	h.handle("GET "+path, h.authMiddleware(h.getSchemaListHandler(schema)))
-	h.handle("GET "+path+"{id}/", h.authMiddleware(h.getSchemaEntityHandler(schema)))
-	h.handle("POST "+path+"{id}/", h.authMiddleware(h.postSchemaEntityHandler(schema)))
-	h.handle("DELETE "+path+"{id}/", h.authMiddleware(h.deleteSchemaEntityHandler(schema)))
+
+	permission_suffix := strings.ToLower(schema.Name)
+
+	h.handle("GET "+path, h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaListHandler(schema)))))
+	h.handle("GET "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaEntityHandler(schema)))))
+	// h.handle("POST "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.postSchemaEntityHandler(schema)))))
+	h.handle("PATCH "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("change_"+permission_suffix)(h.patchSchemaEntityHandler(schema)))))
+	h.handle("DELETE "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("delete_"+permission_suffix)(h.deleteSchemaEntityHandler(schema)))))
 }
 
 func (h *Handler) handle(path string, handler http.Handler) {
@@ -315,8 +322,8 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	})
 }
 
-// postSchemaEntityHandler returns the handler for POST /admin/{schema}s/{id}/
-func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
+// patchSchemaEntityHandler returns the handler for POST /admin/{schema}s/{id}/
+func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {

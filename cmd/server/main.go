@@ -30,6 +30,8 @@ func main() {
 	client.AuthUser.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
+		SetIsStaff(true).
+		SetIsSuperuser(true).
 		Save(ctx)
 
 	mux := http.NewServeMux()
