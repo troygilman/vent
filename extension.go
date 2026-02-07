@@ -2,6 +2,7 @@ package vent
 
 import (
 	"embed"
+	"strings"
 	"text/template"
 
 	"entgo.io/ent/entc"
@@ -42,7 +43,10 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"tableFields": tableFields,
+					"tableFields":    tableFields,
+					"passwordFields": passwordFields,
+					"hasSuffix":      strings.HasSuffix,
+					"trimSuffix":     strings.TrimSuffix,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
@@ -69,6 +73,19 @@ func insensitiveFields(node *gen.Type) []*gen.Field {
 	result := []*gen.Field{}
 	for _, f := range node.Fields {
 		if !f.Sensitive() {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+// passwordFields returns sensitive fields whose names end with "_hash".
+// These are assumed to be password fields that need a virtual form input
+// and a HashPassword field mapper in the generated admin code.
+func passwordFields(node *gen.Type) []*gen.Field {
+	result := []*gen.Field{}
+	for _, f := range node.Fields {
+		if f.Sensitive() && strings.HasSuffix(f.Name, "_hash") {
 			result = append(result, f)
 		}
 	}

@@ -1,7 +1,14 @@
 package gui
 
+import (
+	"fmt"
+	"strings"
+)
+
 type SchemaTableProps struct {
 	LayoutProps LayoutProps
+	AdminPath   string
+	SchemaName  string
 	Columns     []SchemaTableColumn
 	Rows        []SchemaTableRow
 }
@@ -22,11 +29,13 @@ type SchemaTableCell struct {
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
+	{{ schemaPath := fmt.Sprintf("%s%ss/", props.AdminPath, strings.ToLower(props.SchemaName)) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<div class="flex flex-col w-full px-12 py-4">
-				<div class="w-full ">
-					<div class="text-xl font-bold mb-4">{ props.LayoutProps.ActiveSchemaName }s</div>
+				<div class="flex flex-row w-full justify-between pb-4">
+					<div class="text-xl font-bold mb-4">{ props.SchemaName }s</div>
+					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-neutral">Add { props.SchemaName }</button></a>
 				</div>
 				<div class="w-full overflow-x-auto rounded-box border border-base-content/5 shadow">
 					<table class="table table-zebra">

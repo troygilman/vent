@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"vent/auth"
@@ -20,47 +21,6 @@ func StaticDirHandler() http.Handler {
 	return http.FileServerFS(static)
 }
 
-type FieldMapper func(data map[string]any)
-
-type fieldMapperConfig struct {
-	mapper          FieldMapper
-	inputFieldNames []string
-	outputFieldName string
-}
-
-func NewFieldMapper(inputFieldNames []string, outputFieldName string, f func(fields ...FieldValue) (FieldValue, error)) FieldMapper {
-	return func(data map[string]any) {
-		inputFields := []FieldValue{}
-		for _, fieldName := range inputFieldNames {
-			value, ok := data[fieldName]
-			if !ok {
-				return
-			}
-
-			switch value := value.(type) {
-			case string:
-				inputFields = append(inputFields, NewStringFieldValue(value))
-			case bool:
-				inputFields = append(inputFields, NewBoolFieldValue(value))
-			case int:
-				inputFields = append(inputFields, NewIntFieldValue(value))
-			}
-		}
-
-		outputField := f(inputFields...)
-		data[outputFieldName] = outputField.Raw
-	}
-}
-
-func PasswordFieldMapper() FieldMapper {
-	credentialGenerator := auth.NewBCryptCredentialGenerator()
-	return NewFieldMapper([]string{"password"}, "password_hash", func(fields ...FieldValue) (FieldValue, error) {
-		passwordField := fields[0]
-		password_hash, err := credentialGenerator.Generate(passwordField.StringValue())
-		return NewStringFieldValue(password_hash), err
-	})
-}
-
 // HandlerConfig contains configuration options for the admin handler
 type HandlerConfig struct {
 	SecretProvider          auth.SecretProvider
@@ -69,17 +29,17 @@ type HandlerConfig struct {
 	AuthPasswordField       string // The field name containing the password hash (e.g., "password_hash")
 	BasePath                string // Base path for admin routes (default: "/admin/")
 	CookieName              string // Cookie name for auth token (default: "vent-auth-token")
-	FieldMappers            []FieldMapper
 }
 
 // Handler is the main HTTP handler for the admin panel
 type Handler struct {
-	mux            *http.ServeMux
-	config         HandlerConfig
-	authMiddleware Middleware
-	userMiddleware Middleware
-	schemas        []SchemaConfig
-	tokenGenerator auth.TokenGenerator
+	mux              *http.ServeMux
+	config           HandlerConfig
+	authMiddleware   Middleware
+	userMiddleware   Middleware
+	loggerMiddleware Middleware
+	schemas          []SchemaConfig
+	tokenGenerator   auth.TokenGenerator
 }
 
 // NewHandler creates a new admin handler with the given configuration
@@ -93,11 +53,12 @@ func NewHandler(config HandlerConfig) *Handler {
 	}
 
 	handler := &Handler{
-		mux:            http.NewServeMux(),
-		config:         config,
-		authMiddleware: AuthentificationMiddleware(auth.NewJwtTokenAuthenticator(config.SecretProvider)),
-		userMiddleware: UserMiddleware(config.AuthUserSchema),
-		tokenGenerator: auth.NewJwtTokenGenerator(config.SecretProvider),
+		mux:              http.NewServeMux(),
+		config:           config,
+		authMiddleware:   AuthentificationMiddleware(auth.NewJwtTokenAuthenticator(config.SecretProvider)),
+		userMiddleware:   UserMiddleware(config.AuthUserSchema),
+		loggerMiddleware: LoggerMiddleware(),
+		tokenGenerator:   auth.NewJwtTokenGenerator(config.SecretProvider),
 	}
 
 	// Unauthorized Paths
@@ -128,15 +89,18 @@ func (h *Handler) RegisterSchema(schema SchemaConfig) {
 
 	permission_suffix := strings.ToLower(schema.Name)
 
-	h.handle("GET "+path, h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaListHandler(schema)))))
-	h.handle("POST "+path, h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.postSchemaEntityHandler(schema)))))
-	h.handle("GET "+path+"add/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.getSchemaEntityAddHandler(schema)))))
-	h.handle("GET "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaEntityHandler(schema)))))
-	h.handle("PATCH "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("change_"+permission_suffix)(h.patchSchemaEntityHandler(schema)))))
-	h.handle("DELETE "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("delete_"+permission_suffix)(h.deleteSchemaEntityHandler(schema)))))
+	h.handle("GET "+path, h.getSchemaListHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
+	h.handle("POST "+path, h.postSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
+	h.handle("GET "+path+"add/", h.getSchemaEntityAddHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
+	h.handle("GET "+path+"{id}/", h.getSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
+	h.handle("PATCH "+path+"{id}/", h.patchSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("change_"+permission_suffix))
+	h.handle("DELETE "+path+"{id}/", h.deleteSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("delete_"+permission_suffix))
 }
 
-func (h *Handler) handle(path string, handler http.Handler) {
+func (h *Handler) handle(path string, handler http.Handler, middleware ...Middleware) {
+	for _, m := range slices.Backward(middleware) {
+		handler = m(handler)
+	}
 	h.mux.Handle(path, handler)
 	log.Printf("Registered handler on %s", path)
 }
@@ -249,6 +213,8 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 		// Build table props
 		props := gui.SchemaTableProps{
 			LayoutProps: h.buildLayoutProps(schema.Name),
+			AdminPath:   h.config.BasePath,
+			SchemaName:  schema.Name,
 			Columns:     make([]gui.SchemaTableColumn, len(schema.Columns)),
 			Rows:        make([]gui.SchemaTableRow, 0, len(entities)),
 		}
@@ -316,7 +282,7 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 			fieldProps := gui.SchemaEntityFieldProps{
 				Name:     col.Name,
 				Label:    col.Label,
-				Type:     col.Type.String(),
+				Type:     col.EffectiveInputType(),
 				Value:    "",
 				Editable: col.Editable,
 			}
@@ -372,17 +338,19 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		}
 
 		for _, col := range schema.Columns {
-			field, ok := entity.Get(col.Name)
-			if !ok {
-				continue
-			}
-
 			fieldProps := gui.SchemaEntityFieldProps{
 				Name:     col.Name,
 				Label:    col.Label,
-				Type:     col.Type.String(),
-				Value:    field.Display,
+				Type:     col.EffectiveInputType(),
+				Value:    "",
 				Editable: col.Editable,
+			}
+
+			// Populate value from entity if the field exists
+			// (virtual columns like "password" won't exist in entity data — they render empty)
+			field, ok := entity.Get(col.Name)
+			if ok {
+				fieldProps.Value = field.Display
 			}
 
 			// Add relation options if this is a foreign key
@@ -396,7 +364,7 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 						fieldProps.Options[i] = gui.SelectOption{
 							Value:    opt.Value,
 							Label:    opt.Label,
-							Selected: field.Type == TypeForeignKey && field.IntValue() == opt.Value,
+							Selected: ok && field.Type == TypeForeignKey && field.IntValue() == opt.Value,
 						}
 					}
 				}
@@ -431,8 +399,14 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			}
 		}
 
+		// Apply field mappers (e.g., hash password, rename fields)
+		if err := schema.ApplyFieldMappers(data); err != nil {
+			log.Printf("Error applying field mappers: %v", err)
+			return
+		}
+
 		if _, err := schema.Client.Create(sse.Context(), data); err != nil {
-			log.Printf("Error updating entity: %v", err)
+			log.Printf("Error creating entity: %v", err)
 			return
 		}
 
@@ -440,7 +414,7 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	})
 }
 
-// patchSchemaEntityHandler returns the handler for POST /admin/{schema}s/{id}/
+// patchSchemaEntityHandler returns the handler for PATCH /admin/{schema}s/{id}/
 func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
@@ -465,6 +439,12 @@ func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 					data[col.Name] = val
 				}
 			}
+		}
+
+		// Apply field mappers (e.g., hash password, rename fields)
+		if err := schema.ApplyFieldMappers(data); err != nil {
+			log.Printf("Error applying field mappers: %v", err)
+			return
 		}
 
 		if err := schema.Client.Update(sse.Context(), id, data); err != nil {

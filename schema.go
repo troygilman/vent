@@ -66,11 +66,21 @@ func (ep EdgePath) String() string {
 
 // SchemaConfig defines the configuration for a schema in the admin panel
 type SchemaConfig struct {
-	Name      string         // The name of the schema (e.g., "User", "Post")
-	Columns   []ColumnConfig // The columns to display and edit
-	Edges     []EdgeConfig   // The relationship edges (has-many, many-to-many)
-	Client    SchemaClient   // The client for CRUD operations
-	AdminPath string         // Base admin path (e.g., "/admin/")
+	Name         string         // The name of the schema (e.g., "User", "Post")
+	Columns      []ColumnConfig // The columns to display and edit
+	Edges        []EdgeConfig   // The relationship edges (has-many, many-to-many)
+	Client       SchemaClient   // The client for CRUD operations
+	AdminPath    string         // Base admin path (e.g., "/admin/")
+	FieldMappers FieldMapper    // Optional pipeline to transform form data before DB create/update
+}
+
+// ApplyFieldMappers runs the schema's field mapper pipeline on the data map.
+// Returns nil if no mappers are configured.
+func (s SchemaConfig) ApplyFieldMappers(data map[string]any) error {
+	if s.FieldMappers == nil {
+		return nil
+	}
+	return s.FieldMappers(data)
 }
 
 // GetEdge returns the edge configuration by name, or nil if not found
@@ -95,11 +105,21 @@ func (s SchemaConfig) EntityPath(id int) string {
 
 // ColumnConfig defines the configuration for a single column/field
 type ColumnConfig struct {
-	Name     string       // The field name (e.g., "email", "author_id")
-	Label    string       // Human-readable label (e.g., "Email", "Author")
-	Type     FieldType    // The field type
-	Editable bool         // Whether this field can be edited
-	Relation *RelationDef // Non-nil if this is a foreign key column
+	Name      string       // The field name (e.g., "email", "author_id")
+	Label     string       // Human-readable label (e.g., "Email", "Author")
+	Type      FieldType    // The field type
+	InputType string       // Optional GUI input type override (e.g., "password"). Falls back to Type.String().
+	Editable  bool         // Whether this field can be edited
+	Relation  *RelationDef // Non-nil if this is a foreign key column
+}
+
+// EffectiveInputType returns the input type to use for GUI rendering.
+// If InputType is set, it takes precedence over Type.String().
+func (c ColumnConfig) EffectiveInputType() string {
+	if c.InputType != "" {
+		return c.InputType
+	}
+	return c.Type.String()
 }
 
 // RelationDef defines a foreign key relationship (belongs-to / many-to-one)

@@ -22,9 +22,11 @@ type AdminConfig struct {
 
 func NewAdminHandler(config AdminConfig) http.Handler {
 	credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
+	credentialGenerator := auth.NewBCryptCredentialGenerator()
 
 	{{ range $node := $.Nodes }}
 	{{ $tableFields := tableFields $node }}
+	{{ $pwFields := passwordFields $node }}
 	schema{{ $node.Name }} := vent.SchemaConfig{
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
@@ -45,6 +47,15 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 				Editable: {{ not $field.Sensitive }},
 			},
 			{{ end }}
+			{{- range $field := $pwFields }}
+			{
+				Name:      "{{ trimSuffix $field.Name "_hash" }}",
+				Label:     "{{ pascal (trimSuffix $field.Name "_hash") }}",
+				Type:      vent.TypeString,
+				InputType: "password",
+				Editable:  true,
+			},
+			{{- end }}
 			{{- range $edge := $node.Edges }}
 			{{- if $edge.Unique }}
 			{
@@ -81,8 +92,17 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			{{- end }}
 			{{- end }}
 		},
+		{{- if $pwFields }}
+		FieldMappers: vent.ChainFieldMappers(
+			{{- range $field := $pwFields }}
+			vent.HashPassword("{{ trimSuffix $field.Name "_hash" }}", "{{ $field.Name }}", credentialGenerator),
+			{{- end }}
+		),
+		{{- end }}
 	}
 	{{ end }}
+
+	_ = credentialGenerator
 
 	handler := vent.NewHandler(vent.HandlerConfig{
 		SecretProvider:          config.SecretProvider,
@@ -202,12 +222,10 @@ func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[stri
 	builder := c.client.{{ $node.Name }}.Create()
 
 	{{ range $field := $node.Fields }}
-	{{- if not $field.Sensitive }}
 	if v, ok := data["{{ $field.Name }}"]; ok {
 		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
 	}
 	{{ end }}
-	{{- end }}
 
 	{{- range $edge := $node.Edges }}
 	{{- if $edge.Unique }}
@@ -228,12 +246,10 @@ func (c *{{ $node.Name }}SchemaClient) Update(ctx context.Context, id int, data 
 	builder := c.client.{{ $node.Name }}.UpdateOneID(id)
 
 	{{ range $field := $node.Fields }}
-	{{- if not $field.Sensitive }}
 	if v, ok := data["{{ $field.Name }}"]; ok {
 		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
 	}
 	{{ end }}
-	{{- end }}
 
 	{{- range $edge := $node.Edges }}
 	{{- if $edge.Unique }}

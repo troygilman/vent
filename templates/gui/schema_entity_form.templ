@@ -28,9 +28,7 @@ type SelectOption struct {
 }
 
 templ SchemaEntityForm(props SchemaEntityFormProps) {
-	<form
-		class="flex flex-col px-12 py-4 gap-2 w-full"
-	>
+	<div class="flex flex-col px-12 py-4 gap-2 w-full">
 		<div class="text-xl font-bold mb-4">{ props.TitleText }</div>
 		<fieldset class="fieldset w-full max-w-196 gap-4">
 			for _, field := range props.Fields {
@@ -42,7 +40,7 @@ templ SchemaEntityForm(props SchemaEntityFormProps) {
 				@button
 			}
 		</div>
-	</form>
+	</div>
 }
 
 templ SchemaEntitySaveButton(path string) {
@@ -84,6 +82,11 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+			</label>
+		case "password":
+			<label class="input items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<input class="flex-1" type="password" data-bind={ props.Name } placeholder="Enter new password" readonly?={ !props.Editable }/>
 			</label>
 		case "int":
 			<label class="input items-baseline gap-2 w-full">

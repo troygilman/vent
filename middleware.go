@@ -2,6 +2,7 @@ package vent
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"vent/auth"
@@ -92,6 +93,15 @@ func AuthorizationMiddleware(permissions ...string) Middleware {
 				}
 			}
 
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func LoggerMiddleware() Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("%s %s\n", r.Method, r.RequestURI)
 			next.ServeHTTP(w, r)
 		})
 	}
