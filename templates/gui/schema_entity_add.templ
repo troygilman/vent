@@ -2,28 +2,25 @@ package gui
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
-type SchemaEntityProps struct {
+type SchemaEntityAddProps struct {
 	LayoutProps LayoutProps
 	AdminPath   string
 	SchemaName  string
-	EntityID    int
 	Fields      []SchemaEntityFieldProps
 }
 
-templ SchemaEntityPage(props SchemaEntityProps) {
-	{{ schemaEntityPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID) }}
+templ SchemaEntityAddPage(props SchemaEntityAddProps) {
+	{{ schemaEntityPath := fmt.Sprintf("%s%ss/", props.AdminPath, strings.ToLower(props.SchemaName)) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText: fmt.Sprintf("Change %s", strconv.Itoa(props.EntityID)),
+				TitleText: fmt.Sprintf("Add %s", props.SchemaName),
 				Fields:    props.Fields,
 				Buttons: []templ.Component{
-					SchemaEntitySaveButton(schemaEntityPath),
-					SchemaEntityDeleteButton(schemaEntityPath),
+					SchemaEntityAddButton(schemaEntityPath),
 				},
 			})
 			<div class="ds-indicator" data-style:display="$updating && 'flex'">

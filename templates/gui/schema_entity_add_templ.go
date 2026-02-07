@@ -10,19 +10,17 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
-type SchemaEntityProps struct {
+type SchemaEntityAddProps struct {
 	LayoutProps LayoutProps
 	AdminPath   string
 	SchemaName  string
-	EntityID    int
 	Fields      []SchemaEntityFieldProps
 }
 
-func SchemaEntityPage(props SchemaEntityProps) templ.Component {
+func SchemaEntityAddPage(props SchemaEntityAddProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -43,7 +41,7 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		schemaEntityPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID)
+		schemaEntityPath := fmt.Sprintf("%s%ss/", props.AdminPath, strings.ToLower(props.SchemaName))
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -69,11 +67,10 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText: fmt.Sprintf("Change %s", strconv.Itoa(props.EntityID)),
+					TitleText: fmt.Sprintf("Add %s", props.SchemaName),
 					Fields:    props.Fields,
 					Buttons: []templ.Component{
-						SchemaEntitySaveButton(schemaEntityPath),
-						SchemaEntityDeleteButton(schemaEntityPath),
+						SchemaEntityAddButton(schemaEntityPath),
 					},
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {

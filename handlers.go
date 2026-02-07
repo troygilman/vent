@@ -20,6 +20,47 @@ func StaticDirHandler() http.Handler {
 	return http.FileServerFS(static)
 }
 
+type FieldMapper func(data map[string]any)
+
+type fieldMapperConfig struct {
+	mapper          FieldMapper
+	inputFieldNames []string
+	outputFieldName string
+}
+
+func NewFieldMapper(inputFieldNames []string, outputFieldName string, f func(fields ...FieldValue) (FieldValue, error)) FieldMapper {
+	return func(data map[string]any) {
+		inputFields := []FieldValue{}
+		for _, fieldName := range inputFieldNames {
+			value, ok := data[fieldName]
+			if !ok {
+				return
+			}
+
+			switch value := value.(type) {
+			case string:
+				inputFields = append(inputFields, NewStringFieldValue(value))
+			case bool:
+				inputFields = append(inputFields, NewBoolFieldValue(value))
+			case int:
+				inputFields = append(inputFields, NewIntFieldValue(value))
+			}
+		}
+
+		outputField := f(inputFields...)
+		data[outputFieldName] = outputField.Raw
+	}
+}
+
+func PasswordFieldMapper() FieldMapper {
+	credentialGenerator := auth.NewBCryptCredentialGenerator()
+	return NewFieldMapper([]string{"password"}, "password_hash", func(fields ...FieldValue) (FieldValue, error) {
+		passwordField := fields[0]
+		password_hash, err := credentialGenerator.Generate(passwordField.StringValue())
+		return NewStringFieldValue(password_hash), err
+	})
+}
+
 // HandlerConfig contains configuration options for the admin handler
 type HandlerConfig struct {
 	SecretProvider          auth.SecretProvider
@@ -28,6 +69,7 @@ type HandlerConfig struct {
 	AuthPasswordField       string // The field name containing the password hash (e.g., "password_hash")
 	BasePath                string // Base path for admin routes (default: "/admin/")
 	CookieName              string // Cookie name for auth token (default: "vent-auth-token")
+	FieldMappers            []FieldMapper
 }
 
 // Handler is the main HTTP handler for the admin panel
@@ -87,8 +129,9 @@ func (h *Handler) RegisterSchema(schema SchemaConfig) {
 	permission_suffix := strings.ToLower(schema.Name)
 
 	h.handle("GET "+path, h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaListHandler(schema)))))
+	h.handle("POST "+path, h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.postSchemaEntityHandler(schema)))))
+	h.handle("GET "+path+"add/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.getSchemaEntityAddHandler(schema)))))
 	h.handle("GET "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("view_"+permission_suffix)(h.getSchemaEntityHandler(schema)))))
-	// h.handle("POST "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("add_"+permission_suffix)(h.postSchemaEntityHandler(schema)))))
 	h.handle("PATCH "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("change_"+permission_suffix)(h.patchSchemaEntityHandler(schema)))))
 	h.handle("DELETE "+path+"{id}/", h.authMiddleware(h.userMiddleware(AuthorizationMiddleware("delete_"+permission_suffix)(h.deleteSchemaEntityHandler(schema)))))
 }
@@ -258,6 +301,52 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 	})
 }
 
+func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Build entity props
+		props := gui.SchemaEntityAddProps{
+			LayoutProps: h.buildLayoutProps(schema.Name),
+			Fields:      make([]gui.SchemaEntityFieldProps, 0, len(schema.Columns)),
+			AdminPath:   h.config.BasePath,
+			SchemaName:  schema.Name,
+		}
+
+		for _, col := range schema.Columns {
+			fieldProps := gui.SchemaEntityFieldProps{
+				Name:     col.Name,
+				Label:    col.Label,
+				Type:     col.Type.String(),
+				Value:    "",
+				Editable: col.Editable,
+			}
+
+			// Add relation options if this is a foreign key
+			if col.Type == TypeForeignKey && col.Relation != nil {
+				options, err := schema.Client.GetRelationOptions(r.Context(), col.Relation)
+				if err != nil {
+					log.Printf("Error getting relation options for %s: %v", col.Name, err)
+				} else {
+					fieldProps.Options = make([]gui.SelectOption, len(options))
+					for i, opt := range options {
+						fieldProps.Options[i] = gui.SelectOption{
+							Value:    opt.Value,
+							Label:    opt.Label,
+							Selected: false,
+						}
+					}
+				}
+			}
+
+			props.Fields = append(props.Fields, fieldProps)
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			h.handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
 // getSchemaEntityHandler returns the handler for GET /admin/{schema}s/{id}/
 func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -319,6 +408,35 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
 			h.handleError(w, r, err, http.StatusInternalServerError)
 		}
+	})
+}
+
+func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		signals := make(map[string]any)
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.handleError(w, r, err, http.StatusBadRequest)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+
+		// Filter to only editable fields
+		data := make(map[string]any)
+		for _, col := range schema.Columns {
+			if col.Editable {
+				if val, ok := signals[col.Name]; ok {
+					data[col.Name] = val
+				}
+			}
+		}
+
+		if _, err := schema.Client.Create(sse.Context(), data); err != nil {
+			log.Printf("Error updating entity: %v", err)
+			return
+		}
+
+		sse.Redirect(schema.Path())
 	})
 }
 
