@@ -66,12 +66,14 @@ func (ep EdgePath) String() string {
 
 // SchemaConfig defines the configuration for a schema in the admin panel
 type SchemaConfig struct {
-	Name         string         // The name of the schema (e.g., "User", "Post")
-	Columns      []ColumnConfig // The columns to display and edit
-	Edges        []EdgeConfig   // The relationship edges (has-many, many-to-many)
-	Client       SchemaClient   // The client for CRUD operations
-	AdminPath    string         // Base admin path (e.g., "/admin/")
-	FieldMappers FieldMapper    // Optional pipeline to transform form data before DB create/update
+	Name         string // The name of the schema (e.g., "User", "Post")
+	Fields       map[string]FieldConfig
+	Edges        []EdgeConfig // The relationship edges (has-many, many-to-many)
+	FieldSets    []FieldSet
+	Columns      []string
+	Client       SchemaClient // The client for CRUD operations
+	AdminPath    string       // Base admin path (e.g., "/admin/")
+	FieldMappers FieldMapper  // Optional pipeline to transform form data before DB create/update
 }
 
 // ApplyFieldMappers runs the schema's field mapper pipeline on the data map.
@@ -104,7 +106,7 @@ func (s SchemaConfig) EntityPath(id int) string {
 }
 
 // ColumnConfig defines the configuration for a single column/field
-type ColumnConfig struct {
+type FieldConfig struct {
 	Name      string       // The field name (e.g., "email", "author_id")
 	Label     string       // Human-readable label (e.g., "Email", "Author")
 	Type      FieldType    // The field type
@@ -115,7 +117,7 @@ type ColumnConfig struct {
 
 // EffectiveInputType returns the input type to use for GUI rendering.
 // If InputType is set, it takes precedence over Type.String().
-func (c ColumnConfig) EffectiveInputType() string {
+func (c FieldConfig) EffectiveInputType() string {
 	if c.InputType != "" {
 		return c.InputType
 	}

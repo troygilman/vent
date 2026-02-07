@@ -22,6 +22,7 @@ type Permission struct {
 
 type VentSchemaAnnotation struct {
 	CustomFields []Field
+	FieldSets    []FieldSet
 	TableColumns []string
 	Permissions  []Permission
 }
@@ -45,29 +46,16 @@ func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
 }
 
 func (a VentSchemaAnnotation) tableFields(node *gen.Type) []Field {
-	if a.TableColumns == nil {
-		return insensitiveFields(node)
-	}
-	fieldMap := make(map[string]Field)
+	fields := make([]Field, 0, len(node.Fields)+len(a.CustomFields))
 	for _, f := range node.Fields {
-		fieldMap[f.Name] = Field{
+		fields = append(fields, Field{
 			Name:      f.Name,
 			Type:      f.Type.Type.String(),
 			Sensitive: f.Sensitive(),
-		}
+		})
 	}
-	for _, f := range a.CustomFields {
-		fieldMap[f.Name] = f
-	}
-	results := make([]Field, len(a.TableColumns))
-	for idx, fieldName := range a.TableColumns {
-		f, ok := fieldMap[fieldName]
-		if !ok {
-			panic("cannot find " + fieldName + " in field map")
-		}
-		results[idx] = f
-	}
-	return results
+	fields = append(fields, a.CustomFields...)
+	return fields
 }
 
 type Field struct {
@@ -75,4 +63,9 @@ type Field struct {
 	Type      string
 	InputType string
 	Sensitive bool
+}
+
+type FieldSet struct {
+	Label  string
+	Fields []string
 }

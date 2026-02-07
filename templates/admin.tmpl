@@ -25,16 +25,15 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 	credentialGenerator := auth.NewBCryptCredentialGenerator()
 
 	{{ range $node := $.Nodes }}
-	{{ $tableFields := tableFields $node }}
 	{{ $pwFields := passwordFields $node }}
 	schema{{ $node.Name }} := vent.SchemaConfig{
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
 			client: config.Client,
 		},
-		Columns: []vent.ColumnConfig{
-			{{ range $field := $tableFields }}
-			{
+		Fields: map[string]vent.FieldConfig{
+			{{ range $field := fields $node }}
+			"{{ $field.Name }}": {
 				Name:     "{{ $field.Name }}",
 				Label:    "{{ pascal $field.Name }}",
 				Type:     vent.Type{{ pascal $field.Type }},
@@ -78,6 +77,23 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			{{- end }}
 			{{- end }}
 		},
+		FieldSets: []vent.FieldSet{
+		    {{- range $set := fieldSets $node }}
+			{
+			    Label: "{{ $set.Label }}",
+				Fields: []string{
+				    {{- range $field := $set.Fields }}
+					"{{ $field }}",
+				    {{- end }}
+				},
+			},
+			{{- end }}
+		},
+		Columns: []string{
+		    {{- range $col := tableColumns $node }}
+			"{{ $col }}",
+			{{- end }}
+		},
 		{{- if $pwFields }}
 		FieldMappers: vent.ChainFieldMappers(
 			{{- range $field := $pwFields }}
@@ -87,8 +103,6 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 		{{- end }}
 	}
 	{{ end }}
-
-	_ = credentialGenerator
 
 	handler := vent.NewHandler(vent.HandlerConfig{
 		SecretProvider:          config.SecretProvider,

@@ -226,10 +226,11 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			Type:  "int",
 		}
 		for i, col := range schema.Columns {
+			field := schema.Fields[col]
 			props.Columns[i+1] = gui.SchemaTableColumn{
-				Name:  col.Name,
-				Label: col.Label,
-				Type:  col.Type.String(),
+				Name:  field.Name,
+				Label: field.Label,
+				Type:  field.Type.String(),
 			}
 		}
 
@@ -250,7 +251,7 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			}
 
 			for i, col := range schema.Columns {
-				field, ok := entity.Get(col.Name)
+				field, ok := entity.Get(col)
 				if !ok {
 					row.Values[i+1] = gui.SchemaTableCell{Display: ""}
 					continue
@@ -288,20 +289,26 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 			SchemaName:  schema.Name,
 		}
 
-		for _, col := range schema.Columns {
+		fields := []string{}
+		for _, fieldSet := range schema.FieldSets {
+			fields = append(fields, fieldSet.Fields...)
+		}
+
+		for _, field := range fields {
+			fieldConfig := schema.Fields[field]
 			fieldProps := gui.SchemaEntityFieldProps{
-				Name:     col.Name,
-				Label:    col.Label,
-				Type:     col.EffectiveInputType(),
+				Name:     fieldConfig.Name,
+				Label:    fieldConfig.Label,
+				Type:     fieldConfig.EffectiveInputType(),
 				Value:    "",
-				Editable: col.Editable,
+				Editable: fieldConfig.Editable,
 			}
 
 			// Add relation options if this is a foreign key
-			if col.Type == TypeForeignKey && col.Relation != nil {
-				options, err := schema.Client.GetRelationOptions(r.Context(), col.Relation)
+			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
+				options, err := schema.Client.GetRelationOptions(r.Context(), fieldConfig.Relation)
 				if err != nil {
-					log.Printf("Error getting relation options for %s: %v", col.Name, err)
+					log.Printf("Error getting relation options for %s: %v", fieldConfig.Name, err)
 				} else {
 					fieldProps.Options = make([]gui.SelectOption, len(options))
 					for i, opt := range options {
@@ -347,27 +354,33 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			EntityID:    id,
 		}
 
-		for _, col := range schema.Columns {
+		fields := []string{}
+		for _, fieldSet := range schema.FieldSets {
+			fields = append(fields, fieldSet.Fields...)
+		}
+
+		for _, field := range fields {
+			fieldConfig := schema.Fields[field]
 			fieldProps := gui.SchemaEntityFieldProps{
-				Name:     col.Name,
-				Label:    col.Label,
-				Type:     col.EffectiveInputType(),
+				Name:     fieldConfig.Name,
+				Label:    fieldConfig.Label,
+				Type:     fieldConfig.EffectiveInputType(),
 				Value:    "",
-				Editable: col.Editable,
+				Editable: fieldConfig.Editable,
 			}
 
 			// Populate value from entity if the field exists
 			// (virtual columns like "password" won't exist in entity data — they render empty)
-			field, ok := entity.Get(col.Name)
+			field, ok := entity.Get(fieldConfig.Name)
 			if ok {
 				fieldProps.Value = field.Display
 			}
 
 			// Add relation options if this is a foreign key
-			if col.Type == TypeForeignKey && col.Relation != nil {
-				options, err := schema.Client.GetRelationOptions(r.Context(), col.Relation)
+			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
+				options, err := schema.Client.GetRelationOptions(r.Context(), fieldConfig.Relation)
 				if err != nil {
-					log.Printf("Error getting relation options for %s: %v", col.Name, err)
+					log.Printf("Error getting relation options for %s: %v", fieldConfig.Name, err)
 				} else {
 					fieldProps.Options = make([]gui.SelectOption, len(options))
 					for i, opt := range options {
@@ -401,10 +414,10 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 		// Filter to only editable fields
 		data := make(map[string]any)
-		for _, col := range schema.Columns {
-			if col.Editable {
-				if val, ok := signals[col.Name]; ok {
-					data[col.Name] = val
+		for _, fieldConfig := range schema.Fields {
+			if fieldConfig.Editable {
+				if val, ok := signals[fieldConfig.Name]; ok {
+					data[fieldConfig.Name] = val
 				}
 			}
 		}
@@ -415,6 +428,7 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
+		log.Println(data, schema.FieldMappers)
 		if _, err := schema.Client.Create(sse.Context(), data); err != nil {
 			log.Printf("Error creating entity: %v", err)
 			return
@@ -444,9 +458,10 @@ func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		// Filter to only editable fields
 		data := make(map[string]any)
 		for _, col := range schema.Columns {
-			if col.Editable {
-				if val, ok := signals[col.Name]; ok {
-					data[col.Name] = val
+			fieldConfig := schema.Fields[col]
+			if fieldConfig.Editable {
+				if val, ok := signals[fieldConfig.Name]; ok {
+					data[fieldConfig.Name] = val
 				}
 			}
 		}

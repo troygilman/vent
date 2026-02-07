@@ -43,7 +43,9 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"tableFields":    tableFields,
+					"fields":         fields,
+					"tableColumns":   tableColumns,
+					"fieldSets":      fieldSets,
 					"passwordFields": passwordFields,
 					"hasSuffix":      strings.HasSuffix,
 					"trimSuffix":     strings.TrimSuffix,
@@ -61,7 +63,7 @@ func (e *AdminExtension) Templates() []*gen.Template {
 	}
 }
 
-func tableFields(node *gen.Type) []Field {
+func fields(node *gen.Type) []Field {
 	var annotation VentSchemaAnnotation
 	if err := annotation.parse(node); err != nil {
 		return insensitiveFields(node)
@@ -69,15 +71,36 @@ func tableFields(node *gen.Type) []Field {
 	return annotation.tableFields(node)
 }
 
+func fieldSets(node *gen.Type) []FieldSet {
+	var annotation VentSchemaAnnotation
+	if err := annotation.parse(node); err != nil {
+		return nil
+	}
+	return annotation.FieldSets
+
+}
+
+func tableColumns(node *gen.Type) []string {
+	var annotation VentSchemaAnnotation
+	if err := annotation.parse(node); err != nil {
+		columns := []string{}
+		for _, f := range node.Fields {
+			if !f.Sensitive() {
+				columns = append(columns, f.Name)
+			}
+		}
+		return columns
+	}
+	return annotation.TableColumns
+}
+
 func insensitiveFields(node *gen.Type) []Field {
 	result := []Field{}
 	for _, f := range node.Fields {
-		if !f.Sensitive() {
-			result = append(result, Field{
-				Name: f.Name,
-				Type: f.Type.Type.String(),
-			})
-		}
+		result = append(result, Field{
+			Name: f.Name,
+			Type: f.Type.Type.String(),
+		})
 	}
 	return result
 }

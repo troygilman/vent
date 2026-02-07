@@ -195,9 +195,9 @@ func TestHandler_GetLoginPage(t *testing.T) {
 	authUserSchema := SchemaConfig{
 		Name:   "User",
 		Client: mockClient,
-		Columns: []ColumnConfig{
-			{Name: "id", Label: "ID", Type: TypeInt},
-			{Name: "email", Label: "Email", Type: TypeString},
+		Columns: []string{
+			"id",
+			"email",
 		},
 	}
 
