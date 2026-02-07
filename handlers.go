@@ -290,8 +290,14 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 		}
 
 		fields := []string{}
-		for _, fieldSet := range schema.FieldSets {
-			fields = append(fields, fieldSet.Fields...)
+		if len(schema.FieldSets) > 0 {
+			for _, fieldSet := range schema.FieldSets {
+				fields = append(fields, fieldSet.Fields...)
+			}
+		} else {
+			for field := range schema.Fields {
+				fields = append(fields, field)
+			}
 		}
 
 		for _, field := range fields {
@@ -355,8 +361,14 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		}
 
 		fields := []string{}
-		for _, fieldSet := range schema.FieldSets {
-			fields = append(fields, fieldSet.Fields...)
+		if len(schema.FieldSets) > 0 {
+			for _, fieldSet := range schema.FieldSets {
+				fields = append(fields, fieldSet.Fields...)
+			}
+		} else {
+			for field := range schema.Fields {
+				fields = append(fields, field)
+			}
 		}
 
 		for _, field := range fields {
