@@ -215,13 +215,18 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			LayoutProps: h.buildLayoutProps(schema.Name),
 			AdminPath:   h.config.BasePath,
 			SchemaName:  schema.Name,
-			Columns:     make([]gui.SchemaTableColumn, len(schema.Columns)),
+			Columns:     make([]gui.SchemaTableColumn, len(schema.Columns)+1),
 			Rows:        make([]gui.SchemaTableRow, 0, len(entities)),
 		}
 
 		// Build column headers
+		props.Columns[0] = gui.SchemaTableColumn{
+			Name:  "id",
+			Label: "ID",
+			Type:  "int",
+		}
 		for i, col := range schema.Columns {
-			props.Columns[i] = gui.SchemaTableColumn{
+			props.Columns[i+1] = gui.SchemaTableColumn{
 				Name:  col.Name,
 				Label: col.Label,
 				Type:  col.Type.String(),
@@ -231,13 +236,23 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 		// Build rows
 		for _, entity := range entities {
 			row := gui.SchemaTableRow{
-				Values: make([]gui.SchemaTableCell, len(schema.Columns)),
+				Values: make([]gui.SchemaTableCell, len(schema.Columns)+1),
+			}
+
+			id, ok := entity.Get("id")
+			if ok {
+				row.Values[0] = gui.SchemaTableCell{
+					Display: id.Display,
+					LinkURL: fmt.Sprintf("%s%d/", schema.Path(), entity.ID()),
+				}
+			} else {
+				row.Values[0] = gui.SchemaTableCell{Display: ""}
 			}
 
 			for i, col := range schema.Columns {
 				field, ok := entity.Get(col.Name)
 				if !ok {
-					row.Values[i] = gui.SchemaTableCell{Display: ""}
+					row.Values[i+1] = gui.SchemaTableCell{Display: ""}
 					continue
 				}
 
@@ -245,17 +260,12 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 					Display: field.Display,
 				}
 
-				// Add link URL for ID column (link to entity detail page)
-				if col.Name == "id" {
-					cell.LinkURL = fmt.Sprintf("%s%d/", schema.Path(), entity.ID())
-				}
-
 				// Add link URL for foreign key columns
 				if field.Type == TypeForeignKey && field.Relation != nil {
 					cell.LinkURL = fmt.Sprintf("%s%d/", field.Relation.TargetPath, field.Relation.TargetID)
 				}
 
-				row.Values[i] = cell
+				row.Values[i+1] = cell
 			}
 
 			props.Rows = append(props.Rows, row)

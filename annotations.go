@@ -21,6 +21,7 @@ type Permission struct {
 }
 
 type VentSchemaAnnotation struct {
+	CustomFields []Field
 	TableColumns []string
 	Permissions  []Permission
 }
@@ -43,15 +44,22 @@ func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
 	return json.Unmarshal(jsonBytes, a)
 }
 
-func (a VentSchemaAnnotation) tableFields(node *gen.Type) []*gen.Field {
+func (a VentSchemaAnnotation) tableFields(node *gen.Type) []Field {
 	if a.TableColumns == nil {
 		return insensitiveFields(node)
 	}
-	fieldMap := make(map[string]*gen.Field)
+	fieldMap := make(map[string]Field)
 	for _, f := range node.Fields {
+		fieldMap[f.Name] = Field{
+			Name:      f.Name,
+			Type:      f.Type.Type.String(),
+			Sensitive: f.Sensitive(),
+		}
+	}
+	for _, f := range a.CustomFields {
 		fieldMap[f.Name] = f
 	}
-	results := make([]*gen.Field, len(a.TableColumns))
+	results := make([]Field, len(a.TableColumns))
 	for idx, fieldName := range a.TableColumns {
 		f, ok := fieldMap[fieldName]
 		if !ok {
@@ -62,9 +70,9 @@ func (a VentSchemaAnnotation) tableFields(node *gen.Type) []*gen.Field {
 	return results
 }
 
-type VentFieldAnnotation struct {
-}
-
-func (VentFieldAnnotation) Name() string {
-	return "VentField"
+type Field struct {
+	Name      string
+	Type      string
+	InputType string
+	Sensitive bool
 }

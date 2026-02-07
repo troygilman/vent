@@ -61,7 +61,7 @@ func (e *AdminExtension) Templates() []*gen.Template {
 	}
 }
 
-func tableFields(node *gen.Type) []*gen.Field {
+func tableFields(node *gen.Type) []Field {
 	var annotation VentSchemaAnnotation
 	if err := annotation.parse(node); err != nil {
 		return insensitiveFields(node)
@@ -69,11 +69,14 @@ func tableFields(node *gen.Type) []*gen.Field {
 	return annotation.tableFields(node)
 }
 
-func insensitiveFields(node *gen.Type) []*gen.Field {
-	result := []*gen.Field{}
+func insensitiveFields(node *gen.Type) []Field {
+	result := []Field{}
 	for _, f := range node.Fields {
 		if !f.Sensitive() {
-			result = append(result, f)
+			result = append(result, Field{
+				Name: f.Name,
+				Type: f.Type.Type.String(),
+			})
 		}
 	}
 	return result

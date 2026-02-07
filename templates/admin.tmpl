@@ -33,29 +33,15 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			client: config.Client,
 		},
 		Columns: []vent.ColumnConfig{
-			{
-				Name:     "id",
-				Label:    "ID",
-				Type:     vent.TypeInt,
-				Editable: false,
-			},
 			{{ range $field := $tableFields }}
 			{
 				Name:     "{{ $field.Name }}",
 				Label:    "{{ pascal $field.Name }}",
-				Type:     vent.Type{{ pascal $field.Type.Type.String }},
+				Type:     vent.Type{{ pascal $field.Type }},
+				InputType: "{{ $field.InputType }}",
 				Editable: {{ not $field.Sensitive }},
 			},
 			{{ end }}
-			{{- range $field := $pwFields }}
-			{
-				Name:      "{{ trimSuffix $field.Name "_hash" }}",
-				Label:     "{{ pascal (trimSuffix $field.Name "_hash") }}",
-				Type:      vent.TypeString,
-				InputType: "password",
-				Editable:  true,
-			},
-			{{- end }}
 			{{- range $edge := $node.Edges }}
 			{{- if $edge.Unique }}
 			{
