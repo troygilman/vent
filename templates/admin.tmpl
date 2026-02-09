@@ -51,28 +51,9 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 					TargetSchema:  "{{ $edge.Type.Name }}",
 					TargetDisplay: "id",
 					TargetPath:    "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
+					Unique: {{ $edge.Unique }},
 				},
 			},
-			{{- end }}
-		},
-		Edges: []vent.EdgeConfig{
-			{{- range $edge := $node.Edges }}
-			{{- if not $edge.Unique }}
-			{
-				Name:         "{{ $edge.Name }}",
-				Label:        "{{ pascal $edge.Name }}",
-				TargetSchema: "{{ $edge.Type.Name }}",
-				TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
-				{{- if $edge.M2M }}
-				Type:         vent.EdgeManyToMany,
-				{{- else }}
-				Type:         vent.EdgeHasMany,
-				{{- end }}
-				{{- if $edge.Ref }}
-				Inverse:      "{{ $edge.Ref.Name }}",
-				{{- end }}
-			},
-			{{- end }}
 			{{- end }}
 		},
 		FieldSets: []vent.FieldSet{
@@ -226,11 +207,12 @@ func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[stri
 	{{ end }}
 
 	{{- range $edge := $node.Edges }}
-	{{- if $edge.Unique }}
-	if v, ok := data["{{ $edge.Name }}_id"]; ok {
-		builder = builder.Set{{ pascal $edge.Name }}ID(v.(int))
+	{{ $edgeName := pascal $edge.Name }}
+	if v, ok := data["{{ $edge.Name }}"]; ok {
+		if ids := v.([]int); len(ids) > 0 {
+		    builder = builder.Add{{ trimSuffix $edgeName "s" }}IDs(ids...)
+		}
 	}
-	{{- end }}
 	{{- end }}
 
 	e, err := builder.Save(ctx)

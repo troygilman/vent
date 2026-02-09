@@ -68,7 +68,6 @@ func (ep EdgePath) String() string {
 type SchemaConfig struct {
 	Name         string // The name of the schema (e.g., "User", "Post")
 	Fields       map[string]FieldConfig
-	Edges        []EdgeConfig // The relationship edges (has-many, many-to-many)
 	FieldSets    []FieldSet
 	Columns      []string
 	Client       SchemaClient // The client for CRUD operations
@@ -83,16 +82,6 @@ func (s SchemaConfig) ApplyFieldMappers(data map[string]any) error {
 		return nil
 	}
 	return s.FieldMappers(data)
-}
-
-// GetEdge returns the edge configuration by name, or nil if not found
-func (s SchemaConfig) GetEdge(name string) *EdgeConfig {
-	for i := range s.Edges {
-		if s.Edges[i].Name == name {
-			return &s.Edges[i]
-		}
-	}
-	return nil
 }
 
 // Path returns the URL path for this schema's list view
@@ -129,16 +118,7 @@ type RelationDef struct {
 	TargetSchema  string // The name of the related schema (e.g., "User")
 	TargetDisplay string // The field to display from the related schema (e.g., "email")
 	TargetPath    string // URL path to the related schema's admin (e.g., "/admin/users/")
-}
-
-// EdgeConfig defines a relationship edge (has-many / many-to-many)
-type EdgeConfig struct {
-	Name         string   // The edge name (e.g., "groups", "posts")
-	Label        string   // Human-readable label (e.g., "Groups", "Posts")
-	TargetSchema string   // The name of the related schema (e.g., "Group")
-	TargetPath   string   // URL path to the related schema's admin
-	Type         EdgeType // The type of edge (HasMany, ManyToMany)
-	Inverse      string   // The inverse edge name on the target schema (if any)
+	Unique        bool
 }
 
 // EdgeType represents the type of relationship

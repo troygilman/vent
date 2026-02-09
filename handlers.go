@@ -314,17 +314,20 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 
 			// Add relation options if this is a foreign key
 			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
-				options, err := schema.Client.GetRelationOptions(r.Context(), fieldConfig.Relation)
+				foreignKeySchema, ok := h.schemas[fieldConfig.Relation.TargetSchema]
+				if !ok {
+					panic("could not find foreign key schema with name " + fieldConfig.Relation.TargetSchema)
+				}
+				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{})
 				if err != nil {
-					log.Printf("Error getting relation options for %s: %v", fieldConfig.Name, err)
-				} else {
-					fieldProps.Options = make([]gui.SelectOption, len(options))
-					for i, opt := range options {
-						fieldProps.Options[i] = gui.SelectOption{
-							Value:    opt.Value,
-							Label:    opt.Label,
-							Selected: false,
-						}
+					panic(err)
+				}
+				fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
+				for i, opt := range foreignKeyOptions {
+					fieldProps.Options[i] = gui.SelectOption{
+						Value:    opt.ID(),
+						Label:    strconv.Itoa(opt.ID()),
+						Selected: false,
 					}
 				}
 			}
@@ -347,9 +350,11 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		edges := make([]string, len(schema.Edges))
-		for i, edgeConfig := range schema.Edges {
-			edges[i] = edgeConfig.Name
+		edges := []string{}
+		for fieldName, fieldConfig := range schema.Fields {
+			if fieldConfig.Relation != nil {
+				edges = append(edges, fieldName)
+			}
 		}
 
 		entity, err := schema.Client.Get(r.Context(), id, GetOptions{
@@ -446,7 +451,24 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		for _, fieldConfig := range schema.Fields {
 			if fieldConfig.Editable {
 				if val, ok := signals[fieldConfig.Name]; ok {
-					data[fieldConfig.Name] = val
+					switch fieldConfig.Type {
+					case TypeForeignKey:
+						strIDs := strings.Split(val.(string), ",")
+						intIDs := make([]int, 0, len(strIDs))
+						for _, strID := range strIDs {
+							if strID == "" {
+								continue
+							}
+							intID, err := strconv.Atoi(strID)
+							if err != nil {
+								panic(err)
+							}
+							intIDs = append(intIDs, intID)
+						}
+						data[fieldConfig.Name] = intIDs
+					default:
+						data[fieldConfig.Name] = val
+					}
 				}
 			}
 		}
@@ -457,7 +479,6 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		log.Println(data, schema.FieldMappers)
 		if _, err := schema.Client.Create(sse.Context(), data); err != nil {
 			log.Printf("Error creating entity: %v", err)
 			return
