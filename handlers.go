@@ -1,6 +1,7 @@
 package vent
 
 import (
+	"cmp"
 	"embed"
 	"fmt"
 	"log"
@@ -38,7 +39,7 @@ type Handler struct {
 	authMiddleware   Middleware
 	userMiddleware   Middleware
 	loggerMiddleware Middleware
-	schemas          []SchemaConfig
+	schemas          map[string]SchemaConfig
 	tokenGenerator   auth.TokenGenerator
 }
 
@@ -55,6 +56,7 @@ func NewHandler(config HandlerConfig) *Handler {
 	handler := &Handler{
 		mux:              http.NewServeMux(),
 		config:           config,
+		schemas:          make(map[string]SchemaConfig),
 		authMiddleware:   AuthentificationMiddleware(auth.NewJwtTokenAuthenticator(config.SecretProvider)),
 		userMiddleware:   UserMiddleware(config.AuthUserSchema),
 		loggerMiddleware: LoggerMiddleware(),
@@ -83,7 +85,7 @@ func (h *Handler) RegisterSchema(schema SchemaConfig) {
 		schema.AdminPath = h.config.BasePath
 	}
 
-	h.schemas = append(h.schemas, schema)
+	h.schemas[schema.Name] = schema
 
 	path := schema.Path()
 
@@ -345,7 +347,14 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		entity, err := schema.Client.Get(r.Context(), id)
+		edges := make([]string, len(schema.Edges))
+		for i, edgeConfig := range schema.Edges {
+			edges[i] = edgeConfig.Name
+		}
+
+		entity, err := schema.Client.Get(r.Context(), id, GetOptions{
+			WithEdges: edges,
+		})
 		if err != nil {
 			h.handleError(w, r, err, http.StatusNotFound)
 			return
@@ -390,17 +399,25 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 			// Add relation options if this is a foreign key
 			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
-				options, err := schema.Client.GetRelationOptions(r.Context(), fieldConfig.Relation)
+				foreignKeySchema, ok := h.schemas[fieldConfig.Relation.TargetSchema]
+				if !ok {
+					panic("could not find foreign key schema with name " + fieldConfig.Relation.TargetSchema)
+				}
+				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{})
 				if err != nil {
-					log.Printf("Error getting relation options for %s: %v", fieldConfig.Name, err)
-				} else {
-					fieldProps.Options = make([]gui.SelectOption, len(options))
-					for i, opt := range options {
-						fieldProps.Options[i] = gui.SelectOption{
-							Value:    opt.Value,
-							Label:    opt.Label,
-							Selected: ok && field.Type == TypeForeignKey && field.IntValue() == opt.Value,
-						}
+					panic(err)
+				}
+				fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
+				ids := make(map[int]struct{})
+				for _, relatedEntity := range field.RelationEntities() {
+					ids[relatedEntity.ID()] = struct{}{}
+				}
+				for i, opt := range foreignKeyOptions {
+					_, optionSelected := ids[opt.ID()]
+					fieldProps.Options[i] = gui.SelectOption{
+						Value:    opt.ID(),
+						Label:    strconv.Itoa(opt.ID()),
+						Selected: optionSelected,
 					}
 				}
 			}
@@ -469,11 +486,27 @@ func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 		// Filter to only editable fields
 		data := make(map[string]any)
-		for _, col := range schema.Columns {
-			fieldConfig := schema.Fields[col]
+		for _, fieldConfig := range schema.Fields {
 			if fieldConfig.Editable {
 				if val, ok := signals[fieldConfig.Name]; ok {
-					data[fieldConfig.Name] = val
+					switch fieldConfig.Type {
+					case TypeForeignKey:
+						strIDs := strings.Split(val.(string), ",")
+						intIDs := make([]int, 0, len(strIDs))
+						for _, strID := range strIDs {
+							if strID == "" {
+								continue
+							}
+							intID, err := strconv.Atoi(strID)
+							if err != nil {
+								panic(err)
+							}
+							intIDs = append(intIDs, intID)
+						}
+						data[fieldConfig.Name] = intIDs
+					default:
+						data[fieldConfig.Name] = val
+					}
 				}
 			}
 		}
@@ -517,13 +550,16 @@ func (h *Handler) deleteSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 // buildLayoutProps creates LayoutProps with the current schemas
 func (h *Handler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
-	schemas := make([]gui.SchemaMetadata, len(h.schemas))
-	for i, s := range h.schemas {
-		schemas[i] = gui.SchemaMetadata{
-			Name: s.Name,
-			Path: s.Path(),
-		}
+	schemas := make([]gui.SchemaMetadata, 0, len(h.schemas))
+	for _, schema := range h.schemas {
+		schemas = append(schemas, gui.SchemaMetadata{
+			Name: schema.Name,
+			Path: schema.Path(),
+		})
 	}
+	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	return gui.LayoutProps{
 		Schemas:          schemas,
 		ActiveSchemaName: activeSchemaName,
