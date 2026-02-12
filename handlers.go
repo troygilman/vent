@@ -225,16 +225,9 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			LayoutProps: h.buildLayoutProps(schema.Name),
 			AdminPath:   h.config.BasePath,
 			SchemaName:  schema.Name,
-			Columns:     make([]gui.SchemaTableColumn, 0, len(schema.Columns)+1),
+			Columns:     make([]gui.SchemaTableColumn, 0, len(schema.Columns)),
 			Rows:        make([]gui.SchemaTableRow, 0, len(entities)),
 		}
-
-		// Build column headers
-		props.Columns = append(props.Columns, gui.SchemaTableColumn{
-			Name:  "id",
-			Label: "ID",
-			Type:  "int",
-		})
 
 		for _, col := range schema.Columns {
 			field := schema.LookupField(col)
@@ -248,20 +241,10 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 		// Build rows
 		for _, entity := range entities {
 			row := gui.SchemaTableRow{
-				Cells: make([]gui.SchemaTableCell, 0, len(schema.Columns)+1),
+				Cells: make([]gui.SchemaTableCell, 0, len(schema.Columns)),
 			}
 
-			id, ok := entity.Get("id")
-			if ok {
-				row.Cells = append(row.Cells, gui.SchemaTableCell{
-					Display: id.Display,
-					LinkURL: h.config.BasePath + schema.EntityPath(entity.ID()),
-				})
-			} else {
-				row.Cells = append(row.Cells, gui.SchemaTableCell{Display: ""})
-			}
-
-			for _, col := range schema.Columns {
+			for i, col := range schema.Columns {
 				field, ok := entity.Get(col)
 				if !ok {
 					row.Cells = append(row.Cells, gui.SchemaTableCell{Display: ""})
@@ -270,6 +253,10 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 
 				cell := gui.SchemaTableCell{
 					Display: field.Display,
+				}
+
+				if i == 0 {
+					cell.LinkURL = h.config.BasePath + schema.EntityPath(entity.ID())
 				}
 
 				// Add link URL for foreign key columns

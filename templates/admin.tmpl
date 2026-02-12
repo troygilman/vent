@@ -38,6 +38,12 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 		DisplayField: "{{ $schemaAnnotation.DisplayField }}",
 		{{ end }}
 		Fields: []vent.FieldConfig{
+		    {
+			    Name: "id",
+				Label: "ID",
+				Type: vent.TypeInt,
+				Editable: false,
+			},
 			{{ range $field := fields $node }}
 			{
 				Name:     "{{ $field.Name }}",
