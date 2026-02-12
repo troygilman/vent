@@ -31,9 +31,9 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 		Client: &{{ $node.Name }}SchemaClient{
 			client: config.Client,
 		},
-		Fields: map[string]vent.FieldConfig{
+		Fields: []vent.FieldConfig{
 			{{ range $field := fields $node }}
-			"{{ $field.Name }}": {
+			{
 				Name:     "{{ $field.Name }}",
 				Label:    "{{ pascal $field.Name }}",
 				Type:     vent.Type{{ pascal $field.Type }},
@@ -42,7 +42,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			},
 			{{ end }}
 			{{- range $edge := $node.Edges }}
-			"{{ $edge.Name }}": {
+			{
 				Name:     "{{ $edge.Name }}",
 				Label:    "{{ pascal $edge.Name }}",
 				Type:     vent.TypeForeignKey,

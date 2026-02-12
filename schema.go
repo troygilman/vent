@@ -67,12 +67,25 @@ func (ep EdgePath) String() string {
 // SchemaConfig defines the configuration for a schema in the admin panel
 type SchemaConfig struct {
 	Name         string // The name of the schema (e.g., "User", "Post")
-	Fields       map[string]FieldConfig
+	Fields       []FieldConfig
+	fieldsMap    map[string]int
 	FieldSets    []FieldSet
 	Columns      []string
 	Client       SchemaClient // The client for CRUD operations
 	AdminPath    string       // Base admin path (e.g., "/admin/")
 	FieldMappers FieldMapper  // Optional pipeline to transform form data before DB create/update
+}
+
+func (s *SchemaConfig) Init() {
+	s.fieldsMap = make(map[string]int)
+	for i, field := range s.Fields {
+		s.fieldsMap[field.Name] = i
+	}
+}
+
+func (s SchemaConfig) LookupField(name string) FieldConfig {
+	fieldIndex := s.fieldsMap[name]
+	return s.Fields[fieldIndex]
 }
 
 // ApplyFieldMappers runs the schema's field mapper pipeline on the data map.

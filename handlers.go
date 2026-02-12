@@ -81,6 +81,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // RegisterSchema registers a schema with the admin panel
 func (h *Handler) RegisterSchema(schema SchemaConfig) {
+	schema.Init()
+
 	// Set the admin path if not already set
 	if schema.AdminPath == "" {
 		schema.AdminPath = h.config.BasePath
@@ -240,7 +242,7 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			Type:  "int",
 		}
 		for i, col := range schema.Columns {
-			field := schema.Fields[col]
+			field := schema.LookupField(col)
 			props.Columns[i+1] = gui.SchemaTableColumn{
 				Name:  field.Name,
 				Label: field.Label,
@@ -309,13 +311,13 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 				fields = append(fields, fieldSet.Fields...)
 			}
 		} else {
-			for field := range schema.Fields {
-				fields = append(fields, field)
+			for _, field := range schema.Fields {
+				fields = append(fields, field.Name)
 			}
 		}
 
 		for _, field := range fields {
-			fieldConfig := schema.Fields[field]
+			fieldConfig := schema.LookupField(field)
 			fieldProps := gui.SchemaEntityFieldProps{
 				Name:     fieldConfig.Name,
 				Label:    fieldConfig.Label,
@@ -330,7 +332,7 @@ func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 				if !ok {
 					panic("could not find foreign key schema with name " + fieldConfig.Relation.TargetSchema)
 				}
-				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{})
+				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{OrderBy: "id"})
 				if err != nil {
 					panic(err)
 				}
@@ -363,9 +365,9 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		}
 
 		edges := []string{}
-		for fieldName, fieldConfig := range schema.Fields {
-			if fieldConfig.Relation != nil {
-				edges = append(edges, fieldName)
+		for _, field := range schema.Fields {
+			if field.Relation != nil {
+				edges = append(edges, field.Name)
 			}
 		}
 
@@ -392,41 +394,41 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 				fields = append(fields, fieldSet.Fields...)
 			}
 		} else {
-			for field := range schema.Fields {
-				fields = append(fields, field)
+			for _, field := range schema.Fields {
+				fields = append(fields, field.Name)
 			}
 		}
 
-		for _, field := range fields {
-			fieldConfig := schema.Fields[field]
+		for _, fieldName := range fields {
+			field := schema.LookupField(fieldName)
 			fieldProps := gui.SchemaEntityFieldProps{
-				Name:     fieldConfig.Name,
-				Label:    fieldConfig.Label,
-				Type:     fieldConfig.EffectiveInputType(),
+				Name:     field.Name,
+				Label:    field.Label,
+				Type:     field.EffectiveInputType(),
 				Value:    "",
-				Editable: fieldConfig.Editable,
+				Editable: field.Editable,
 			}
 
 			// Populate value from entity if the field exists
 			// (virtual columns like "password" won't exist in entity data — they render empty)
-			field, ok := entity.Get(fieldConfig.Name)
+			fieldValue, ok := entity.Get(field.Name)
 			if ok {
-				fieldProps.Value = field.Display
+				fieldProps.Value = fieldValue.Display
 			}
 
 			// Add relation options if this is a foreign key
-			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
-				foreignKeySchema, ok := h.schemas[fieldConfig.Relation.TargetSchema]
+			if field.Type == TypeForeignKey && field.Relation != nil {
+				foreignKeySchema, ok := h.schemas[field.Relation.TargetSchema]
 				if !ok {
-					panic("could not find foreign key schema with name " + fieldConfig.Relation.TargetSchema)
+					panic("could not find foreign key schema with name " + field.Relation.TargetSchema)
 				}
-				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{})
+				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{OrderBy: "id"})
 				if err != nil {
 					panic(err)
 				}
 				fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
 				ids := make(map[int]struct{})
-				for _, relatedEntity := range field.RelationEntities() {
+				for _, relatedEntity := range fieldValue.RelationEntities() {
 					ids[relatedEntity.ID()] = struct{}{}
 				}
 				for i, opt := range foreignKeyOptions {
