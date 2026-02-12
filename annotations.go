@@ -21,6 +21,7 @@ type Permission struct {
 }
 
 type VentSchemaAnnotation struct {
+	DisableAdmin bool
 	DisplayField string
 	CustomFields []Field
 	FieldSets    []FieldSet

@@ -68,6 +68,7 @@ func (ep EdgePath) String() string {
 // SchemaConfig defines the configuration for a schema in the admin panel
 type SchemaConfig struct {
 	Name         string // The name of the schema (e.g., "User", "Post")
+	AdminEnabled bool
 	DisplayField string
 	Fields       []FieldConfig
 	fieldsMap    map[string]int

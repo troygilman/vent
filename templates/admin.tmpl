@@ -28,6 +28,7 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 	{{ $pwFields := passwordFields $node }}
 	{{ $schemaAnnotation := parseSchemaAnnotation $node }}
 	schema{{ $node.Name }} := vent.SchemaConfig{
+	    AdminEnabled: {{ not $schemaAnnotation.DisableAdmin }},
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
 			client: config.Client,

@@ -66,7 +66,9 @@ func (e *AdminExtension) Templates() []*gen.Template {
 
 func parseSchemaAnnotation(node *gen.Type) VentSchemaAnnotation {
 	var annotation VentSchemaAnnotation
-	annotation.parse(node)
+	if err := annotation.parse(node); err != nil {
+		annotation.DisableAdmin = true
+	}
 	return annotation
 }
 

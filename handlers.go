@@ -86,16 +86,16 @@ func (h *Handler) RegisterSchema(schema SchemaConfig) {
 
 	h.schemas[schema.Name] = schema
 
-	path := h.config.BasePath + schema.Path()
-
-	permission_suffix := strings.ToLower(schema.Name)
-
-	h.handle("GET "+path, h.getSchemaListHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
-	h.handle("POST "+path, h.postSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
-	h.handle("GET "+path+"add/", h.getSchemaEntityAddHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
-	h.handle("GET "+path+"{id}/", h.getSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
-	h.handle("PATCH "+path+"{id}/", h.patchSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("change_"+permission_suffix))
-	h.handle("DELETE "+path+"{id}/", h.deleteSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("delete_"+permission_suffix))
+	if schema.AdminEnabled {
+		path := h.config.BasePath + schema.Path()
+		permission_suffix := strings.ToLower(schema.Name)
+		h.handle("GET "+path, h.getSchemaListHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
+		h.handle("POST "+path, h.postSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
+		h.handle("GET "+path+"add/", h.getSchemaEntityAddHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("add_"+permission_suffix))
+		h.handle("GET "+path+"{id}/", h.getSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("view_"+permission_suffix))
+		h.handle("PATCH "+path+"{id}/", h.patchSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("change_"+permission_suffix))
+		h.handle("DELETE "+path+"{id}/", h.deleteSchemaEntityHandler(schema), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, AuthorizationMiddleware("delete_"+permission_suffix))
+	}
 }
 
 func (h *Handler) handle(path string, handler http.Handler, middleware ...Middleware) {
@@ -511,6 +511,9 @@ func (h *Handler) deleteSchemaEntityHandler(schema SchemaConfig) http.Handler {
 func (h *Handler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
 	schemas := make([]gui.SchemaMetadata, 0, len(h.schemas))
 	for _, schema := range h.schemas {
+		if !schema.AdminEnabled {
+			continue
+		}
 		schemas = append(schemas, gui.SchemaMetadata{
 			Name: schema.Name,
 			Path: h.config.BasePath + schema.Path(),
