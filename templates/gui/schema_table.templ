@@ -20,7 +20,7 @@ type SchemaTableColumn struct {
 }
 
 type SchemaTableRow struct {
-	Values []SchemaTableCell
+	Cells []SchemaTableCell
 }
 
 type SchemaTableCell struct {
@@ -49,7 +49,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<tbody>
 							for _, row := range props.Rows {
 								<tr>
-									for _, cell := range row.Values {
+									for _, cell := range row.Cells {
 										if cell.LinkURL != "" {
 											<td>
 												<a class="link link-info" href={ templ.SafeURL(cell.LinkURL) }>

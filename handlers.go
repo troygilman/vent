@@ -212,11 +212,9 @@ func (h *Handler) getAdminHandler() http.Handler {
 func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get list options from query params
-		opts := ListOptions{
+		entities, err := schema.Client.List(r.Context(), ListOptions{
 			OrderBy: "id",
-		}
-
-		entities, err := schema.Client.List(r.Context(), opts)
+		})
 		if err != nil {
 			h.handleError(w, r, err, http.StatusInternalServerError)
 			return
@@ -227,45 +225,46 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			LayoutProps: h.buildLayoutProps(schema.Name),
 			AdminPath:   h.config.BasePath,
 			SchemaName:  schema.Name,
-			Columns:     make([]gui.SchemaTableColumn, len(schema.Columns)+1),
+			Columns:     make([]gui.SchemaTableColumn, 0, len(schema.Columns)+1),
 			Rows:        make([]gui.SchemaTableRow, 0, len(entities)),
 		}
 
 		// Build column headers
-		props.Columns[0] = gui.SchemaTableColumn{
+		props.Columns = append(props.Columns, gui.SchemaTableColumn{
 			Name:  "id",
 			Label: "ID",
 			Type:  "int",
-		}
-		for i, col := range schema.Columns {
+		})
+
+		for _, col := range schema.Columns {
 			field := schema.LookupField(col)
-			props.Columns[i+1] = gui.SchemaTableColumn{
+			props.Columns = append(props.Columns, gui.SchemaTableColumn{
 				Name:  field.Name,
 				Label: field.Label,
 				Type:  field.Type.String(),
-			}
+			})
 		}
 
 		// Build rows
 		for _, entity := range entities {
 			row := gui.SchemaTableRow{
-				Values: make([]gui.SchemaTableCell, len(schema.Columns)+1),
+				Cells: make([]gui.SchemaTableCell, 0, len(schema.Columns)+1),
 			}
 
 			id, ok := entity.Get("id")
 			if ok {
-				row.Values[0] = gui.SchemaTableCell{
+				row.Cells = append(row.Cells, gui.SchemaTableCell{
 					Display: id.Display,
 					LinkURL: h.config.BasePath + schema.EntityPath(entity.ID()),
-				}
+				})
 			} else {
-				row.Values[0] = gui.SchemaTableCell{Display: ""}
+				row.Cells = append(row.Cells, gui.SchemaTableCell{Display: ""})
 			}
 
-			for i, col := range schema.Columns {
+			for _, col := range schema.Columns {
 				field, ok := entity.Get(col)
 				if !ok {
-					row.Values[i+1] = gui.SchemaTableCell{Display: ""}
+					row.Cells = append(row.Cells, gui.SchemaTableCell{Display: ""})
 					continue
 				}
 
@@ -278,7 +277,7 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 					cell.LinkURL = fmt.Sprintf("%s%d/", field.Relation.TargetPath, field.Relation.TargetID)
 				}
 
-				row.Values[i+1] = cell
+				row.Cells = append(row.Cells, cell)
 			}
 
 			props.Rows = append(props.Rows, row)

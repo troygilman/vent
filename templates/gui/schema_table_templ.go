@@ -28,7 +28,7 @@ type SchemaTableColumn struct {
 }
 
 type SchemaTableRow struct {
-	Values []SchemaTableCell
+	Cells []SchemaTableCell
 }
 
 type SchemaTableCell struct {
@@ -153,7 +153,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					for _, cell := range row.Values {
+					for _, cell := range row.Cells {
 						if cell.LinkURL != "" {
 							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<td><a class=\"link link-info\" href=\"")
 							if templ_7745c5c3_Err != nil {
