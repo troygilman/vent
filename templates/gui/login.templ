@@ -8,13 +8,14 @@ type LoginProps struct {
 templ LoginPage(props LoginProps) {
 	@Index() {
 		@Login(props)
+		@Indicator()
 	}
 }
 
 templ Login(props LoginProps) {
 	<div id="login" class="flex w-full h-full bg-base-200 justify-center place-items-center">
 		<div class="card card-border bg-base-100 w-96 shadow">
-			<form class="card-body" data-on:submit="@post('/admin/login/')">
+			<form class="card-body" data-on:submit="@post('/admin/login/')" data-indicator="indicator">
 				<h2 class="card-title text-3xl font-bold">Admin Login</h2>
 				<div class="flex flex-col py-2 gap-2">
 					<div>

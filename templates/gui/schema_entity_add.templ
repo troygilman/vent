@@ -23,9 +23,7 @@ templ SchemaEntityAddPage(props SchemaEntityAddProps) {
 					SchemaEntityAddButton(schemaEntityPath),
 				},
 			})
-			<div class="ds-indicator" data-style:display="$updating && 'flex'">
-				<span class="loading loading-bars loading-xl"></span>
-			</div>
+			@Indicator()
 		}
 	}
 }

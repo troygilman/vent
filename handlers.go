@@ -3,6 +3,7 @@ package vent
 import (
 	"cmp"
 	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -53,7 +54,7 @@ func NewHandler(config HandlerConfig) *Handler {
 		config.CookieName = "vent-auth-token"
 	}
 
-	handler := &Handler{
+	h := &Handler{
 		mux:              http.NewServeMux(),
 		config:           config,
 		schemas:          make(map[string]SchemaConfig),
@@ -64,14 +65,14 @@ func NewHandler(config HandlerConfig) *Handler {
 	}
 
 	// Unauthorized Paths
-	handler.handle("GET "+config.BasePath+"static/", http.StripPrefix(config.BasePath, http.FileServerFS(static)))
-	handler.handle("GET "+config.BasePath+"login/", handler.getLoginHandler())
-	handler.handle("POST "+config.BasePath+"login/", handler.postLoginHandler())
+	h.handle("GET "+config.BasePath+"static/", http.StripPrefix(config.BasePath, http.FileServerFS(static)), h.loggerMiddleware)
+	h.handle("GET "+config.BasePath+"login/", h.getLoginHandler(), h.loggerMiddleware)
+	h.handle("POST "+config.BasePath+"login/", h.postLoginHandler(), h.loggerMiddleware)
 
 	// Authorized Paths
-	handler.handle("GET "+config.BasePath, handler.authMiddleware(handler.getAdminHandler()))
+	h.handle("GET "+config.BasePath, h.authMiddleware(h.getAdminHandler()))
 
-	return handler
+	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -129,54 +130,65 @@ func (h *Handler) postLoginHandler() http.Handler {
 			return
 		}
 
-		// Find user by email
-		entities, err := h.config.AuthUserSchema.Client.List(r.Context(), ListOptions{
-			Filters: map[string]any{"email": signals.Email},
-			Limit:   1,
-		})
-		if err != nil {
-			h.handleError(w, r, err, http.StatusInternalServerError)
-			return
-		}
-		if len(entities) == 0 {
-			h.handleError(w, r, fmt.Errorf("user not found"), http.StatusUnauthorized)
-			return
-		}
+		loginProps := gui.LoginProps{}
 
-		entity := entities[0]
+		err := func() error {
+			// Find user by email
+			entities, err := h.config.AuthUserSchema.Client.List(r.Context(), ListOptions{
+				Filters: map[string]any{"email": signals.Email},
+				Limit:   1,
+			})
+			if err != nil {
+				return err
+			}
+			if len(entities) != 1 {
+				loginProps.EmailError = "User with this email does not exist"
+				return errors.New("invalid email")
+			}
 
-		// Get password hash field
-		passwordField, ok := entity.Get(h.config.AuthPasswordField)
-		if !ok {
-			h.handleError(w, r, fmt.Errorf("password field not found"), http.StatusInternalServerError)
-			return
-		}
+			entity := entities[0]
 
-		// Verify password
-		if err := h.config.CredentialAuthenticator.Authenticate(signals.Password, passwordField.StringValue()); err != nil {
-			h.handleError(w, r, fmt.Errorf("invalid password"), http.StatusUnauthorized)
-			return
-		}
+			// Get password hash field
+			passwordField, ok := entity.Get(h.config.AuthPasswordField)
+			if !ok {
+				return errors.New("corrupted user entity")
+			}
 
-		// Generate token
-		claims := auth.NewClaims(entity.ID())
-		token, err := h.tokenGenerator.Generate(claims)
-		if err != nil {
-			h.handleError(w, r, err, http.StatusInternalServerError)
-			return
-		}
+			// Verify password
+			if err := h.config.CredentialAuthenticator.Authenticate(signals.Password, passwordField.StringValue()); err != nil {
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Password is invalid")
+				return err
+			}
 
-		// Set cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:     h.config.CookieName,
-			Value:    token,
-			Path:     "/",
-			SameSite: http.SameSiteLaxMode,
-		})
+			// Generate token
+			claims := auth.NewClaims(entity.ID())
+			token, err := h.tokenGenerator.Generate(claims)
+			if err != nil {
+				return err
+			}
 
-		// Redirect to admin home
+			// Set cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:     h.config.CookieName,
+				Value:    token,
+				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			return nil
+		}()
+
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(h.config.BasePath)
+		if err != nil {
+			log.Println(err)
+			if err := sse.PatchElementTempl(gui.LoginPage(loginProps)); err != nil {
+				h.handleError(w, r, err, http.StatusInternalServerError)
+			}
+		} else {
+			if err := sse.Redirect(h.config.BasePath); err != nil {
+				h.handleError(w, r, err, http.StatusInternalServerError)
+			}
+		}
 	})
 }
 

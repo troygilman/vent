@@ -26,9 +26,7 @@ templ SchemaEntityPage(props SchemaEntityProps) {
 					SchemaEntityDeleteButton(schemaEntityPath),
 				},
 			})
-			<div class="ds-indicator" data-style:display="$updating && 'flex'">
-				<span class="loading loading-bars loading-xl"></span>
-			</div>
+			@Indicator()
 		}
 	}
 }

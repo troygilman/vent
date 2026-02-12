@@ -48,7 +48,7 @@ templ SchemaEntitySaveButton(path string) {
 		class="btn btn-neutral"
 		type="none"
 		data-on:click={ fmt.Sprintf("@patch('%s')", path) }
-		data-indicator="updating"
+		data-indicator="indicator"
 	>
 		Save
 	</button>
@@ -59,7 +59,7 @@ templ SchemaEntityDeleteButton(path string) {
 		class="btn btn-error"
 		type="none"
 		data-on:click={ fmt.Sprintf("@delete('%s')", path) }
-		data-indicator="updating"
+		data-indicator="indicator"
 	>
 		Delete
 	</button>
@@ -70,7 +70,7 @@ templ SchemaEntityAddButton(path string) {
 		class="btn btn-neutral"
 		type="none"
 		data-on:click={ fmt.Sprintf("@post('%s')", path) }
-		data-indicator="updating"
+		data-indicator="indicator"
 	>
 		Add
 	</button>
