@@ -84,14 +84,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RegisterSchema(schema SchemaConfig) {
 	schema.Init()
 
-	// Set the admin path if not already set
-	if schema.AdminPath == "" {
-		schema.AdminPath = h.config.BasePath
-	}
-
 	h.schemas[schema.Name] = schema
 
-	path := schema.Path()
+	path := h.config.BasePath + schema.Path()
 
 	permission_suffix := strings.ToLower(schema.Name)
 
@@ -261,7 +256,7 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 			if ok {
 				row.Values[0] = gui.SchemaTableCell{
 					Display: id.Display,
-					LinkURL: fmt.Sprintf("%s%d/", schema.Path(), entity.ID()),
+					LinkURL: h.config.BasePath + schema.EntityPath(entity.ID()),
 				}
 			} else {
 				row.Values[0] = gui.SchemaTableCell{Display: ""}
@@ -473,7 +468,7 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		sse.Redirect(schema.Path())
+		sse.Redirect(h.config.BasePath + schema.Path())
 	})
 }
 
@@ -506,7 +501,7 @@ func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		sse.Redirect(schema.Path())
+		sse.Redirect(h.config.BasePath + schema.Path())
 	})
 }
 
@@ -527,7 +522,7 @@ func (h *Handler) deleteSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		sse.Redirect(schema.Path())
+		sse.Redirect(h.config.BasePath + schema.Path())
 	})
 }
 
@@ -537,7 +532,7 @@ func (h *Handler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
 	for _, schema := range h.schemas {
 		schemas = append(schemas, gui.SchemaMetadata{
 			Name: schema.Name,
-			Path: schema.Path(),
+			Path: h.config.BasePath + schema.Path(),
 		})
 	}
 	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {

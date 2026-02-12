@@ -3,6 +3,7 @@ package vent
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -72,7 +73,6 @@ type SchemaConfig struct {
 	FieldSets    []FieldSet
 	Columns      []string
 	Client       SchemaClient // The client for CRUD operations
-	AdminPath    string       // Base admin path (e.g., "/admin/")
 	FieldMappers FieldMapper  // Optional pipeline to transform form data before DB create/update
 }
 
@@ -99,12 +99,12 @@ func (s SchemaConfig) ApplyFieldMappers(data map[string]any) error {
 
 // Path returns the URL path for this schema's list view
 func (s SchemaConfig) Path() string {
-	return s.AdminPath + strings.ToLower(s.Name) + "s/"
+	return strings.ToLower(s.Name) + "s/"
 }
 
 // EntityPath returns the URL path for a specific entity
 func (s SchemaConfig) EntityPath(id int) string {
-	return s.Path() + string(rune(id)) + "/"
+	return s.Path() + strconv.Itoa(id) + "/"
 }
 
 // ColumnConfig defines the configuration for a single column/field
