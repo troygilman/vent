@@ -97,6 +97,16 @@ func (s SchemaConfig) ApplyFieldMappers(data map[string]any) error {
 	return s.FieldMappers(data)
 }
 
+func (s SchemaConfig) EdgeNames() []string {
+	edges := []string{}
+	for _, field := range s.Fields {
+		if field.Relation != nil {
+			edges = append(edges, field.Name)
+		}
+	}
+	return edges
+}
+
 // Path returns the URL path for this schema's list view
 func (s SchemaConfig) Path() string {
 	return strings.ToLower(s.Name) + "s/"

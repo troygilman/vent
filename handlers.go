@@ -353,8 +353,6 @@ func (h *Handler) buildSchemaEntityFieldProps(ctx context.Context, schema Schema
 
 func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// Build entity props
 		props := gui.SchemaEntityAddProps{
 			LayoutProps: h.buildLayoutProps(schema.Name),
 			Fields:      h.buildSchemaEntityFieldProps(r.Context(), schema, nil),
@@ -377,15 +375,8 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 			return
 		}
 
-		edges := []string{}
-		for _, field := range schema.Fields {
-			if field.Relation != nil {
-				edges = append(edges, field.Name)
-			}
-		}
-
 		entity, err := schema.Client.Get(r.Context(), id, GetOptions{
-			WithEdges: edges,
+			WithEdges: schema.EdgeNames(),
 		})
 		if err != nil {
 			h.handleError(w, r, err, http.StatusNotFound)
