@@ -26,11 +26,17 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 
 	{{ range $node := $.Nodes }}
 	{{ $pwFields := passwordFields $node }}
+	{{ $schemaAnnotation := parseSchemaAnnotation $node }}
 	schema{{ $node.Name }} := vent.SchemaConfig{
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
 			client: config.Client,
 		},
+		{{ if eq $schemaAnnotation.DisplayField "" }}
+		DisplayField: "id",
+		{{ else }}
+		DisplayField: "{{ $schemaAnnotation.DisplayField }}",
+		{{ end }}
 		Fields: []vent.FieldConfig{
 			{{ range $field := fields $node }}
 			{
@@ -45,7 +51,11 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 			{
 				Name:     "{{ $edge.Name }}",
 				Label:    "{{ pascal $edge.Name }}",
+				{{ if $edge.Unique }}
+				Type:     vent.TypeForeignKeyUnique,
+				{{ else }}
 				Type:     vent.TypeForeignKey,
+				{{ end }}
 				Editable: true,
 				Relation: &vent.RelationDef{
 					TargetSchema:  "{{ $edge.Type.Name }}",

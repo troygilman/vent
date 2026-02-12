@@ -15,6 +15,7 @@ const (
 	TypeBool
 	TypeTime
 	TypeForeignKey
+	TypeForeignKeyUnique
 	TypeRelation // For one-to-many and many-to-many relationships
 )
 

@@ -21,6 +21,7 @@ type Permission struct {
 }
 
 type VentSchemaAnnotation struct {
+	DisplayField string
 	CustomFields []Field
 	FieldSets    []FieldSet
 	TableColumns []string

@@ -98,11 +98,25 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
 				{ props.Label }
 			</label>
-		case "foreign_key":
+		case "foreign_key_unique":
 			<label class="flex items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable }>
 					<option value="">-- Select --</option>
+					for _, opt := range props.Options {
+						<option
+							value={ strconv.Itoa(opt.Value) }
+							selected?={ opt.Selected }
+						>
+							{ opt.Label }
+						</option>
+					}
+				</select>
+			</label>
+		case "foreign_key":
+			<label class="flex items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
 					for _, opt := range props.Options {
 						<option
 							value={ strconv.Itoa(opt.Value) }

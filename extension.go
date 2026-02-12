@@ -43,12 +43,13 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"fields":         fields,
-					"tableColumns":   tableColumns,
-					"fieldSets":      fieldSets,
-					"passwordFields": passwordFields,
-					"hasSuffix":      strings.HasSuffix,
-					"trimSuffix":     strings.TrimSuffix,
+					"parseSchemaAnnotation": parseSchemaAnnotation,
+					"fields":                fields,
+					"tableColumns":          tableColumns,
+					"fieldSets":             fieldSets,
+					"passwordFields":        passwordFields,
+					"hasSuffix":             strings.HasSuffix,
+					"trimSuffix":            strings.TrimSuffix,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
@@ -61,6 +62,12 @@ func (e *AdminExtension) Templates() []*gen.Template {
 				ParseFS(templates, "templates/migrate.tmpl"),
 		),
 	}
+}
+
+func parseSchemaAnnotation(node *gen.Type) VentSchemaAnnotation {
+	var annotation VentSchemaAnnotation
+	annotation.parse(node)
+	return annotation
 }
 
 func fields(node *gen.Type) []Field {

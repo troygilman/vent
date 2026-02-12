@@ -68,6 +68,7 @@ func (ep EdgePath) String() string {
 // SchemaConfig defines the configuration for a schema in the admin panel
 type SchemaConfig struct {
 	Name         string // The name of the schema (e.g., "User", "Post")
+	DisplayField string
 	Fields       []FieldConfig
 	fieldsMap    map[string]int
 	FieldSets    []FieldSet
@@ -115,6 +116,14 @@ func (s SchemaConfig) Path() string {
 // EntityPath returns the URL path for a specific entity
 func (s SchemaConfig) EntityPath(id int) string {
 	return s.Path() + strconv.Itoa(id) + "/"
+}
+
+func (s SchemaConfig) EntityDisplayString(entity EntityData) string {
+	fieldValue, ok := entity.Get(s.DisplayField)
+	if !ok {
+		return "n/a"
+	}
+	return fieldValue.String()
 }
 
 // ColumnConfig defines the configuration for a single column/field

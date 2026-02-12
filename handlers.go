@@ -340,7 +340,7 @@ func (h *Handler) buildSchemaEntityFieldProps(ctx context.Context, schema Schema
 				_, optionSelected := ids[opt.ID()]
 				fieldProps.Options[i] = gui.SelectOption{
 					Value:    opt.ID(),
-					Label:    strconv.Itoa(opt.ID()),
+					Label:    foreignKeySchema.EntityDisplayString(opt),
 					Selected: optionSelected,
 				}
 			}
@@ -411,19 +411,22 @@ func (h *Handler) parseEntityFormData(schema SchemaConfig, signals map[string]an
 		}
 		switch field.Type {
 		case TypeForeignKey:
-			strIDs := strings.Split(fieldValue.(string), ",")
-			intIDs := make([]int, 0, len(strIDs))
-			for _, strID := range strIDs {
-				if strID == "" {
-					continue
-				}
-				intID, err := strconv.Atoi(strID)
+			anyIDs := fieldValue.([]any)
+			intIDs := make([]int, 0, len(anyIDs))
+			for _, anyID := range anyIDs {
+				intID, err := strconv.Atoi(anyID.(string))
 				if err != nil {
 					return nil, err
 				}
 				intIDs = append(intIDs, intID)
 			}
 			data[field.Name] = intIDs
+		case TypeForeignKeyUnique:
+			id, err := strconv.Atoi(fieldValue.(string))
+			if err != nil {
+				return nil, err
+			}
+			data[field.Name] = id
 		default:
 			data[field.Name] = fieldValue
 		}
