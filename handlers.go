@@ -385,11 +385,12 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 		// Build entity props
 		props := gui.SchemaEntityProps{
-			LayoutProps: h.buildLayoutProps(schema.Name),
-			Fields:      h.buildSchemaEntityFieldProps(r.Context(), schema, entity),
-			AdminPath:   h.config.BasePath,
-			SchemaName:  schema.Name,
-			EntityID:    id,
+			LayoutProps:   h.buildLayoutProps(schema.Name),
+			Fields:        h.buildSchemaEntityFieldProps(r.Context(), schema, entity),
+			AdminPath:     h.config.BasePath,
+			SchemaName:    schema.Name,
+			EntityID:      id,
+			EntityDisplay: schema.EntityDisplayString(entity),
 		}
 
 		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {

@@ -10,16 +10,16 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
 type SchemaEntityProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	SchemaName  string
-	EntityID    int
-	Fields      []SchemaEntityFieldProps
+	LayoutProps   LayoutProps
+	AdminPath     string
+	SchemaName    string
+	EntityID      int
+	EntityDisplay string
+	Fields        []SchemaEntityFieldProps
 }
 
 func SchemaEntityPage(props SchemaEntityProps) templ.Component {
@@ -69,7 +69,7 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText: fmt.Sprintf("Change %s", strconv.Itoa(props.EntityID)),
+					TitleText: fmt.Sprintf("Change %s", props.EntityDisplay),
 					Fields:    props.Fields,
 					Buttons: []templ.Component{
 						SchemaEntitySaveButton(schemaEntityPath),

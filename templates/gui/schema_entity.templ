@@ -2,16 +2,16 @@ package gui
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
 type SchemaEntityProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	SchemaName  string
-	EntityID    int
-	Fields      []SchemaEntityFieldProps
+	LayoutProps   LayoutProps
+	AdminPath     string
+	SchemaName    string
+	EntityID      int
+	EntityDisplay string
+	Fields        []SchemaEntityFieldProps
 }
 
 templ SchemaEntityPage(props SchemaEntityProps) {
@@ -19,7 +19,7 @@ templ SchemaEntityPage(props SchemaEntityProps) {
 	@Index() {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText: fmt.Sprintf("Change %s", strconv.Itoa(props.EntityID)),
+				TitleText: fmt.Sprintf("Change %s", props.EntityDisplay),
 				Fields:    props.Fields,
 				Buttons: []templ.Component{
 					SchemaEntitySaveButton(schemaEntityPath),
