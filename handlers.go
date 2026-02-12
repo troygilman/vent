@@ -2,6 +2,7 @@ package vent
 
 import (
 	"cmp"
+	"context"
 	"embed"
 	"errors"
 	"fmt"
@@ -294,59 +295,77 @@ func (h *Handler) getSchemaListHandler(schema SchemaConfig) http.Handler {
 	})
 }
 
+func (h *Handler) buildSchemaEntityFieldProps(ctx context.Context, schema SchemaConfig, entity EntityData) []gui.SchemaEntityFieldProps {
+	fieldNames := []string{}
+	if len(schema.FieldSets) > 0 {
+		for _, fieldSet := range schema.FieldSets {
+			fieldNames = append(fieldNames, fieldSet.Fields...)
+		}
+	} else {
+		for _, field := range schema.Fields {
+			fieldNames = append(fieldNames, field.Name)
+		}
+	}
+
+	props := make([]gui.SchemaEntityFieldProps, 0, len(fieldNames))
+	for _, fieldName := range fieldNames {
+		field := schema.LookupField(fieldName)
+		fieldProps := gui.SchemaEntityFieldProps{
+			Name:     field.Name,
+			Label:    field.Label,
+			Type:     field.EffectiveInputType(),
+			Value:    "",
+			Editable: field.Editable,
+		}
+
+		var fieldValue FieldValue
+		if entity != nil {
+			var ok bool
+			fieldValue, ok = entity.Get(field.Name)
+			if ok {
+				fieldProps.Value = fieldValue.Display
+			}
+		}
+
+		// Add relation options if this is a foreign key
+		if field.Type == TypeForeignKey && field.Relation != nil {
+			foreignKeySchema, ok := h.schemas[field.Relation.TargetSchema]
+			if !ok {
+				panic("could not find foreign key schema with name " + field.Relation.TargetSchema)
+			}
+			foreignKeyOptions, err := foreignKeySchema.Client.List(ctx, QueryOptions{OrderBy: "id"})
+			if err != nil {
+				panic(err)
+			}
+			fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
+			ids := make(map[int]struct{})
+			for _, relatedEntity := range fieldValue.RelationEntities() {
+				ids[relatedEntity.ID()] = struct{}{}
+			}
+			for i, opt := range foreignKeyOptions {
+				_, optionSelected := ids[opt.ID()]
+				fieldProps.Options[i] = gui.SelectOption{
+					Value:    opt.ID(),
+					Label:    strconv.Itoa(opt.ID()),
+					Selected: optionSelected,
+				}
+			}
+		}
+
+		props = append(props, fieldProps)
+	}
+	return props
+}
+
 func (h *Handler) getSchemaEntityAddHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Build entity props
 		props := gui.SchemaEntityAddProps{
 			LayoutProps: h.buildLayoutProps(schema.Name),
-			Fields:      make([]gui.SchemaEntityFieldProps, 0, len(schema.Columns)),
+			Fields:      h.buildSchemaEntityFieldProps(r.Context(), schema, nil),
 			AdminPath:   h.config.BasePath,
 			SchemaName:  schema.Name,
-		}
-
-		fields := []string{}
-		if len(schema.FieldSets) > 0 {
-			for _, fieldSet := range schema.FieldSets {
-				fields = append(fields, fieldSet.Fields...)
-			}
-		} else {
-			for _, field := range schema.Fields {
-				fields = append(fields, field.Name)
-			}
-		}
-
-		for _, field := range fields {
-			fieldConfig := schema.LookupField(field)
-			fieldProps := gui.SchemaEntityFieldProps{
-				Name:     fieldConfig.Name,
-				Label:    fieldConfig.Label,
-				Type:     fieldConfig.EffectiveInputType(),
-				Value:    "",
-				Editable: fieldConfig.Editable,
-			}
-
-			// Add relation options if this is a foreign key
-			if fieldConfig.Type == TypeForeignKey && fieldConfig.Relation != nil {
-				foreignKeySchema, ok := h.schemas[fieldConfig.Relation.TargetSchema]
-				if !ok {
-					panic("could not find foreign key schema with name " + fieldConfig.Relation.TargetSchema)
-				}
-				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{OrderBy: "id"})
-				if err != nil {
-					panic(err)
-				}
-				fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
-				for i, opt := range foreignKeyOptions {
-					fieldProps.Options[i] = gui.SelectOption{
-						Value:    opt.ID(),
-						Label:    strconv.Itoa(opt.ID()),
-						Selected: false,
-					}
-				}
-			}
-
-			props.Fields = append(props.Fields, fieldProps)
 		}
 
 		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
@@ -382,66 +401,10 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 		// Build entity props
 		props := gui.SchemaEntityProps{
 			LayoutProps: h.buildLayoutProps(schema.Name),
-			Fields:      make([]gui.SchemaEntityFieldProps, 0, len(schema.Columns)),
+			Fields:      h.buildSchemaEntityFieldProps(r.Context(), schema, entity),
 			AdminPath:   h.config.BasePath,
 			SchemaName:  schema.Name,
 			EntityID:    id,
-		}
-
-		fields := []string{}
-		if len(schema.FieldSets) > 0 {
-			for _, fieldSet := range schema.FieldSets {
-				fields = append(fields, fieldSet.Fields...)
-			}
-		} else {
-			for _, field := range schema.Fields {
-				fields = append(fields, field.Name)
-			}
-		}
-
-		for _, fieldName := range fields {
-			field := schema.LookupField(fieldName)
-			fieldProps := gui.SchemaEntityFieldProps{
-				Name:     field.Name,
-				Label:    field.Label,
-				Type:     field.EffectiveInputType(),
-				Value:    "",
-				Editable: field.Editable,
-			}
-
-			// Populate value from entity if the field exists
-			// (virtual columns like "password" won't exist in entity data — they render empty)
-			fieldValue, ok := entity.Get(field.Name)
-			if ok {
-				fieldProps.Value = fieldValue.Display
-			}
-
-			// Add relation options if this is a foreign key
-			if field.Type == TypeForeignKey && field.Relation != nil {
-				foreignKeySchema, ok := h.schemas[field.Relation.TargetSchema]
-				if !ok {
-					panic("could not find foreign key schema with name " + field.Relation.TargetSchema)
-				}
-				foreignKeyOptions, err := foreignKeySchema.Client.List(r.Context(), QueryOptions{OrderBy: "id"})
-				if err != nil {
-					panic(err)
-				}
-				fieldProps.Options = make([]gui.SelectOption, len(foreignKeyOptions))
-				ids := make(map[int]struct{})
-				for _, relatedEntity := range fieldValue.RelationEntities() {
-					ids[relatedEntity.ID()] = struct{}{}
-				}
-				for i, opt := range foreignKeyOptions {
-					_, optionSelected := ids[opt.ID()]
-					fieldProps.Options[i] = gui.SelectOption{
-						Value:    opt.ID(),
-						Label:    strconv.Itoa(opt.ID()),
-						Selected: optionSelected,
-					}
-				}
-			}
-
-			props.Fields = append(props.Fields, fieldProps)
 		}
 
 		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
