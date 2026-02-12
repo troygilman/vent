@@ -413,6 +413,45 @@ func (h *Handler) getSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	})
 }
 
+func (h *Handler) parseEntityFormData(schema SchemaConfig, signals map[string]any) (map[string]any, error) {
+	// Filter and parse fields
+	data := make(map[string]any)
+	for _, field := range schema.Fields {
+		if !field.Editable {
+			continue
+		}
+		fieldValue, ok := signals[field.Name]
+		if !ok {
+			continue
+		}
+		switch field.Type {
+		case TypeForeignKey:
+			strIDs := strings.Split(fieldValue.(string), ",")
+			intIDs := make([]int, 0, len(strIDs))
+			for _, strID := range strIDs {
+				if strID == "" {
+					continue
+				}
+				intID, err := strconv.Atoi(strID)
+				if err != nil {
+					return nil, err
+				}
+				intIDs = append(intIDs, intID)
+			}
+			data[field.Name] = intIDs
+		default:
+			data[field.Name] = fieldValue
+		}
+	}
+
+	// Apply field mappers (e.g., hash password, rename fields)
+	if err := schema.ApplyFieldMappers(data); err != nil {
+		return nil, fmt.Errorf("failed to apply field mappers: %w", err)
+	}
+
+	return data, nil
+}
+
 func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		signals := make(map[string]any)
@@ -423,36 +462,9 @@ func (h *Handler) postSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 		sse := datastar.NewSSE(w, r)
 
-		// Filter to only editable fields
-		data := make(map[string]any)
-		for _, fieldConfig := range schema.Fields {
-			if fieldConfig.Editable {
-				if val, ok := signals[fieldConfig.Name]; ok {
-					switch fieldConfig.Type {
-					case TypeForeignKey:
-						strIDs := strings.Split(val.(string), ",")
-						intIDs := make([]int, 0, len(strIDs))
-						for _, strID := range strIDs {
-							if strID == "" {
-								continue
-							}
-							intID, err := strconv.Atoi(strID)
-							if err != nil {
-								panic(err)
-							}
-							intIDs = append(intIDs, intID)
-						}
-						data[fieldConfig.Name] = intIDs
-					default:
-						data[fieldConfig.Name] = val
-					}
-				}
-			}
-		}
-
-		// Apply field mappers (e.g., hash password, rename fields)
-		if err := schema.ApplyFieldMappers(data); err != nil {
-			log.Printf("Error applying field mappers: %v", err)
+		data, err := h.parseEntityFormData(schema, signals)
+		if err != nil {
+			log.Printf("Error parsing entity data: %v", err)
 			return
 		}
 
@@ -482,36 +494,9 @@ func (h *Handler) patchSchemaEntityHandler(schema SchemaConfig) http.Handler {
 
 		sse := datastar.NewSSE(w, r)
 
-		// Filter to only editable fields
-		data := make(map[string]any)
-		for _, fieldConfig := range schema.Fields {
-			if fieldConfig.Editable {
-				if val, ok := signals[fieldConfig.Name]; ok {
-					switch fieldConfig.Type {
-					case TypeForeignKey:
-						strIDs := strings.Split(val.(string), ",")
-						intIDs := make([]int, 0, len(strIDs))
-						for _, strID := range strIDs {
-							if strID == "" {
-								continue
-							}
-							intID, err := strconv.Atoi(strID)
-							if err != nil {
-								panic(err)
-							}
-							intIDs = append(intIDs, intID)
-						}
-						data[fieldConfig.Name] = intIDs
-					default:
-						data[fieldConfig.Name] = val
-					}
-				}
-			}
-		}
-
-		// Apply field mappers (e.g., hash password, rename fields)
-		if err := schema.ApplyFieldMappers(data); err != nil {
-			log.Printf("Error applying field mappers: %v", err)
+		data, err := h.parseEntityFormData(schema, signals)
+		if err != nil {
+			log.Printf("Error parsing entity data: %v", err)
 			return
 		}
 
