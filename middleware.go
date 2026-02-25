@@ -2,6 +2,7 @@ package vent
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -87,7 +88,7 @@ func AuthorizationMiddleware(permissions ...string) Middleware {
 
 				for _, permission := range permissions {
 					if _, ok := userPermissions[permission]; !ok {
-						http.Error(w, "user does not have permission", http.StatusUnauthorized)
+						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusUnauthorized)
 						return
 					}
 				}
