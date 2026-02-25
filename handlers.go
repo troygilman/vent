@@ -11,8 +11,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"vent/auth"
-	"vent/templates/gui"
+
+	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/templates/gui"
 
 	"github.com/starfederation/datastar-go/datastar"
 )

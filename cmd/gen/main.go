@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"vent"
+	"github.com/troygilman/vent"
 
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"

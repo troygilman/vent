@@ -2,7 +2,8 @@ package vent
 
 import (
 	"fmt"
-	"vent/auth"
+
+	"github.com/troygilman/vent/auth"
 )
 
 // FieldMapper transforms form data before it's sent to the database for

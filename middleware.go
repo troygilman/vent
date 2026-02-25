@@ -6,7 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"vent/auth"
+
+	"github.com/troygilman/vent/auth"
 )
 
 type claimsContextKey struct{}

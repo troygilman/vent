@@ -1,4 +1,4 @@
-module vent
+module github.com/troygilman/vent
 
 go 1.24.3
 

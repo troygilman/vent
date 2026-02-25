@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"vent/auth"
-	"vent/ent"
+	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/ent"
 
 	_ "github.com/mattn/go-sqlite3"
 )
