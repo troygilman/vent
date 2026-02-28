@@ -40,6 +40,8 @@ func main() {
 		SecretProvider: auth.SecretProviderFunc(func() []byte {
 			return []byte("secret")
 		}),
+		CredentialGenerator:     credentialGenerator,
+		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
 	}))
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)

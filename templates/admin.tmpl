@@ -18,16 +18,31 @@ import (
 type AdminConfig struct {
 	Client         *Client
 	SecretProvider auth.SecretProvider
+	CredentialAuthenticator auth.CredentialAuthenticator
+	CredentialGenerator auth.CredentialGenerator
 }
 
 func NewAdminHandler(config AdminConfig) http.Handler {
-	credentialAuthenticator := auth.NewBCryptCredentialAuthenticator()
-	credentialGenerator := auth.NewBCryptCredentialGenerator()
+	handler := vent.NewHandler(vent.HandlerConfig{
+		SecretProvider:          config.SecretProvider,
+		CredentialAuthenticator: config.CredentialAuthenticator,
+		AuthUserSchema:          New{{ $.Annotations.VentConfig.UserSchema }}SchemaConfig(config),
+		AuthPasswordField:       "password_hash",
+		BasePath:                "{{ $adminPath }}",
+	})
 
 	{{ range $node := $.Nodes }}
-	{{ $pwFields := passwordFields $node }}
-	{{ $schemaAnnotation := parseSchemaAnnotation $node }}
-	schema{{ $node.Name }} := vent.SchemaConfig{
+	handler.RegisterSchema(New{{ $node.Name }}SchemaConfig(config))
+	{{ end }}
+
+	return handler
+}
+
+{{ range $node := $.Nodes }}
+{{ $pwFields := passwordFields $node }}
+{{ $schemaAnnotation := parseSchemaAnnotation $node }}
+func New{{ $node.Name }}SchemaConfig(config AdminConfig) vent.SchemaConfig {
+	return vent.SchemaConfig{
 	    AdminEnabled: {{ not $schemaAnnotation.DisableAdmin }},
 		Name: "{{ $node.Name }}",
 		Client: &{{ $node.Name }}SchemaClient{
@@ -93,27 +108,13 @@ func NewAdminHandler(config AdminConfig) http.Handler {
 		{{- if $pwFields }}
 		FieldMappers: vent.ChainFieldMappers(
 			{{- range $field := $pwFields }}
-			vent.HashPassword("{{ trimSuffix $field.Name "_hash" }}", "{{ $field.Name }}", credentialGenerator),
+			vent.HashPassword("{{ trimSuffix $field.Name "_hash" }}", "{{ $field.Name }}", config.CredentialGenerator),
 			{{- end }}
 		),
 		{{- end }}
 	}
-	{{ end }}
-
-	handler := vent.NewHandler(vent.HandlerConfig{
-		SecretProvider:          config.SecretProvider,
-		CredentialAuthenticator: credentialAuthenticator,
-		AuthUserSchema:          schema{{ $.Annotations.VentConfig.UserSchema }},
-		AuthPasswordField:       "password_hash",
-		BasePath:                "{{ $adminPath }}",
-	})
-
-	{{ range $node := $.Nodes }}
-	handler.RegisterSchema(schema{{ $node.Name }})
-	{{ end }}
-
-	return handler
 }
+{{ end }}
 
 {{ range $node := $.Nodes }}
 
