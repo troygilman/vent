@@ -44,7 +44,7 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 				{
 					From:      "password",
 					To:        "password_hash",
-					Transform: "hash",
+					Transform: "hash_password",
 				},
 			},
 			TableColumns: []string{

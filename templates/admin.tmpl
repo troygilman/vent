@@ -66,8 +66,8 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 
 	// Register built-in "hash" transform if CredentialGenerator is provided
 	if config.CredentialGenerator != nil {
-		if _, exists := fieldTransforms["hash"]; !exists {
-			fieldTransforms["hash"] = func(value any) (any, error) {
+		if _, exists := fieldTransforms["hash_password"]; !exists {
+			fieldTransforms["hash_password"] = func(value any) (any, error) {
 				str, ok := value.(string)
 				if !ok {
 					return nil, errors.New("hash transform requires string value")

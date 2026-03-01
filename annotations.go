@@ -48,19 +48,6 @@ func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
 	return json.Unmarshal(jsonBytes, a)
 }
 
-func (a VentSchemaAnnotation) tableFields(node *gen.Type) []Field {
-	fields := make([]Field, 0, len(node.Fields)+len(a.CustomFields))
-	for _, f := range node.Fields {
-		fields = append(fields, Field{
-			Name:      f.Name,
-			Type:      f.Type.Type.String(),
-			Sensitive: f.Sensitive(),
-		})
-	}
-	fields = append(fields, a.CustomFields...)
-	return fields
-}
-
 type Field struct {
 	Name      string
 	Type      string
