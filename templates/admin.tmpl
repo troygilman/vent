@@ -4,360 +4,732 @@
 {{ template "header" $ }}
 
 {{ $adminPath := $.Annotations.VentConfig.AdminPath }}
+{{ $userSchema := $.Annotations.VentConfig.UserSchema }}
+
+{{/* Build render configs once for all admin-enabled nodes */}}
+{{ $adminNodes := renderConfigs $.Nodes }}
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"slices"
+	"strconv"
+
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/templates/gui"
 
-	"entgo.io/ent/dialect/sql"
+	"github.com/starfederation/datastar-go/datastar"
 )
 
+// AdminConfig contains configuration for the admin handler
 type AdminConfig struct {
-	Client         *Client
-	SecretProvider auth.SecretProvider
+	Client                  *Client
+	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
-	CredentialGenerator auth.CredentialGenerator
+	CredentialGenerator     auth.CredentialGenerator
+
+	// FieldTransforms is a registry of transform functions for custom field mappings.
+	// Keys are transform names (e.g., "hash"), values are transform functions.
+	// If nil, a default registry will be created with built-in transforms.
+	FieldTransforms map[string]vent.FieldTransformFunc
 }
 
-func NewAdminHandler(config AdminConfig) http.Handler {
-	handler := vent.NewHandler(vent.HandlerConfig{
-		SecretProvider:          config.SecretProvider,
-		CredentialAuthenticator: config.CredentialAuthenticator,
-		AuthUserSchema:          New{{ $.Annotations.VentConfig.UserSchema }}SchemaConfig(config),
-		AuthPasswordField:       "password_hash",
-		BasePath:                "{{ $adminPath }}",
-	})
+// AdminHandler is the main HTTP handler for the admin panel
+type AdminHandler struct {
+	mux                     *http.ServeMux
+	client                  *Client
+	credentialAuthenticator auth.CredentialAuthenticator
+	credentialGenerator     auth.CredentialGenerator
+	tokenGenerator          auth.TokenGenerator
+	fieldTransforms         map[string]vent.FieldTransformFunc
+	authMiddleware          func(http.Handler) http.Handler
+	userMiddleware          func(http.Handler) http.Handler
+	loggerMiddleware        func(http.Handler) http.Handler
+}
 
-	{{ range $node := $.Nodes }}
-	handler.RegisterSchema(New{{ $node.Name }}SchemaConfig(config))
+const adminBasePath = "{{ $adminPath }}"
+
+// NewAdminHandler creates a new admin handler with the given configuration
+func NewAdminHandler(config AdminConfig) *AdminHandler {
+	tokenAuthenticator := auth.NewJwtTokenAuthenticator(config.SecretProvider)
+
+	// Initialize field transforms registry
+	fieldTransforms := config.FieldTransforms
+	if fieldTransforms == nil {
+		fieldTransforms = make(map[string]vent.FieldTransformFunc)
+	}
+
+	// Register built-in "hash" transform if CredentialGenerator is provided
+	if config.CredentialGenerator != nil {
+		if _, exists := fieldTransforms["hash"]; !exists {
+			fieldTransforms["hash"] = func(value any) (any, error) {
+				str, ok := value.(string)
+				if !ok {
+					return nil, errors.New("hash transform requires string value")
+				}
+				if str == "" {
+					return nil, nil // Skip empty passwords
+				}
+				return config.CredentialGenerator.Generate(str)
+			}
+		}
+	}
+
+	h := &AdminHandler{
+		mux:                     http.NewServeMux(),
+		client:                  config.Client,
+		credentialAuthenticator: config.CredentialAuthenticator,
+		credentialGenerator:     config.CredentialGenerator,
+		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
+		fieldTransforms:         fieldTransforms,
+		authMiddleware:          NewAuthMiddleware(tokenAuthenticator),
+		userMiddleware:          NewUserMiddleware(config.Client),
+		loggerMiddleware:        newLoggerMiddleware(),
+	}
+
+	// Unauthorized routes
+	h.handle("GET "+adminBasePath+"static/", http.StripPrefix(adminBasePath, vent.StaticDirHandler()))
+	h.handle("GET "+adminBasePath+"login/", h.getLoginHandler(), h.loggerMiddleware)
+	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware)
+
+	// Authorized routes - admin home
+	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware)
+
+	// Schema routes
+	{{ range $item := $adminNodes }}
+	{{ $node := $item.Node }}
+	{{ $permSuffix := lower $node.Name }}
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("view_{{ $permSuffix }}"))
+	h.handle("POST "+adminBasePath+"{{ lower $node.Name }}s/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("add_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("add_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("view_{{ $permSuffix }}"))
+	h.handle("PATCH "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("change_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
 
-	return handler
+	return h
 }
 
-{{ range $node := $.Nodes }}
-{{ $pwFields := passwordFields $node }}
-{{ $schemaAnnotation := parseSchemaAnnotation $node }}
-func New{{ $node.Name }}SchemaConfig(config AdminConfig) vent.SchemaConfig {
-	return vent.SchemaConfig{
-	    AdminEnabled: {{ not $schemaAnnotation.DisableAdmin }},
-		Name: "{{ $node.Name }}",
-		Client: &{{ $node.Name }}SchemaClient{
-			client: config.Client,
-		},
-		{{ if eq $schemaAnnotation.DisplayField "" }}
-		DisplayField: "id",
-		{{ else }}
-		DisplayField: "{{ $schemaAnnotation.DisplayField }}",
+func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mux.ServeHTTP(w, r)
+}
+
+func (h *AdminHandler) handle(pattern string, handler http.Handler, middleware ...func(http.Handler) http.Handler) {
+	for i := len(middleware) - 1; i >= 0; i-- {
+		handler = middleware[i](handler)
+	}
+	h.mux.Handle(pattern, handler)
+	log.Printf("Registered handler on %s", pattern)
+}
+
+// buildLayoutProps creates LayoutProps with schema metadata
+func (h *AdminHandler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
+	schemas := []gui.SchemaMetadata{
+		{{ range $item := $adminNodes }}
+		{{ $node := $item.Node }}
+		{Name: "{{ $node.Name }}", Path: adminBasePath + "{{ lower $node.Name }}s/"},
 		{{ end }}
-		Fields: []vent.FieldConfig{
-		    {
-			    Name: "id",
-				Label: "ID",
-				Type: vent.TypeInt,
-				Editable: false,
-			},
-			{{ range $field := fields $node }}
-			{
-				Name:     "{{ $field.Name }}",
-				Label:    "{{ pascal $field.Name }}",
-				Type:     vent.Type{{ pascal $field.Type }},
-				InputType: "{{ $field.InputType }}",
-				Editable: {{ not $field.Sensitive }},
-			},
-			{{ end }}
-			{{- range $edge := $node.Edges }}
-			{
-				Name:     "{{ $edge.Name }}",
-				Label:    "{{ pascal $edge.Name }}",
-				{{ if $edge.Unique }}
-				Type:     vent.TypeForeignKeyUnique,
-				{{ else }}
-				Type:     vent.TypeForeignKey,
-				{{ end }}
-				Editable: true,
-				Relation: &vent.RelationDef{
-					TargetSchema:  "{{ $edge.Type.Name }}",
-					TargetDisplay: "id",
-					TargetPath:    "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
-					Unique: {{ $edge.Unique }},
-				},
-			},
-			{{- end }}
-		},
-		FieldSets: []vent.FieldSet{
-		    {{- range $set := fieldSets $node }}
-			{
-			    Label: "{{ $set.Label }}",
-				Fields: []string{
-				    {{- range $field := $set.Fields }}
-					"{{ $field }}",
-				    {{- end }}
-				},
-			},
-			{{- end }}
-		},
-		Columns: []string{
-		    {{- range $col := tableColumns $node }}
-			"{{ $col }}",
-			{{- end }}
-		},
-		{{- if $pwFields }}
-		FieldMappers: vent.ChainFieldMappers(
-			{{- range $field := $pwFields }}
-			vent.HashPassword("{{ trimSuffix $field.Name "_hash" }}", "{{ $field.Name }}", config.CredentialGenerator),
-			{{- end }}
-		),
-		{{- end }}
+	}
+	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+	return gui.LayoutProps{
+		Schemas:          schemas,
+		ActiveSchemaName: activeSchemaName,
 	}
 }
+
+// handleError logs the error and sends an appropriate HTTP response
+func handleError(w http.ResponseWriter, r *http.Request, err error, status int) {
+	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
+	http.Error(w, err.Error(), status)
+}
+
+// getLoginHandler returns the handler for GET /admin/login/
+func (h *AdminHandler) getLoginHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props := gui.LoginProps{}
+		if err := gui.LoginPage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// postLoginHandler returns the handler for POST /admin/login/
+func (h *AdminHandler) postLoginHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			handleError(w, r, err, http.StatusBadRequest)
+			return
+		}
+
+		loginProps := gui.LoginProps{}
+
+		err := func() error {
+			// Find user by email - direct ent query, type-safe
+			user, err := h.client.{{ $userSchema }}.Query().
+				Where({{ lower $userSchema }}.EmailEQ(signals.Email)).
+				Only(r.Context())
+			if err != nil {
+				loginProps.EmailError = "User with this email does not exist"
+				return errors.New("invalid email")
+			}
+
+			// Verify password - direct field access, type-safe
+			if err := h.credentialAuthenticator.Authenticate(signals.Password, user.PasswordHash); err != nil {
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Password is invalid")
+				return err
+			}
+
+			// Generate token
+			claims := auth.NewClaims(user.ID)
+			token, err := h.tokenGenerator.Generate(claims)
+			if err != nil {
+				return err
+			}
+
+			// Set cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:     "vent-auth-token",
+				Value:    token,
+				Path:     "/",
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			return nil
+		}()
+
+		sse := datastar.NewSSE(w, r)
+		if err != nil {
+			log.Println(err)
+			if err := sse.PatchElementTempl(gui.LoginPage(loginProps)); err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+			}
+		} else {
+			if err := sse.Redirect(adminBasePath); err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+			}
+		}
+	})
+}
+
+// getAdminHandler returns the handler for GET /admin/
+func (h *AdminHandler) getAdminHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != adminBasePath {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		props := gui.AdminPageProps{
+			LayoutProps: h.buildLayoutProps(""),
+		}
+
+		if err := gui.AdminPage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+{{/* Generate handlers for each schema */}}
+{{ range $item := $adminNodes }}
+{{ $node := $item.Node }}
+{{ $rc := $item.RC }}
+
+// ============================================================================
+// {{ $node.Name }} Handlers
+// ============================================================================
+
+// {{ $node.Name }}CreateInput is the typed input for creating a {{ $node.Name }}
+type {{ $node.Name }}CreateInput struct {
+	{{- range $field := $rc.InputFields }}
+	{{ $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
+	{{- end }}
+}
+
+// {{ $node.Name }}UpdateInput is the typed input for updating a {{ $node.Name }}
+type {{ $node.Name }}UpdateInput struct {
+	{{- range $field := $rc.InputFields }}
+	{{ $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
+	{{- end }}
+}
+
+// get{{ $node.Name }}ListHandler returns the handler for GET /admin/{{ lower $node.Name }}s/
+func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.client.{{ $node.Name }}.Query().
+			Order({{ lower $node.Name }}.ByID()).
+			All(r.Context())
+		if err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			rows[i] = gui.SchemaTableRow{
+				Cells: []gui.SchemaTableCell{
+					{{- range $idx, $col := $rc.TableColumns }}
+					{
+						Display: fmt.Sprintf("%v", e.{{ $col.Label }}),
+						{{- if eq $idx 0 }}
+						LinkURL: fmt.Sprintf("%s{{ lower $node.Name }}s/%d/", adminBasePath, e.ID),
+						{{- end }}
+					},
+					{{- end }}
+				},
+			}
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps: h.buildLayoutProps("{{ $node.Name }}"),
+			AdminPath:   adminBasePath,
+			SchemaName:  "{{ $node.Name }}",
+			Columns: []gui.SchemaTableColumn{
+				{{- range $col := $rc.TableColumns }}
+				{Name: "{{ $col.Name }}", Label: "{{ $col.Label }}", Type: "{{ $col.Type }}"},
+				{{- end }}
+			},
+			Rows: rows,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// get{{ $node.Name }}AddHandler returns the handler for GET /admin/{{ lower $node.Name }}s/add/
+func (h *AdminHandler) get{{ $node.Name }}AddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		_ = err // avoid unused variable error if no edges
+
+		fields := []gui.SchemaEntityFieldProps{}
+
+		{{ range $field := $rc.FormFields }}
+		{{- if eq $field.Name "id" }}
+		// Skip id field for add form
+		{{- else if $field.IsEdge }}
+		// Load {{ $field.Name }} options
+		{
+			{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(r.Context())
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+				return
+			}
+			options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
+			for i, opt := range {{ lower $field.EdgeType }}Entities {
+				options[i] = gui.SelectOption{
+					Value: opt.ID,
+					Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
+				}
+			}
+			fields = append(fields, gui.SchemaEntityFieldProps{
+				Name:     "{{ $field.Name }}",
+				Label:    "{{ $field.Label }}",
+				Type:     "{{ $field.Type }}",
+				Editable: true,
+				Options:  options,
+			})
+		}
+		{{- else }}
+		fields = append(fields, gui.SchemaEntityFieldProps{
+			Name:     "{{ $field.Name }}",
+			Label:    "{{ $field.Label }}",
+			Type:     "{{ $field.Type }}",
+			Editable: {{ $field.Editable }},
+		})
+		{{- end }}
+		{{ end }}
+
+		props := gui.SchemaEntityAddProps{
+			LayoutProps: h.buildLayoutProps("{{ $node.Name }}"),
+			AdminPath:   adminBasePath,
+			SchemaName:  "{{ $node.Name }}",
+			Fields:      fields,
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// get{{ $node.Name }}Handler returns the handler for GET /admin/{{ lower $node.Name }}s/{id}/
+func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		e, err := h.client.{{ $node.Name }}.Query().
+			Where({{ lower $node.Name }}.IDEQ(id)).
+			{{- range $edge := $rc.Edges }}
+			With{{ pascal $edge.Name }}().
+			{{- end }}
+			Only(r.Context())
+		if err != nil {
+			handleError(w, r, err, http.StatusNotFound)
+			return
+		}
+
+		// Build selected edge IDs for multi-select fields
+		{{- range $edge := $rc.Edges }}
+		{{- if not $edge.Unique }}
+		{{ lower $edge.Name }}IDs := make(map[int]struct{})
+		for _, related := range e.Edges.{{ pascal $edge.Name }} {
+			{{ lower $edge.Name }}IDs[related.ID] = struct{}{}
+		}
+		{{- end }}
+		{{- end }}
+
+		fields := []gui.SchemaEntityFieldProps{}
+
+		{{ range $field := $rc.FormFields }}
+		{{- if eq $field.Name "id" }}
+		fields = append(fields, gui.SchemaEntityFieldProps{
+			Name:     "id",
+			Label:    "ID",
+			Type:     "int",
+			Value:    fmt.Sprintf("%d", e.ID),
+			Editable: false,
+		})
+		{{- else if $field.IsEdge }}
+		// Load {{ $field.Name }} options
+		{
+			{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(r.Context())
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+				return
+			}
+			options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
+			for i, opt := range {{ lower $field.EdgeType }}Entities {
+				options[i] = gui.SelectOption{
+					Value: opt.ID,
+					Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
+					{{- if $field.EdgeUnique }}
+					Selected: e.Edges.{{ pascal $field.Name }} != nil && e.Edges.{{ pascal $field.Name }}.ID == opt.ID,
+					{{- else }}
+					Selected: func() bool { _, ok := {{ lower $field.Name }}IDs[opt.ID]; return ok }(),
+					{{- end }}
+				}
+			}
+			fields = append(fields, gui.SchemaEntityFieldProps{
+				Name:     "{{ $field.Name }}",
+				Label:    "{{ $field.Label }}",
+				Type:     "{{ $field.Type }}",
+				Editable: true,
+				Options:  options,
+			})
+		}
+		{{- else if eq $field.Type "password" }}
+		fields = append(fields, gui.SchemaEntityFieldProps{
+			Name:     "{{ $field.Name }}",
+			Label:    "{{ $field.Label }}",
+			Type:     "password",
+			Editable: true,
+		})
+		{{- else }}
+		fields = append(fields, gui.SchemaEntityFieldProps{
+			Name:     "{{ $field.Name }}",
+			Label:    "{{ $field.Label }}",
+			Type:     "{{ $field.Type }}",
+			Value:    fmt.Sprintf("%v", e.{{ $field.Label }}),
+			Editable: {{ $field.Editable }},
+		})
+		{{- end }}
+		{{ end }}
+
+		props := gui.SchemaEntityProps{
+			LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
+			AdminPath:     adminBasePath,
+			SchemaName:    "{{ $node.Name }}",
+			EntityID:      id,
+			EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
+			Fields:        fields,
+		}
+
+		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// post{{ $node.Name }}Handler returns the handler for POST /admin/{{ lower $node.Name }}s/
+func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var input {{ $node.Name }}CreateInput
+		if err := datastar.ReadSignals(r, &input); err != nil {
+			handleError(w, r, err, http.StatusBadRequest)
+			return
+		}
+
+		builder := h.client.{{ $node.Name }}.Create()
+
+		// Direct fields (no transformation)
+		{{- range $field := $rc.DirectFields }}
+		builder.Set{{ $field.SetterName }}(input.{{ $field.InputName }})
+		{{- end }}
+
+		// Mapped fields (with transformation)
+		{{- range $field := $rc.MappedFields }}
+		{
+			transformFunc, ok := h.fieldTransforms["{{ $field.TransformKey }}"]
+			if !ok {
+				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
+				return
+			}
+			transformed, err := transformFunc(input.{{ $field.InputName }})
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+				return
+			}
+			if transformed != nil {
+				builder.Set{{ $field.SetterName }}(transformed.({{ $field.OutputType }}))
+			}
+		}
+		{{- end }}
+
+		{{- range $edge := $rc.Edges }}
+		// Add {{ $edge.Name }} edges
+		if len(input.{{ pascal $edge.Name }}) > 0 {
+			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
+			for _, idStr := range input.{{ pascal $edge.Name }} {
+				id, err := strconv.Atoi(idStr)
+				if err != nil {
+					continue
+				}
+				ids = append(ids, id)
+			}
+			{{- if $edge.Unique }}
+			if len(ids) > 0 {
+				builder.Set{{ pascal $edge.Name }}ID(ids[0])
+			}
+			{{- else }}
+			builder.Add{{ $edge.Singular }}IDs(ids...)
+			{{- end }}
+		}
+		{{- end }}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+	})
+}
+
+// patch{{ $node.Name }}Handler returns the handler for PATCH /admin/{{ lower $node.Name }}s/{id}/
+func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		var input {{ $node.Name }}UpdateInput
+		if err := datastar.ReadSignals(r, &input); err != nil {
+			handleError(w, r, err, http.StatusBadRequest)
+			return
+		}
+
+		builder := h.client.{{ $node.Name }}.UpdateOneID(id)
+
+		// Direct fields (no transformation)
+		{{- range $field := $rc.DirectFields }}
+		builder.Set{{ $field.SetterName }}(input.{{ $field.InputName }})
+		{{- end }}
+
+		// Mapped fields (with transformation)
+		{{- range $field := $rc.MappedFields }}
+		{
+			transformFunc, ok := h.fieldTransforms["{{ $field.TransformKey }}"]
+			if !ok {
+				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
+				return
+			}
+			transformed, err := transformFunc(input.{{ $field.InputName }})
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
+				return
+			}
+			if transformed != nil {
+				builder.Set{{ $field.SetterName }}(transformed.({{ $field.OutputType }}))
+			}
+		}
+		{{- end }}
+
+		{{- range $edge := $rc.Edges }}
+		// Update {{ $edge.Name }} edges
+		{{- if $edge.Unique }}
+		builder.Clear{{ pascal $edge.Name }}()
+		if len(input.{{ pascal $edge.Name }}) > 0 && input.{{ pascal $edge.Name }}[0] != "" {
+			id, err := strconv.Atoi(input.{{ pascal $edge.Name }}[0])
+			if err == nil {
+				builder.Set{{ pascal $edge.Name }}ID(id)
+			}
+		}
+		{{- else }}
+		builder.Clear{{ pascal $edge.Name }}()
+		if len(input.{{ pascal $edge.Name }}) > 0 {
+			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
+			for _, idStr := range input.{{ pascal $edge.Name }} {
+				id, err := strconv.Atoi(idStr)
+				if err != nil {
+					continue
+				}
+				ids = append(ids, id)
+			}
+			builder.Add{{ $edge.Singular }}IDs(ids...)
+		}
+		{{- end }}
+		{{- end }}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+	})
+}
+
+// delete{{ $node.Name }}Handler returns the handler for DELETE /admin/{{ lower $node.Name }}s/{id}/
+func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		if err := h.client.{{ $node.Name }}.DeleteOneID(id).Exec(r.Context()); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+	})
+}
+
 {{ end }}
 
-{{ range $node := $.Nodes }}
+// ============================================================================
+// Middleware
+// ============================================================================
 
-// {{ $node.Name }}SchemaClient implements vent.SchemaClient for {{ $node.Name }} entities
-type {{ $node.Name }}SchemaClient struct {
-	client *Client
-}
+type claimsContextKey struct{}
+type userContextKey struct{}
 
-func (c *{{ $node.Name }}SchemaClient) List(ctx context.Context, opts vent.QueryOptions) ([]vent.EntityData, error) {
-	q := c.client.{{ $node.Name }}.Query()
-
-	// Apply ordering
-	if opts.OrderBy != "" {
-		switch opts.OrderBy {
-		case "id":
-			if opts.OrderDesc {
-				q = q.Order({{ lower $node.Name }}.ByID(sql.OrderDesc()))
-			} else {
-				q = q.Order({{ lower $node.Name }}.ByID())
+func NewAuthMiddleware(authenticator auth.TokenAuthenticator) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenCookie, err := r.Cookie("vent-auth-token")
+			if err != nil {
+				http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
+				return
 			}
-		{{ range $field := $node.Fields }}
-		case "{{ $field.Name }}":
-			if opts.OrderDesc {
-				q = q.Order({{ lower $node.Name }}.By{{ pascal $field.Name }}(sql.OrderDesc()))
-			} else {
-				q = q.Order({{ lower $node.Name }}.By{{ pascal $field.Name }}())
+
+			claims, err := authenticator.Authenticate(tokenCookie.Value)
+			if err != nil {
+				http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
+				return
 			}
-		{{ end }}
-		}
-	}
 
-	// Apply filters
-	for key, value := range opts.Filters {
-		switch key {
-		case "id":
-			q = q.Where({{ lower $node.Name }}.IDEQ(value.(int)))
-		{{ range $field := $node.Fields }}
-		case "{{ $field.Name }}":
-			q = q.Where({{ lower $node.Name }}.{{ pascal $field.Name }}EQ(value.({{ $field.Type }})))
-		{{ end }}
-		}
-	}
-
-	// Apply limit/offset
-	if opts.Limit > 0 {
-		q = q.Limit(opts.Limit)
-	}
-	if opts.Offset > 0 {
-		q = q.Offset(opts.Offset)
-	}
-
-	// Eager load foreign key edges
-	{{- range $edge := $node.Edges }}
-	{{- if $edge.Unique }}
-	q = q.With{{ pascal $edge.Name }}()
-	{{- end }}
-	{{- end }}
-
-	// Eager load requested edges (single query with nested With* calls)
-	if len(opts.WithEdges) > 0 {
-		edgePaths := vent.ParseEdgePaths(opts.WithEdges)
-		q = apply{{ $node.Name }}WithEdges(q, edgePaths)
-	}
-
-	entities, err := q.All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	results := make([]vent.EntityData, len(entities))
-	for i, e := range entities {
-		results[i] = {{ lower $node.Name }}ToEntityData(e)
-	}
-	return results, nil
-}
-
-func (c *{{ $node.Name }}SchemaClient) Get(ctx context.Context, id int, opts ...vent.GetOptions) (vent.EntityData, error) {
-	q := c.client.{{ $node.Name }}.Query().Where({{ lower $node.Name }}.IDEQ(id))
-
-	// Eager load foreign key edges
-	{{- range $edge := $node.Edges }}
-	{{- if $edge.Unique }}
-	q = q.With{{ pascal $edge.Name }}()
-	{{- end }}
-	{{- end }}
-
-	// Eager load requested edges (single query with nested With* calls)
-	if len(opts) > 0 && len(opts[0].WithEdges) > 0 {
-		edgePaths := vent.ParseEdgePaths(opts[0].WithEdges)
-		q = apply{{ $node.Name }}WithEdges(q, edgePaths)
-	}
-
-	e, err := q.Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return {{ lower $node.Name }}ToEntityData(e), nil
-}
-
-func (c *{{ $node.Name }}SchemaClient) Create(ctx context.Context, data map[string]any) (vent.EntityData, error) {
-	builder := c.client.{{ $node.Name }}.Create()
-
-	{{ range $field := $node.Fields }}
-	if v, ok := data["{{ $field.Name }}"]; ok {
-		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
-	}
-	{{ end }}
-
-	{{- range $edge := $node.Edges }}
-	{{ $edgeName := pascal $edge.Name }}
-	if v, ok := data["{{ $edge.Name }}"]; ok {
-		if ids := v.([]int); len(ids) > 0 {
-		    builder = builder.Add{{ trimSuffix $edgeName "s" }}IDs(ids...)
-		}
-	}
-	{{- end }}
-
-	e, err := builder.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return {{ lower $node.Name }}ToEntityData(e), nil
-}
-
-func (c *{{ $node.Name }}SchemaClient) Update(ctx context.Context, id int, data map[string]any) error {
-	builder := c.client.{{ $node.Name }}.UpdateOneID(id)
-
-	{{ range $field := $node.Fields }}
-	if v, ok := data["{{ $field.Name }}"]; ok {
-		builder = builder.Set{{ pascal $field.Name }}(v.({{ $field.Type }}))
-	}
-	{{ end }}
-
-	{{- range $edge := $node.Edges }}
-	{{ $edgeName := pascal $edge.Name }}
-	if v, ok := data["{{ $edge.Name }}"]; ok {
-	    builder = builder.Clear{{ $edgeName }}()
-		if ids := v.([]int); len(ids) > 0 {
-		    builder = builder.Add{{ trimSuffix $edgeName "s" }}IDs(ids...)
-		}
-	}
-	{{- end }}
-
-	return builder.Exec(ctx)
-}
-
-func (c *{{ $node.Name }}SchemaClient) Delete(ctx context.Context, id int) error {
-	return c.client.{{ $node.Name }}.DeleteOneID(id).Exec(ctx)
-}
-
-func (c *{{ $node.Name }}SchemaClient) GetRelationOptions(ctx context.Context, relation *vent.RelationDef) ([]vent.SelectOption, error) {
-	switch relation.TargetSchema {
-	{{- range $edge := $node.Edges }}
-	{{- if $edge.Unique }}
-	case "{{ $edge.Type.Name }}":
-		entities, err := c.client.{{ $edge.Type.Name }}.Query().All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		options := make([]vent.SelectOption, len(entities))
-		for i, e := range entities {
-			options[i] = vent.SelectOption{
-				Value: e.ID,
-				Label: fmt.Sprintf("%d", e.ID), // TODO: Use display field
-			}
-		}
-		return options, nil
-	{{- end }}
-	{{- end }}
-	}
-	return nil, fmt.Errorf("unknown relation: %s", relation.TargetSchema)
-}
-
-// apply{{ $node.Name }}WithEdges applies eager loading for the given edge paths
-func apply{{ $node.Name }}WithEdges(q *{{ $node.Name }}Query, edgePaths []vent.EdgePath) *{{ $node.Name }}Query {
-	for _, ep := range edgePaths {
-		switch ep.Name {
-		{{- range $edge := $node.Edges }}
-		{{- if not $edge.Unique }}
-		case "{{ $edge.Name }}":
-			q = q.With{{ pascal $edge.Name }}(func(childQ *{{ $edge.Type.Name }}Query) {
-				{{- if $edge.Type.Edges }}
-				// Apply nested eager loading
-				if len(ep.Children) > 0 {
-					apply{{ $edge.Type.Name }}WithEdges(childQ, ep.Children)
-				}
-				{{- end }}
-			})
-		{{- end }}
-		{{- end }}
-		}
-	}
-	return q
-}
-
-// {{ lower $node.Name }}ToEntityData converts a {{ $node.Name }} entity to EntityData
-func {{ lower $node.Name }}ToEntityData(e *{{ $node.Name }}) vent.EntityData {
-	data := vent.EntityData{
-		"id": vent.NewIntFieldValue(e.ID),
-		{{ range $field := $node.Fields }}
-		"{{ $field.Name }}": vent.New{{ pascal $field.Type.Type.String }}FieldValue(e.{{ pascal $field.Name }}),
-		{{ end }}
-	}
-
-	// Add foreign key fields with relation info
-	{{- range $edge := $node.Edges }}
-	{{- if $edge.Unique }}
-	if e.Edges.{{ pascal $edge.Name }} != nil {
-		data["{{ $edge.Name }}_id"] = vent.NewForeignKeyFieldValue(
-			e.Edges.{{ pascal $edge.Name }}.ID,
-			vent.RelationValue{
-				TargetSchema: "{{ $edge.Type.Name }}",
-				TargetID:     e.Edges.{{ pascal $edge.Name }}.ID,
-				TargetLabel:  fmt.Sprintf("%d", e.Edges.{{ pascal $edge.Name }}.ID), // TODO: Use display field
-				TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
-			},
-		)
-	}
-	{{- end }}
-	{{- end }}
-
-	// Add loaded edge relations
-	{{- range $edge := $node.Edges }}
-	{{- if not $edge.Unique }}
-	if len(e.Edges.{{ pascal $edge.Name }}) > 0 || e.Edges.loadedTypes[{{ $edge.Index }}] {
-		relatedEntities := make([]vent.EntityData, len(e.Edges.{{ pascal $edge.Name }}))
-		for i, related := range e.Edges.{{ pascal $edge.Name }} {
-			relatedEntities[i] = {{ lower $edge.Type.Name }}ToEntityData(related)
-		}
-		data["{{ $edge.Name }}"] = vent.NewRelationFieldValue(vent.RelationData{
-			TargetSchema: "{{ $edge.Type.Name }}",
-			TargetPath:   "{{ $adminPath }}{{ lower $edge.Type.Name }}s/",
-			Entities:     relatedEntities,
-			Loaded:       true,
+			ctx := context.WithValue(r.Context(), claimsContextKey{}, claims)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
 		})
 	}
-	{{- end }}
-	{{- end }}
-
-	return data
 }
 
-{{ end }}
+func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := r.Context().Value(claimsContextKey{}).(*auth.VentClaims)
+			if !ok {
+				http.Error(w, "claims not present", http.StatusForbidden)
+				return
+			}
+
+			userID, err := strconv.Atoi(claims.Subject)
+			if err != nil {
+				http.Error(w, "claims ID is not an int", http.StatusInternalServerError)
+				return
+			}
+
+			user, err := client.{{ $userSchema }}.Query().
+				Where({{ lower $userSchema }}.IDEQ(userID)).
+				WithGroups(func(q *AuthGroupQuery) {
+					q.WithPermissions()
+				}).
+				Only(r.Context())
+			if err != nil {
+				http.Error(w, "could not find user", http.StatusInternalServerError)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), userContextKey{}, user)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, ok := r.Context().Value(userContextKey{}).(*{{ $userSchema }})
+			if !ok {
+				http.Error(w, "user not found in context", http.StatusInternalServerError)
+				return
+			}
+
+			if !user.IsSuperuser {
+				userPermissions := make(map[string]struct{})
+				for _, group := range user.Edges.Groups {
+					for _, permission := range group.Edges.Permissions {
+						userPermissions[permission.Name] = struct{}{}
+					}
+				}
+
+				for _, permission := range permissions {
+					if _, ok := userPermissions[permission]; !ok {
+						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusUnauthorized)
+						return
+					}
+				}
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func newLoggerMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("%s %s\n", r.Method, r.RequestURI)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
 
 {{ end }}

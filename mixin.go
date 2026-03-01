@@ -40,6 +40,13 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 					InputType: "password",
 				},
 			},
+			FieldMappings: []FieldMapping{
+				{
+					From:      "password",
+					To:        "password_hash",
+					Transform: "hash",
+				},
+			},
 			TableColumns: []string{
 				"email",
 				"is_staff",
