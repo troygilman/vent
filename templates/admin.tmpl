@@ -632,6 +632,18 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 {{ end }}
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+func GetUser(ctx context.Context) (*{{ $userSchema }}, error) {
+    user, ok := ctx.Value(userContextKey{}).(*{{ $userSchema }})
+	if !ok {
+	    return nil, errors.New("user not found in context")
+	}
+	return user, nil
+}
+
+// ============================================================================
 // Middleware
 // ============================================================================
 
@@ -696,9 +708,9 @@ func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
 func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value(userContextKey{}).(*{{ $userSchema }})
-			if !ok {
-				http.Error(w, "user not found in context", http.StatusInternalServerError)
+			user, err := GetUser(r.Context())
+			if err != nil {
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
