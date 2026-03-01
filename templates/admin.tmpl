@@ -87,7 +87,7 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		fieldTransforms:         fieldTransforms,
-		authMiddleware:          NewAuthMiddleware(tokenAuthenticator),
+		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
 		userMiddleware:          NewUserMiddleware(config.Client),
 		loggerMiddleware:        newLoggerMiddleware(),
 	}
@@ -638,7 +638,7 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 type claimsContextKey struct{}
 type userContextKey struct{}
 
-func NewAuthMiddleware(authenticator auth.TokenAuthenticator) func(http.Handler) http.Handler {
+func NewAuthenticationMiddleware(authenticator auth.TokenAuthenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenCookie, err := r.Cookie("vent-auth-token")
