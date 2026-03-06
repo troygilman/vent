@@ -91,7 +91,12 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 		case "int":
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="number" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="number" step="1" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+			</label>
+		case "float", "float64":
+			<label class="input items-baseline gap-2 w-full">
+				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
+				<input class="flex-1" type="number" step="any" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		case "bool":
 			<label class="label w-fit">
