@@ -504,6 +504,17 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 
 		{{- range $edge := $rc.Edges }}
 		// Add {{ $edge.Name }} edges
+		{{- if $edge.Unique }}
+        if input.{{ pascal $edge.Name }} == "" {
+            builder.Clear{{ pascal $edge.Name }}()
+        } else {
+            id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
+            if err != nil {
+                panic(err)
+            }
+            builder.Set{{ pascal $edge.Name }}(id)
+        }
+		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
 			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
 			for _, idStr := range input.{{ pascal $edge.Name }} {
@@ -513,11 +524,6 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				}
 				ids = append(ids, id)
 			}
-			{{- if $edge.Unique }}
-			if len(ids) > 0 {
-				builder.Set{{ pascal $edge.Name }}ID(ids[0])
-			}
-			{{- else }}
 			builder.Add{{ $edge.Singular }}IDs(ids...)
 			{{- end }}
 		}

@@ -412,11 +412,17 @@ func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnota
 
 	// Add edges (as []string for IDs)
 	for _, edge := range node.Edges {
-		fields = append(fields, RenderInputField{
+		field := RenderInputField{
 			Name:     pascalCase(edge.Name),
 			JSONName: edge.Name,
 			Type:     "[]string",
-		})
+		}
+		if edge.Unique {
+			field.Type = "string"
+		} else {
+			field.Type = "[]string"
+		}
+		fields = append(fields, field)
 	}
 
 	return fields
