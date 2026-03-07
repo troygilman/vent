@@ -525,8 +525,8 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				ids = append(ids, id)
 			}
 			builder.Add{{ $edge.Singular }}IDs(ids...)
-			{{- end }}
 		}
+		{{- end }}
 		{{- end }}
 
 		if _, err := builder.Save(r.Context()); err != nil {
