@@ -506,13 +506,13 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		// Add {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
         if input.{{ pascal $edge.Name }} == "" {
-            builder.Clear{{ pascal $edge.Name }}()
+            builder.Set{{ pascal $edge.Name }}(nil)
         } else {
             id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
             if err != nil {
                 panic(err)
             }
-            builder.Set{{ pascal $edge.Name }}(id)
+            builder.Set{{ pascal $edge.Name }}ID(id)
         }
 		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
