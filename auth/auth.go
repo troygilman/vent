@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"strconv"
 	"time"
 
@@ -15,6 +16,7 @@ func NewClaims(userID int) *VentClaims {
 	now := time.Now()
 	return &VentClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        rand.Text(),
 			Subject:   strconv.Itoa(userID),
 			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(now),

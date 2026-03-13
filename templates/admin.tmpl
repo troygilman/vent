@@ -647,6 +647,14 @@ func GetUser(ctx context.Context) (*{{ $userSchema }}, error) {
 	return user, nil
 }
 
+func GetClaims(ctx context.Context) (*auth.VentClaims, error) {
+    claims, ok := ctx.Value(claimsContextKey{}).(*auth.VentClaims)
+	if !ok {
+	    return nil, errors.New("claims not found in context")
+	}
+	return claims, nil
+}
+
 // ============================================================================
 // Middleware
 // ============================================================================
@@ -679,9 +687,9 @@ func NewAuthenticationMiddleware(authenticator auth.TokenAuthenticator) func(htt
 func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value(claimsContextKey{}).(*auth.VentClaims)
-			if !ok {
-				http.Error(w, "claims not present", http.StatusForbidden)
+			claims, err := GetClaims(r.Context())
+			if err != nil {
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
