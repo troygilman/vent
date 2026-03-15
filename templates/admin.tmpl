@@ -280,7 +280,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 				Cells: []gui.SchemaTableCell{
 					{{- range $idx, $col := $rc.TableColumns }}
 					{
-						Display: fmt.Sprintf("%v", e.{{ $col.Label }}),
+						Display: fmt.Sprintf("%v", e.{{ pascal $col.Name }}),
 						{{- if eq $idx 0 }}
 						LinkURL: fmt.Sprintf("%s{{ lower $node.Name }}s/%d/", adminBasePath, e.ID),
 						{{- end }}
@@ -446,7 +446,7 @@ func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 			Name:     "{{ $field.Name }}",
 			Label:    "{{ $field.Label }}",
 			Type:     "{{ $field.Type }}",
-			Value:    fmt.Sprintf("%v", e.{{ $field.Label }}),
+			Value:    fmt.Sprintf("%v", e.{{ pascal $field.Name }}),
 			Editable: {{ $field.Editable }},
 		})
 		{{- end }}
@@ -480,7 +480,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
-		builder.Set{{ $field.SetterName }}(input.{{ $field.InputName }})
+		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
 		{{- end }}
 
 		// Mapped fields (with transformation)
@@ -491,13 +491,13 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
 				return
 			}
-			transformed, err := transformFunc(input.{{ $field.InputName }})
+			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
 			if err != nil {
 				handleError(w, r, err, http.StatusInternalServerError)
 				return
 			}
 			if transformed != nil {
-				builder.Set{{ $field.SetterName }}(transformed.({{ $field.OutputType }}))
+				builder.Set{{ pascal $field.SetterName }}(transformed.({{ $field.OutputType }}))
 			}
 		}
 		{{- end }}
@@ -556,7 +556,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
-		builder.Set{{ $field.SetterName }}(input.{{ $field.InputName }})
+		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
 		{{- end }}
 
 		// Mapped fields (with transformation)
@@ -567,13 +567,13 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
 				return
 			}
-			transformed, err := transformFunc(input.{{ $field.InputName }})
+			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
 			if err != nil {
 				handleError(w, r, err, http.StatusInternalServerError)
 				return
 			}
 			if transformed != nil {
-				builder.Set{{ $field.SetterName }}(transformed.({{ $field.OutputType }}))
+				builder.Set{{ pascal $field.SetterName }}(transformed.({{ $field.OutputType }}))
 			}
 		}
 		{{- end }}

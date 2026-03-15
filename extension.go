@@ -125,8 +125,7 @@ type NodeRenderConfig struct {
 
 // RenderDirectField represents a field that can be set directly via builder without transformation
 type RenderDirectField struct {
-	InputName  string // Field name in input struct (e.g., "Email")
-	SetterName string // Builder method name (e.g., "Email") for builder.Set{SetterName}()
+	Name string
 }
 
 // RenderMappedField represents a field that needs transformation before setting
@@ -441,8 +440,8 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 
 			// Add to mapped fields
 			mappedFields = append(mappedFields, RenderMappedField{
-				InputName:    pascalCase(mapping.From),
-				SetterName:   pascalCase(mapping.To),
+				InputName:    mapping.From,
+				SetterName:   mapping.To,
 				TransformKey: mapping.Transform,
 				OutputType:   getFieldType(node, mapping.To),
 			})
@@ -459,8 +458,7 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 			continue
 		}
 		directFields = append(directFields, RenderDirectField{
-			InputName:  pascalCase(f.Name),
-			SetterName: pascalCase(f.Name),
+			Name: f.Name,
 		})
 	}
 
