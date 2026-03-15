@@ -252,14 +252,14 @@ func (h *AdminHandler) getAdminHandler() http.Handler {
 // {{ $node.Name }}CreateInput is the typed input for creating a {{ $node.Name }}
 type {{ $node.Name }}CreateInput struct {
 	{{- range $field := $rc.InputFields }}
-	{{ $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
+	{{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
 	{{- end }}
 }
 
 // {{ $node.Name }}UpdateInput is the typed input for updating a {{ $node.Name }}
 type {{ $node.Name }}UpdateInput struct {
 	{{- range $field := $rc.InputFields }}
-	{{ $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
+	{{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
 	{{- end }}
 }
 

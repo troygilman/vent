@@ -386,7 +386,7 @@ func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnota
 			continue
 		}
 		fields = append(fields, RenderInputField{
-			Name:     pascalCase(f.Name),
+			Name:     f.Name,
 			JSONName: f.Name,
 			Type:     f.Type.Type.String(),
 		})
@@ -401,7 +401,7 @@ func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnota
 		for _, cf := range annotation.CustomFields {
 			if !existingFields[strings.ToLower(cf.Name)] {
 				fields = append(fields, RenderInputField{
-					Name:     pascalCase(cf.Name),
+					Name:     cf.Name,
 					JSONName: cf.Name,
 					Type:     cf.Type,
 				})
@@ -412,7 +412,7 @@ func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnota
 	// Add edges (as []string for IDs)
 	for _, edge := range node.Edges {
 		field := RenderInputField{
-			Name:     pascalCase(edge.Name),
+			Name:     edge.Name,
 			JSONName: edge.Name,
 			Type:     "[]string",
 		}
