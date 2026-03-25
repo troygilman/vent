@@ -1,6 +1,6 @@
 module github.com/troygilman/vent
 
-go 1.24.3
+go 1.26.1
 
 require (
 	ariga.io/atlas v0.32.1-0.20250325101103-175b25e1c1b9
