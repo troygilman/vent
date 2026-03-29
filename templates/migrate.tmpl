@@ -139,7 +139,7 @@ func MigrationFormatter(dir migrate.Dir) migrate.Formatter {
 		if err != nil {
 			panic(err)
 		}
-		return strconv.Itoa(len(files))
+		return fmt.Sprintf("%04d", len(files))
 	}
 	formatter := migrate.DefaultFormatter
 	formatter[0].N = formatter[0].N.Funcs(template.FuncMap{"now": newVersionFunc})
