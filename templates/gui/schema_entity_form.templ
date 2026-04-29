@@ -126,6 +126,20 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 						<option
 							value={ strconv.Itoa(opt.Value) }
 							selected?={ opt.Selected }
+							data-show={ fmt.Sprintf("!$%s.includes('%d')", props.Name, opt.Value) }
+							style="display: none"
+						>
+							{ opt.Label }
+						</option>
+					}
+				</select>
+				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
+					for _, opt := range props.Options {
+						<option
+							value={ strconv.Itoa(opt.Value) }
+							selected?={ opt.Selected }
+							data-show={ fmt.Sprintf("$%s.includes('%d')", props.Name, opt.Value) }
+							style="display: none"
 						>
 							{ opt.Label }
 						</option>
