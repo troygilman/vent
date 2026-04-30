@@ -1548,6 +1548,12 @@
   .table {
     display: table;
   }
+  .fixed-height-multiselect {
+    height: calc(var(--spacing) * 32);
+    max-height: calc(var(--spacing) * 32);
+    min-height: calc(var(--spacing) * 32);
+    overflow-y: auto;
+  }
   .h-\[1em\] {
     height: 1em;
   }
@@ -1635,6 +1641,9 @@
   }
   .items-baseline {
     align-items: baseline;
+  }
+  .items-start {
+    align-items: flex-start;
   }
   .justify-between {
     justify-content: space-between;

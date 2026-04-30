@@ -583,7 +583,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case "foreign_key":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<label class=\"flex items-baseline gap-2 w-full\"><span class=\"label w-48 flex-shrink-0 text-right\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<label class=\"flex items-start gap-2 w-full\"><span class=\"label w-48 flex-shrink-0 text-right\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -596,14 +596,14 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span> <select class=\"select select-bordered flex-1\" data-bind=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</span><div class=\"flex items-start grow gap-2\"><select class=\"select select-bordered flex-1 fixed-height-multiselect\" data-bind=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 124, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 125, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -631,7 +631,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(opt.Value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 127, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 128, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -654,7 +654,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("!$%s.includes('%d')", props.Name, opt.Value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 129, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 130, Col: 77}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -667,7 +667,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 132, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 133, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 				if templ_7745c5c3_Err != nil {
@@ -678,14 +678,14 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</select> <select class=\"select select-bordered flex-1\" data-bind=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</select> <select class=\"select select-bordered flex-1 fixed-height-multiselect\" data-bind=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 136, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 137, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -713,7 +713,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(opt.Value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 139, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 140, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {
@@ -736,7 +736,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("$%s.includes('%d')", props.Name, opt.Value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 141, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 142, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -749,7 +749,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 				var templ_7745c5c3_Var35 string
 				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 144, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 145, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 				if templ_7745c5c3_Err != nil {
@@ -760,7 +760,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</select></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</select></div></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -772,7 +772,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 151, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 153, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -785,7 +785,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 152, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 154, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -798,7 +798,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(props.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 152, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 154, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -826,7 +826,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 156, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 158, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -839,7 +839,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(props.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 157, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 159, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
@@ -852,7 +852,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(props.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 157, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 159, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
@@ -881,7 +881,7 @@ func SchemaEntityField(props SchemaEntityFieldProps) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 161, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_form.templ`, Line: 163, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {

@@ -24,6 +24,9 @@ func (AuthUserMixin) Fields() []ent.Field {
 }
 
 func (m AuthUserMixin) Edges() []ent.Edge {
+	if m.AuthGroupSchemaType == nil {
+		panic("AuthGroupSchemaType cannot be nil")
+	}
 	return []ent.Edge{
 		edge.To("groups", m.AuthGroupSchemaType),
 	}
@@ -83,6 +86,12 @@ func (AuthGroupMixin) Fields() []ent.Field {
 }
 
 func (m AuthGroupMixin) Edges() []ent.Edge {
+	if m.AuthPermissionSchemaType == nil {
+		panic("AuthPermissionSchemaType cannot be nil")
+	}
+	if m.AuthUserSchemaType == nil {
+		panic("AuthUserSchemaType cannot be nil")
+	}
 	return []ent.Edge{
 		edge.To("permissions", m.AuthPermissionSchemaType),
 		edge.From("users", m.AuthUserSchemaType).Ref("groups"),
@@ -110,11 +119,21 @@ func (AuthGroupMixin) Annotations() []schema.Annotation {
 
 type AuthPermissionMixin struct {
 	mixin.Schema
+	AuthGroupSchemaType any
 }
 
 func (AuthPermissionMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").NotEmpty().Unique(),
+	}
+}
+
+func (m AuthPermissionMixin) Edges() []ent.Edge {
+	if m.AuthGroupSchemaType == nil {
+		panic("AuthGroupSchemaType cannot be nil")
+	}
+	return []ent.Edge{
+		edge.From("groups", m.AuthGroupSchemaType).Ref("permissions"),
 	}
 }
 

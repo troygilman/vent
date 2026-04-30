@@ -119,32 +119,34 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 				</select>
 			</label>
 		case "foreign_key":
-			<label class="flex items-baseline gap-2 w-full">
+			<label class="flex items-start gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
-					for _, opt := range props.Options {
-						<option
-							value={ strconv.Itoa(opt.Value) }
-							selected?={ opt.Selected }
-							data-show={ fmt.Sprintf("!$%s.includes('%d')", props.Name, opt.Value) }
-							style="display: none"
-						>
-							{ opt.Label }
-						</option>
-					}
-				</select>
-				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
-					for _, opt := range props.Options {
-						<option
-							value={ strconv.Itoa(opt.Value) }
-							selected?={ opt.Selected }
-							data-show={ fmt.Sprintf("$%s.includes('%d')", props.Name, opt.Value) }
-							style="display: none"
-						>
-							{ opt.Label }
-						</option>
-					}
-				</select>
+				<div class="flex items-start grow gap-2">
+					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
+						for _, opt := range props.Options {
+							<option
+								value={ strconv.Itoa(opt.Value) }
+								selected?={ opt.Selected }
+								data-show={ fmt.Sprintf("!$%s.includes('%d')", props.Name, opt.Value) }
+								style="display: none"
+							>
+								{ opt.Label }
+							</option>
+						}
+					</select>
+					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
+						for _, opt := range props.Options {
+							<option
+								value={ strconv.Itoa(opt.Value) }
+								selected?={ opt.Selected }
+								data-show={ fmt.Sprintf("$%s.includes('%d')", props.Name, opt.Value) }
+								style="display: none"
+							>
+								{ opt.Label }
+							</option>
+						}
+					</select>
+				</div>
 			</label>
 		case "time":
 			<label class="input items-baseline gap-2 w-full">
