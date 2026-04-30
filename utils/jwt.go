@@ -32,7 +32,7 @@ func ParseSignedToken(secret []byte, signedToken string) (*VentClaims, error) {
 	claims := &VentClaims{}
 	token, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (any, error) {
 		return secret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return nil, err
 	}

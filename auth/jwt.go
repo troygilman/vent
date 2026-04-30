@@ -20,7 +20,7 @@ func NewJwtTokenAuthenticator(provider SecretProvider) TokenAuthenticator {
 		claims := &VentClaims{}
 		t, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
 			return secret, nil
-		})
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 		if err != nil {
 			return nil, err
 		}

@@ -1,6 +1,7 @@
 package gui
 
 type LayoutProps struct {
+	AdminPath        string
 	Schemas          []SchemaMetadata
 	ActiveSchemaName string
 }
@@ -23,6 +24,8 @@ templ Layout(props LayoutProps) {
 						>{ schema.Name }</a>
 					</li>
 				}
+				<li></li>
+				<li><a href={ templ.SafeURL(props.AdminPath + "logout/") }>Logout</a></li>
 			</ul>
 		</div>
 		<div class="flex grow min-w-0 justify-center">

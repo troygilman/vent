@@ -1,6 +1,6 @@
 package gui
 
-templ Index() {
+templ Index(adminPath string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -8,8 +8,8 @@ templ Index() {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<title>Vent Admin</title>
-			<link rel="stylesheet" href="/admin/static/style.css"/>
-			<script type="module" src="/admin/static/datastar.js"></script>
+			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/style.css") }/>
+			<script type="module" src={ templ.SafeURL(adminPath + "static/datastar.js") }></script>
 		</head>
 		<body class="flex w-screen h-screen relative">
 			{ children... }

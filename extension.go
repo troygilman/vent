@@ -2,6 +2,7 @@ package vent
 
 import (
 	"embed"
+	"fmt"
 	"reflect"
 	"strings"
 	"text/template"
@@ -41,6 +42,19 @@ func (ext *AdminExtension) Annotations() []entc.Annotation {
 	return []entc.Annotation{
 		VentConfigAnnotation{
 			VentExtensionConfig: ext.config,
+		},
+	}
+}
+
+func (ext *AdminExtension) Hooks() []gen.Hook {
+	return []gen.Hook{
+		func(next gen.Generator) gen.Generator {
+			return gen.GenerateFunc(func(graph *gen.Graph) error {
+				if err := validateVentGraph(graph, ext.config); err != nil {
+					return err
+				}
+				return next.Generate(graph)
+			})
 		},
 	}
 }
@@ -557,6 +571,146 @@ func resourceName(s string) string {
 		prev = original
 	}
 	return strings.Trim(b.String(), "_")
+}
+
+func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
+	var errs []string
+
+	userNode := findNode(graph.Nodes, config.AuthSchemas.User)
+	groupNode := findNode(graph.Nodes, config.AuthSchemas.Group)
+	permissionNode := findNode(graph.Nodes, config.AuthSchemas.Permission)
+
+	if config.AuthSchemas.User == "" {
+		errs = append(errs, "auth user schema is required")
+	} else if userNode == nil {
+		errs = append(errs, fmt.Sprintf("auth user schema %q was not found", config.AuthSchemas.User))
+	}
+	if config.AuthSchemas.Group == "" {
+		errs = append(errs, "auth group schema is required")
+	} else if groupNode == nil {
+		errs = append(errs, fmt.Sprintf("auth group schema %q was not found", config.AuthSchemas.Group))
+	}
+	if config.AuthSchemas.Permission == "" {
+		errs = append(errs, "auth permission schema is required")
+	} else if permissionNode == nil {
+		errs = append(errs, fmt.Sprintf("auth permission schema %q was not found", config.AuthSchemas.Permission))
+	}
+
+	if userNode != nil {
+		errs = append(errs, validateAuthMixinRole(userNode, AuthRoleUser)...)
+	}
+	if groupNode != nil {
+		errs = append(errs, validateAuthMixinRole(groupNode, AuthRoleGroup)...)
+	}
+	if permissionNode != nil {
+		errs = append(errs, validateAuthMixinRole(permissionNode, AuthRolePermission)...)
+	}
+
+	for _, node := range graph.Nodes {
+		errs = append(errs, validateVentSchemaAnnotation(node)...)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
+	}
+	return nil
+}
+
+func validateAuthMixinRole(node *gen.Type, role AuthRole) []string {
+	var annotation VentAuthMixinAnnotation
+	if err := annotation.parse(node); err != nil {
+		return []string{fmt.Sprintf("schema %q must use Vent's %s auth mixin", node.Name, role)}
+	}
+	if annotation.Role != role {
+		return []string{fmt.Sprintf("schema %q uses Vent's %s auth mixin, expected %s", node.Name, annotation.Role, role)}
+	}
+	return nil
+}
+
+func findNode(nodes []*gen.Type, name string) *gen.Type {
+	for _, node := range nodes {
+		if node.Name == name {
+			return node
+		}
+	}
+	return nil
+}
+
+func validateVentSchemaAnnotation(node *gen.Type) []string {
+	var annotation VentSchemaAnnotation
+	if err := annotation.parse(node); err != nil {
+		return nil
+	}
+
+	var errs []string
+	if annotation.DisplayField != "" && !hasFieldOrID(node, annotation.DisplayField) {
+		errs = append(errs, fmt.Sprintf("schema %q display field %q does not exist", node.Name, annotation.DisplayField))
+	}
+
+	for _, column := range annotation.TableColumns {
+		if !hasFieldOrID(node, column) {
+			errs = append(errs, fmt.Sprintf("schema %q table column %q does not exist", node.Name, column))
+		}
+	}
+
+	customFields := make(map[string]struct{}, len(annotation.CustomFields))
+	for _, field := range annotation.CustomFields {
+		if hasFieldOrID(node, field.Name) {
+			errs = append(errs, fmt.Sprintf("schema %q custom field %q conflicts with an existing field", node.Name, field.Name))
+		}
+		if hasEdge(node, field.Name) {
+			errs = append(errs, fmt.Sprintf("schema %q custom field %q conflicts with an existing edge", node.Name, field.Name))
+		}
+		customFields[field.Name] = struct{}{}
+	}
+
+	for _, fieldSet := range annotation.FieldSets {
+		for _, fieldName := range fieldSet.Fields {
+			if !hasFieldOrID(node, fieldName) && !hasEdge(node, fieldName) {
+				if _, ok := customFields[fieldName]; !ok {
+					errs = append(errs, fmt.Sprintf("schema %q field set references unknown field or edge %q", node.Name, fieldName))
+				}
+			}
+		}
+	}
+
+	for _, mapping := range annotation.FieldMappings {
+		if !hasFieldOrID(node, mapping.From) {
+			if _, ok := customFields[mapping.From]; !ok {
+				errs = append(errs, fmt.Sprintf("schema %q field mapping source %q does not exist", node.Name, mapping.From))
+			}
+		}
+		if !hasField(node, mapping.To) {
+			errs = append(errs, fmt.Sprintf("schema %q field mapping target %q does not exist", node.Name, mapping.To))
+		}
+		if mapping.Transform == "" {
+			errs = append(errs, fmt.Sprintf("schema %q field mapping from %q to %q is missing a transform", node.Name, mapping.From, mapping.To))
+		}
+	}
+
+	return errs
+}
+
+func hasFieldOrID(node *gen.Type, name string) bool {
+	return name == "id" || hasField(node, name)
+}
+
+func hasField(node *gen.Type, name string) bool {
+	for _, field := range node.Fields {
+		if field.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasEdge(node *gen.Type, name string) bool {
+	for _, edge := range node.Edges {
+		if edge.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // AuthSchemas maps Vent's required auth roles to Ent schema type references.

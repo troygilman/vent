@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/auth"
@@ -35,6 +37,7 @@ type AdminConfig struct {
 	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
+	SecureCookies           bool
 
 	// FieldTransforms is a registry of transform functions for custom field mappings.
 	// Keys are transform names (e.g., "hash"), values are transform functions.
@@ -49,6 +52,7 @@ type AdminHandler struct {
 	credentialAuthenticator auth.CredentialAuthenticator
 	credentialGenerator     auth.CredentialGenerator
 	tokenGenerator          auth.TokenGenerator
+	secureCookies           bool
 	fieldTransforms         map[string]vent.FieldTransformFunc
 	authMiddleware          func(http.Handler) http.Handler
 	userMiddleware          func(http.Handler) http.Handler
@@ -59,7 +63,11 @@ type AdminHandler struct {
 const adminBasePath = "{{ $adminPath }}"
 
 // NewAdminHandler creates a new admin handler with the given configuration
-func NewAdminHandler(config AdminConfig) *AdminHandler {
+func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
+	if err := validateAdminConfig(config); err != nil {
+		return nil, err
+	}
+
 	tokenAuthenticator := auth.NewJwtTokenAuthenticator(config.SecretProvider)
 
 	// Initialize field transforms registry
@@ -90,6 +98,7 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 		credentialAuthenticator: config.CredentialAuthenticator,
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
+		secureCookies:           config.SecureCookies,
 		fieldTransforms:         fieldTransforms,
 		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
 		userMiddleware:          NewUserMiddleware(config.Client),
@@ -101,6 +110,7 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 	h.handle("GET "+adminBasePath+"static/", http.StripPrefix(adminBasePath, vent.StaticDirHandler()))
 	h.handle("GET "+adminBasePath+"login/", h.getLoginHandler(), h.loggerMiddleware)
 	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware)
+	h.handle("GET "+adminBasePath+"logout/", h.getLogoutHandler(), h.loggerMiddleware)
 
 	// Authorized routes - admin home
 	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware)
@@ -117,7 +127,27 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 	h.handle("DELETE "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
 
-	return h
+	return h, nil
+}
+
+func validateAdminConfig(config AdminConfig) error {
+	var errs []string
+	if config.Client == nil {
+		errs = append(errs, "Client is required")
+	}
+	if config.SecretProvider == nil {
+		errs = append(errs, "SecretProvider is required")
+	}
+	if config.CredentialAuthenticator == nil {
+		errs = append(errs, "CredentialAuthenticator is required")
+	}
+	if config.CredentialGenerator == nil {
+		errs = append(errs, "CredentialGenerator is required")
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid admin config: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -144,6 +174,7 @@ func (h *AdminHandler) buildLayoutProps(activeSchemaName string) gui.LayoutProps
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return gui.LayoutProps{
+		AdminPath:        adminBasePath,
 		Schemas:          schemas,
 		ActiveSchemaName: activeSchemaName,
 	}
@@ -158,10 +189,28 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, status int) 
 // getLoginHandler returns the handler for GET /admin/login/
 func (h *AdminHandler) getLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		props := gui.LoginProps{}
+		props := gui.LoginProps{
+			AdminPath: adminBasePath,
+		}
 		if err := gui.LoginPage(props).Render(r.Context(), w); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
 		}
+	})
+}
+
+// getLogoutHandler returns the handler for GET /admin/logout/
+func (h *AdminHandler) getLogoutHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "vent-auth-token",
+			Value:    "",
+			Path:     adminBasePath,
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   h.secureCookies,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
 	})
 }
 
@@ -177,7 +226,9 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			return
 		}
 
-		loginProps := gui.LoginProps{}
+		loginProps := gui.LoginProps{
+			AdminPath: adminBasePath,
+		}
 
 		err := func() error {
 			// Find user by email - direct ent query, type-safe
@@ -187,6 +238,15 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			if err != nil {
 				loginProps.EmailError = "User with this email does not exist"
 				return errors.New("invalid email")
+			}
+
+			if !user.IsActive {
+				loginProps.EmailError = "User account is inactive"
+				return errors.New("inactive user")
+			}
+			if !user.IsStaff {
+				loginProps.EmailError = "User does not have admin access"
+				return errors.New("non-staff user")
 			}
 
 			// Verify password - direct field access, type-safe
@@ -203,10 +263,18 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			}
 
 			// Set cookie
+			maxAge := int(time.Until(claims.ExpiresAt.Time).Seconds())
+			if maxAge < 0 {
+				maxAge = 0
+			}
 			http.SetCookie(w, &http.Cookie{
 				Name:     "vent-auth-token",
 				Value:    token,
-				Path:     "/",
+				Path:     adminBasePath,
+				Expires:  claims.ExpiresAt.Time,
+				MaxAge:   maxAge,
+				HttpOnly: true,
+				Secure:   h.secureCookies,
 				SameSite: http.SameSiteLaxMode,
 			})
 

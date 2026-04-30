@@ -34,6 +34,7 @@ func (m AuthUserMixin) Edges() []ent.Edge {
 
 func (AuthUserMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		VentAuthMixinAnnotation{Role: AuthRoleUser},
 		VentSchemaAnnotation{
 			DisplayField: "email",
 			CustomFields: []Field{
@@ -100,6 +101,7 @@ func (m AuthGroupMixin) Edges() []ent.Edge {
 
 func (AuthGroupMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		VentAuthMixinAnnotation{Role: AuthRoleGroup},
 		VentSchemaAnnotation{
 			DisplayField: "name",
 			TableColumns: []string{
@@ -139,6 +141,7 @@ func (m AuthPermissionMixin) Edges() []ent.Edge {
 
 func (AuthPermissionMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
+		VentAuthMixinAnnotation{Role: AuthRolePermission},
 		VentSchemaAnnotation{
 			DisplayField: "name",
 			DisableAdmin: true,

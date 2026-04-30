@@ -16,7 +16,7 @@ type SchemaEntityProps struct {
 
 templ SchemaEntityPage(props SchemaEntityProps) {
 	{{ schemaEntityPath := fmt.Sprintf("%s%ss/%d/", props.AdminPath, strings.ToLower(props.SchemaName), props.EntityID) }}
-	@Index() {
+	@Index(props.AdminPath) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
 				TitleText: fmt.Sprintf("Change %s", props.EntityDisplay),

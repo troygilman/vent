@@ -34,15 +34,20 @@ func main() {
 		SetIsSuperuser(true).
 		Save(ctx)
 
-	mux := http.NewServeMux()
-	mux.Handle("/admin/", ent.NewAdminHandler(ent.AdminConfig{
+	adminHandler, err := ent.NewAdminHandler(ent.AdminConfig{
 		Client: client,
 		SecretProvider: auth.SecretProviderFunc(func() []byte {
 			return []byte("secret")
 		}),
 		CredentialGenerator:     credentialGenerator,
 		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
-	}))
+	})
+	if err != nil {
+		log.Fatalf("failed creating admin handler: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/admin/", adminHandler)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		panic(err)
 	}

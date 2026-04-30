@@ -2,6 +2,22 @@ package vent
 
 import "testing"
 
+func TestNormalizeAdminPath(t *testing.T) {
+	tests := map[string]string{
+		"":           "/admin/",
+		"admin":      "/admin/",
+		"/admin":     "/admin/",
+		"admin/":     "/admin/",
+		"/dashboard": "/dashboard/",
+	}
+
+	for input, want := range tests {
+		if got := normalizeAdminPath(input); got != want {
+			t.Fatalf("normalizeAdminPath(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestResourceName(t *testing.T) {
 	tests := map[string]string{
 		"AuthUser":        "auth_user",
