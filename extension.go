@@ -2,8 +2,10 @@ package vent
 
 import (
 	"embed"
+	"reflect"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
@@ -19,12 +21,17 @@ type AdminExtension struct {
 
 func NewAdminExtension(opts ...VentExtensionConfigOption) entc.Extension {
 	config := VentExtensionConfig{
-		AdminPath:  "/admin/",
-		UserSchema: "AuthUser",
+		AdminPath: "/admin/",
+		AuthSchemas: AuthSchemaNames{
+			User:       "AuthUser",
+			Group:      "AuthGroup",
+			Permission: "AuthPermission",
+		},
 	}
 	for _, opt := range opts {
-		config = opt(config)
+		opt(&config)
 	}
+	config.AdminPath = normalizeAdminPath(config.AdminPath)
 	return &AdminExtension{
 		config: config,
 	}
@@ -44,11 +51,16 @@ func (e *AdminExtension) Templates() []*gen.Template {
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
 					"renderConfigs": renderConfigs,
+					"resourceName":  resourceName,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
 		gen.MustParse(
 			gen.NewTemplate("migrate").
+				Funcs(template.FuncMap{
+					"renderConfigs": renderConfigs,
+					"resourceName":  resourceName,
+				}).
 				ParseFS(templates, "templates/migrate.tmpl"),
 		),
 	}
@@ -504,16 +516,110 @@ func singularize(s string) string {
 	return s
 }
 
-type VentExtensionConfig struct {
-	AdminPath  string
-	UserSchema string
+// resourceName converts an Ent schema name to Vent's normalized resource name.
+// Resource names are used in generated permission names.
+func resourceName(s string) string {
+	var b strings.Builder
+	var prev rune
+	var wroteUnderscore bool
+	runes := []rune(s)
+	for i, r := range runes {
+		original := r
+		if r == '-' || unicode.IsSpace(r) {
+			if b.Len() > 0 && !wroteUnderscore {
+				b.WriteRune('_')
+				wroteUnderscore = true
+			}
+			prev = r
+			continue
+		}
+
+		if r == '_' {
+			if b.Len() > 0 && !wroteUnderscore {
+				b.WriteRune('_')
+				wroteUnderscore = true
+			}
+			prev = r
+			continue
+		}
+
+		if unicode.IsUpper(r) {
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+			prevIsWord := prev != 0 && prev != '_' && prev != '-' && !unicode.IsSpace(prev)
+			if b.Len() > 0 && prevIsWord && !wroteUnderscore && (unicode.IsLower(prev) || unicode.IsDigit(prev) || nextIsLower) {
+				b.WriteRune('_')
+			}
+			r = unicode.ToLower(r)
+		}
+
+		b.WriteRune(r)
+		wroteUnderscore = false
+		prev = original
+	}
+	return strings.Trim(b.String(), "_")
 }
 
-type VentExtensionConfigOption func(VentExtensionConfig) VentExtensionConfig
+// AuthSchemas maps Vent's required auth roles to Ent schema type references.
+//
+// Consumers should pass schema type values, such as schema.User.Type. Vent
+// resolves those type references to schema names during code generation.
+type AuthSchemas struct {
+	User       any
+	Group      any
+	Permission any
+}
+
+// AuthSchemaNames contains the resolved schema names for Vent's auth roles.
+type AuthSchemaNames struct {
+	User       string
+	Group      string
+	Permission string
+}
+
+type VentExtensionConfig struct {
+	AdminPath   string
+	AuthSchemas AuthSchemaNames
+}
+
+type VentExtensionConfigOption func(*VentExtensionConfig)
 
 func WithAdminPath(path string) VentExtensionConfigOption {
-	return func(vec VentExtensionConfig) VentExtensionConfig {
+	return func(vec *VentExtensionConfig) {
 		vec.AdminPath = path
-		return vec
 	}
+}
+
+func WithAuthSchemas(authSchemas AuthSchemas) VentExtensionConfigOption {
+	return func(vec *VentExtensionConfig) {
+		vec.AuthSchemas = AuthSchemaNames{
+			User:       schemaTypeName(authSchemas.User),
+			Group:      schemaTypeName(authSchemas.Group),
+			Permission: schemaTypeName(authSchemas.Permission),
+		}
+	}
+}
+
+func schemaTypeName(schemaType any) string {
+	if schemaType == nil {
+		return ""
+	}
+
+	rt := reflect.TypeOf(schemaType)
+	if rt.Kind() != reflect.Func || rt.NumIn() == 0 {
+		return ""
+	}
+	return rt.In(0).Name()
+}
+
+func normalizeAdminPath(path string) string {
+	if path == "" {
+		return "/admin/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	return path
 }

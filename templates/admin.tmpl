@@ -4,7 +4,10 @@
 {{ template "header" $ }}
 
 {{ $adminPath := $.Annotations.VentConfig.AdminPath }}
-{{ $userSchema := $.Annotations.VentConfig.UserSchema }}
+{{ $authSchemas := $.Annotations.VentConfig.AuthSchemas }}
+{{ $userSchema := $authSchemas.User }}
+{{ $groupSchema := $authSchemas.Group }}
+{{ $permissionSchema := $authSchemas.Permission }}
 
 {{/* Build render configs once for all admin-enabled nodes */}}
 {{ $adminNodes := renderConfigs $.Nodes }}
@@ -49,6 +52,7 @@ type AdminHandler struct {
 	fieldTransforms         map[string]vent.FieldTransformFunc
 	authMiddleware          func(http.Handler) http.Handler
 	userMiddleware          func(http.Handler) http.Handler
+	staffMiddleware         func(http.Handler) http.Handler
 	loggerMiddleware        func(http.Handler) http.Handler
 }
 
@@ -89,6 +93,7 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 		fieldTransforms:         fieldTransforms,
 		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
 		userMiddleware:          NewUserMiddleware(config.Client),
+		staffMiddleware:         NewStaffMiddleware(),
 		loggerMiddleware:        newLoggerMiddleware(),
 	}
 
@@ -98,18 +103,18 @@ func NewAdminHandler(config AdminConfig) *AdminHandler {
 	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware)
 
 	// Authorized routes - admin home
-	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware)
+	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware)
 
 	// Schema routes
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
-	{{ $permSuffix := lower $node.Name }}
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("view_{{ $permSuffix }}"))
-	h.handle("POST "+adminBasePath+"{{ lower $node.Name }}s/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("add_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("add_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("view_{{ $permSuffix }}"))
-	h.handle("PATCH "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("change_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+	{{ $permSuffix := resourceName $node.Name }}
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("POST "+adminBasePath+"{{ lower $node.Name }}s/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("PATCH "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
 
 	return h
@@ -702,7 +707,7 @@ func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
 
 			user, err := client.{{ $userSchema }}.Query().
 				Where({{ lower $userSchema }}.IDEQ(userID)).
-				WithGroups(func(q *AuthGroupQuery) {
+				WithGroups(func(q *{{ $groupSchema }}Query) {
 					q.WithPermissions()
 				}).
 				Only(r.Context())
@@ -713,6 +718,23 @@ func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
 
 			ctx := context.WithValue(r.Context(), userContextKey{}, user)
 			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func NewStaffMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, err := GetUser(r.Context())
+			if err != nil {
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if !user.IsStaff {
+				http.Error(w, "user is not staff", http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -737,7 +759,7 @@ func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.H
 
 				for _, permission := range permissions {
 					if _, ok := userPermissions[permission]; !ok {
-						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusUnauthorized)
+						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusForbidden)
 						return
 					}
 				}

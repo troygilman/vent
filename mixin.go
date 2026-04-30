@@ -10,7 +10,7 @@ import (
 
 type AuthUserMixin struct {
 	mixin.Schema
-	AuthGroupSchemaType any
+	GroupSchemaType any
 }
 
 func (AuthUserMixin) Fields() []ent.Field {
@@ -24,11 +24,11 @@ func (AuthUserMixin) Fields() []ent.Field {
 }
 
 func (m AuthUserMixin) Edges() []ent.Edge {
-	if m.AuthGroupSchemaType == nil {
-		panic("AuthGroupSchemaType cannot be nil")
+	if m.GroupSchemaType == nil {
+		panic("GroupSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.To("groups", m.AuthGroupSchemaType),
+		edge.To("groups", m.GroupSchemaType),
 	}
 }
 
@@ -75,8 +75,8 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 
 type AuthGroupMixin struct {
 	mixin.Schema
-	AuthUserSchemaType       any
-	AuthPermissionSchemaType any
+	UserSchemaType       any
+	PermissionSchemaType any
 }
 
 func (AuthGroupMixin) Fields() []ent.Field {
@@ -86,15 +86,15 @@ func (AuthGroupMixin) Fields() []ent.Field {
 }
 
 func (m AuthGroupMixin) Edges() []ent.Edge {
-	if m.AuthPermissionSchemaType == nil {
-		panic("AuthPermissionSchemaType cannot be nil")
+	if m.PermissionSchemaType == nil {
+		panic("PermissionSchemaType cannot be nil")
 	}
-	if m.AuthUserSchemaType == nil {
-		panic("AuthUserSchemaType cannot be nil")
+	if m.UserSchemaType == nil {
+		panic("UserSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.To("permissions", m.AuthPermissionSchemaType),
-		edge.From("users", m.AuthUserSchemaType).Ref("groups"),
+		edge.To("permissions", m.PermissionSchemaType),
+		edge.From("users", m.UserSchemaType).Ref("groups"),
 	}
 }
 
@@ -119,7 +119,7 @@ func (AuthGroupMixin) Annotations() []schema.Annotation {
 
 type AuthPermissionMixin struct {
 	mixin.Schema
-	AuthGroupSchemaType any
+	GroupSchemaType any
 }
 
 func (AuthPermissionMixin) Fields() []ent.Field {
@@ -129,11 +129,11 @@ func (AuthPermissionMixin) Fields() []ent.Field {
 }
 
 func (m AuthPermissionMixin) Edges() []ent.Edge {
-	if m.AuthGroupSchemaType == nil {
-		panic("AuthGroupSchemaType cannot be nil")
+	if m.GroupSchemaType == nil {
+		panic("GroupSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.From("groups", m.AuthGroupSchemaType).Ref("permissions"),
+		edge.From("groups", m.GroupSchemaType).Ref("permissions"),
 	}
 }
 

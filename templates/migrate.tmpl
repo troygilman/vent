@@ -1,5 +1,8 @@
 {{ define "migrate/vent/migrate" }}
 
+{{ $authSchemas := $.Annotations.VentConfig.AuthSchemas }}
+{{ $permissionSchema := $authSchemas.Permission }}
+
 package vent
 
 import (
@@ -16,9 +19,10 @@ import (
 )
 
 var metadata = map[string]vent.VentSchemaAnnotation{
-    {{ range $node := $.Nodes }}
+    {{ range $item := renderConfigs $.Nodes }}
+    {{ $node := $item.Node }}
     {{ $annotation := $node.Annotations.VentSchema }}
-    "{{ lower $node.Name }}": {
+    "{{ resourceName $node.Name }}": {
         Permissions: []vent.Permission{
             {{ range $permission := $annotation.Permissions }}
             {
@@ -93,34 +97,38 @@ func (d *Differ) replayMigrations(ctx context.Context) error {
 }
 
 func (d *Differ) diffAuthPermissions(ctx context.Context) error {
-	currentPermissions, err := d.readClient.AuthPermission.Query().All(ctx)
+	currentPermissions, err := d.readClient.{{ $permissionSchema }}.Query().All(ctx)
 	if err != nil {
 		return err
 	}
 
-	currentPermissionsMap := make(map[string]*ent.AuthPermission)
+	currentPermissionsMap := make(map[string]*ent.{{ $permissionSchema }})
 	for _, permission := range currentPermissions {
 		currentPermissionsMap[permission.Name] = permission
 	}
 
-	permissionBuilders := []*ent.AuthPermissionCreate{}
+	permissionBuilders := []*ent.{{ $permissionSchema }}Create{}
 	for schemaName, annotation := range metadata {
 		for _, action := range []string{"create", "read", "update", "delete"} {
 			permissionName := fmt.Sprintf("%s_%s", action, schemaName)
 			_, ok := currentPermissionsMap[permissionName]
 			if !ok {
-				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permissionName))
+				permissionBuilders = append(permissionBuilders, d.writeClient.{{ $permissionSchema }}.Create().SetName(permissionName))
 			}
 		}
 		for _, permission := range annotation.Permissions {
 			_, ok := currentPermissionsMap[permission.Name]
 			if !ok {
-				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
+				permissionBuilders = append(permissionBuilders, d.writeClient.{{ $permissionSchema }}.Create().SetName(permission.Name))
 			}
 		}
 	}
 
-	permissions, err := d.writeClient.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
+	if len(permissionBuilders) == 0 {
+		return nil
+	}
+
+	permissions, err := d.writeClient.{{ $permissionSchema }}.CreateBulk(permissionBuilders...).Save(ctx)
 	if err != nil {
 		return err
 	}
