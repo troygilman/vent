@@ -13,12 +13,8 @@ func main() {
 	}
 }
 
-func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
 var rootCmd = &cobra.Command{
 	Use:   "vent",
-	Short: "A brief description of your application",
-	Long:  `A longer description.`,
+	Short: "Vent Ent admin framework tooling",
+	Long:  `Vent provides code generation helpers for the opinionated Vent Ent admin framework.`,
 }

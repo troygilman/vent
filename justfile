@@ -4,7 +4,7 @@ dev: gen
 gen:
     npx @tailwindcss/cli -i ./tailwind.css -o ./static/style.css
     templ generate ./templates/gui/
-    go run ./cmd/gen
+    go run ./cmd/vent gen
 
 migrations:
     go run ent/migrate/main.go create_users

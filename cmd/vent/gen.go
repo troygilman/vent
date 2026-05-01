@@ -12,15 +12,18 @@ import (
 
 func init() {
 	genCmd.Flags().StringP("schema", "s", "./ent/schema", "The schema directory")
+	genCmd.Flags().String("admin-path", "/admin/", "The generated admin mount path")
 	rootCmd.AddCommand(genCmd)
 }
 
 var genCmd = &cobra.Command{
-	Use:   "gen",
-	Short: "Generate ent files",
-	Long:  `Generate ent files.`,
+	Use:     "gen",
+	Aliases: []string{"generate"},
+	Short:   "Generate Ent code with the Vent admin extension",
+	Long:    `Generate Ent code using Vent's opinionated admin extension and default auth schemas.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		schemaDirPath := cmd.Flag("schema").Value.String()
+		adminPath := cmd.Flag("admin-path").Value.String()
 		err := entc.Generate(schemaDirPath,
 			&gen.Config{
 				Features: []gen.Feature{
@@ -29,7 +32,9 @@ var genCmd = &cobra.Command{
 					gen.FeatureSnapshot,
 				},
 			},
-			entc.Extensions(vent.NewAdminExtension()),
+			entc.Extensions(vent.NewAdminExtension(
+				vent.WithAdminPath(adminPath),
+			)),
 		)
 		if err != nil {
 			log.Fatal("running ent codegen:", err)
