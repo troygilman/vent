@@ -11,11 +11,12 @@ import templruntime "github.com/a-h/templ/runtime"
 import "fmt"
 
 type SchemaEntityAddProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	RouteName   string
-	SchemaName  string
-	Fields      []SchemaEntityFieldProps
+	LayoutProps         LayoutProps
+	AdminPath           string
+	RouteName           string
+	SchemaName          string
+	SingularDisplayName string
+	Fields              []SchemaEntityFieldProps
 }
 
 func SchemaEntityAddPage(props SchemaEntityAddProps) templ.Component {
@@ -65,7 +66,7 @@ func SchemaEntityAddPage(props SchemaEntityAddProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText: fmt.Sprintf("Add %s", props.SchemaName),
+					TitleText: fmt.Sprintf("Add %s", props.SingularDisplayName),
 					Fields:    props.Fields,
 					Buttons: []templ.Component{
 						SchemaEntityAddButton(schemaEntityPath),

@@ -3,11 +3,12 @@ package gui
 import "fmt"
 
 type SchemaEntityAddProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	RouteName   string
-	SchemaName  string
-	Fields      []SchemaEntityFieldProps
+	LayoutProps         LayoutProps
+	AdminPath           string
+	RouteName           string
+	SchemaName          string
+	SingularDisplayName string
+	Fields              []SchemaEntityFieldProps
 }
 
 templ SchemaEntityAddPage(props SchemaEntityAddProps) {
@@ -15,7 +16,7 @@ templ SchemaEntityAddPage(props SchemaEntityAddProps) {
 	@Index(props.AdminPath) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText: fmt.Sprintf("Add %s", props.SchemaName),
+				TitleText: fmt.Sprintf("Add %s", props.SingularDisplayName),
 				Fields:    props.Fields,
 				Buttons: []templ.Component{
 					SchemaEntityAddButton(schemaEntityPath),

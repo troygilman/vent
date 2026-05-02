@@ -11,12 +11,14 @@ import templruntime "github.com/a-h/templ/runtime"
 import "fmt"
 
 type SchemaTableProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	RouteName   string
-	SchemaName  string
-	Columns     []SchemaTableColumn
-	Rows        []SchemaTableRow
+	LayoutProps         LayoutProps
+	AdminPath           string
+	RouteName           string
+	SchemaName          string
+	SingularDisplayName string
+	PluralDisplayName   string
+	Columns             []SchemaTableColumn
+	Rows                []SchemaTableRow
 }
 
 type SchemaTableColumn struct {
@@ -85,22 +87,22 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(props.SchemaName)
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(props.PluralDisplayName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 35, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 37, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "s</div><a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(schemaPath + "add/"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 36, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 38, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -111,9 +113,9 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(props.SchemaName)
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(props.SingularDisplayName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 36, Col: 106}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 38, Col: 115}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -131,7 +133,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(column.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 43, Col: 27}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 45, Col: 27}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -160,7 +162,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 							var templ_7745c5c3_Var8 templ.SafeURL
 							templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(cell.LinkURL))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 53, Col: 72}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 55, Col: 72}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 							if templ_7745c5c3_Err != nil {
@@ -173,7 +175,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 							var templ_7745c5c3_Var9 string
 							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Display)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 54, Col: 27}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 56, Col: 27}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 							if templ_7745c5c3_Err != nil {
@@ -191,7 +193,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 							var templ_7745c5c3_Var10 string
 							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Display)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 58, Col: 29}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 60, Col: 29}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 							if templ_7745c5c3_Err != nil {

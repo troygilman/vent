@@ -18,6 +18,22 @@ func TestNormalizeAdminPath(t *testing.T) {
 	}
 }
 
+func TestPluralDisplayName(t *testing.T) {
+	tests := map[string]string{
+		"AuthUser": "AuthUsers",
+		"Category": "Categories",
+		"Status":   "Statuses",
+		"Box":      "Boxes",
+		"Brush":    "Brushes",
+	}
+
+	for input, want := range tests {
+		if got := pluralDisplayName(input); got != want {
+			t.Fatalf("pluralDisplayName(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestPluralResourceName(t *testing.T) {
 	tests := map[string]string{
 		"AuthUser": "auth_users",

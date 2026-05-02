@@ -89,6 +89,12 @@ type RenderConfig struct {
 	// RouteName is the normalized plural URL segment for this schema.
 	RouteName string
 
+	// SingularDisplayName is the human-readable singular name for this schema.
+	SingularDisplayName string
+
+	// PluralDisplayName is the human-readable plural name for this schema.
+	PluralDisplayName string
+
 	// DisplayField is the field used to display the entity (e.g., "Email" for users)
 	DisplayField string
 
@@ -186,9 +192,11 @@ func renderConfig(node *gen.Type) RenderConfig {
 	hasAnnotation := annotation.parse(node) == nil
 
 	config := RenderConfig{
-		AdminEnabled: true,
-		RouteName:    pluralResourceName(node.Name),
-		DisplayField: "ID",
+		AdminEnabled:        true,
+		RouteName:           pluralResourceName(node.Name),
+		SingularDisplayName: node.Name,
+		PluralDisplayName:   pluralDisplayName(node.Name),
+		DisplayField:        "ID",
 	}
 
 	// Check if admin is disabled via annotation
@@ -197,9 +205,19 @@ func renderConfig(node *gen.Type) RenderConfig {
 		return config
 	}
 
-	// Set display field
-	if hasAnnotation && annotation.DisplayField != "" {
-		config.DisplayField = pascalCase(annotation.DisplayField)
+	if hasAnnotation {
+		if annotation.RouteName != "" {
+			config.RouteName = annotation.RouteName
+		}
+		if annotation.SingularDisplayName != "" {
+			config.SingularDisplayName = annotation.SingularDisplayName
+		}
+		if annotation.PluralDisplayName != "" {
+			config.PluralDisplayName = annotation.PluralDisplayName
+		}
+		if annotation.DisplayField != "" {
+			config.DisplayField = pascalCase(annotation.DisplayField)
+		}
 	}
 
 	// Build edges list
@@ -534,6 +552,18 @@ func singularize(s string) string {
 	return s
 }
 
+func pluralDisplayName(s string) string {
+	if strings.HasSuffix(s, "y") && len(s) > 1 {
+		return strings.TrimSuffix(s, "y") + "ies"
+	}
+	for _, suffix := range []string{"s", "x", "z", "ch", "sh"} {
+		if strings.HasSuffix(strings.ToLower(s), suffix) {
+			return s + "es"
+		}
+	}
+	return s + "s"
+}
+
 // resourceName converts an Ent schema name to Vent's normalized resource name.
 // Resource names are used in generated permission names.
 func pluralResourceName(s string) string {
@@ -626,6 +656,7 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	for _, node := range graph.Nodes {
 		errs = append(errs, validateVentSchemaAnnotation(node)...)
 	}
+	errs = append(errs, validateRouteNames(graph.Nodes)...)
 
 	if len(errs) > 0 {
 		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
@@ -651,6 +682,30 @@ func findNode(nodes []*gen.Type, name string) *gen.Type {
 		}
 	}
 	return nil
+}
+
+func validateRouteNames(nodes []*gen.Type) []string {
+	var errs []string
+	seen := make(map[string]string)
+	for _, node := range nodes {
+		rc := renderConfig(node)
+		if !rc.AdminEnabled {
+			continue
+		}
+		if rc.RouteName == "" {
+			errs = append(errs, fmt.Sprintf("schema %q route name cannot be empty", node.Name))
+			continue
+		}
+		if strings.Contains(rc.RouteName, "/") {
+			errs = append(errs, fmt.Sprintf("schema %q route name %q must not contain slashes", node.Name, rc.RouteName))
+		}
+		if existing, ok := seen[rc.RouteName]; ok {
+			errs = append(errs, fmt.Sprintf("schema %q route name %q conflicts with schema %q", node.Name, rc.RouteName, existing))
+		} else {
+			seen[rc.RouteName] = node.Name
+		}
+	}
+	return errs
 }
 
 func validateVentSchemaAnnotation(node *gen.Type) []string {

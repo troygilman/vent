@@ -52,13 +52,16 @@ func (a *VentAuthMixinAnnotation) parse(node *gen.Type) error {
 }
 
 type VentSchemaAnnotation struct {
-	DisableAdmin  bool
-	DisplayField  string
-	CustomFields  []Field
-	FieldMappings []FieldMapping
-	FieldSets     []FieldSet
-	TableColumns  []string
-	Permissions   []Permission
+	DisableAdmin        bool
+	RouteName           string
+	SingularDisplayName string
+	PluralDisplayName   string
+	DisplayField        string
+	CustomFields        []Field
+	FieldMappings       []FieldMapping
+	FieldSets           []FieldSet
+	TableColumns        []string
+	Permissions         []Permission
 }
 
 func (VentSchemaAnnotation) Name() string {

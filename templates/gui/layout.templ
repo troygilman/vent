@@ -7,8 +7,9 @@ type LayoutProps struct {
 }
 
 type SchemaMetadata struct {
-	Name string
-	Path string
+	Name        string
+	DisplayName string
+	Path        string
 }
 
 templ Layout(props LayoutProps) {
@@ -21,7 +22,7 @@ templ Layout(props LayoutProps) {
 						<a
 							href={ schema.Path }
 							class={ templ.KV("menu-active", schema.Name == props.ActiveSchemaName) }
-						>{ schema.Name }</a>
+						>{ schema.DisplayName }</a>
 					</li>
 				}
 				<li></li>

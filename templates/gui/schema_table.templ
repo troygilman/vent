@@ -3,12 +3,14 @@ package gui
 import "fmt"
 
 type SchemaTableProps struct {
-	LayoutProps LayoutProps
-	AdminPath   string
-	RouteName   string
-	SchemaName  string
-	Columns     []SchemaTableColumn
-	Rows        []SchemaTableRow
+	LayoutProps         LayoutProps
+	AdminPath           string
+	RouteName           string
+	SchemaName          string
+	SingularDisplayName string
+	PluralDisplayName   string
+	Columns             []SchemaTableColumn
+	Rows                []SchemaTableRow
 }
 
 type SchemaTableColumn struct {
@@ -32,8 +34,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 		@Layout(props.LayoutProps) {
 			<div class="flex flex-col w-full px-12 py-4">
 				<div class="flex flex-row w-full justify-between pb-4">
-					<div class="text-xl font-bold mb-4">{ props.SchemaName }s</div>
-					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-neutral">Add { props.SchemaName }</button></a>
+					<div class="text-xl font-bold mb-4">{ props.PluralDisplayName }</div>
+					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-neutral">Add { props.SingularDisplayName }</button></a>
 				</div>
 				<div class="w-full overflow-x-auto rounded-box border border-base-content/5 shadow">
 					<table class="table table-zebra">
