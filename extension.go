@@ -86,6 +86,9 @@ type RenderConfig struct {
 	// AdminEnabled indicates whether this schema should be shown in the admin panel
 	AdminEnabled bool
 
+	// RouteName is the normalized plural URL segment for this schema.
+	RouteName string
+
 	// DisplayField is the field used to display the entity (e.g., "Email" for users)
 	DisplayField string
 
@@ -184,6 +187,7 @@ func renderConfig(node *gen.Type) RenderConfig {
 
 	config := RenderConfig{
 		AdminEnabled: true,
+		RouteName:    pluralResourceName(node.Name),
 		DisplayField: "ID",
 	}
 
@@ -532,6 +536,19 @@ func singularize(s string) string {
 
 // resourceName converts an Ent schema name to Vent's normalized resource name.
 // Resource names are used in generated permission names.
+func pluralResourceName(s string) string {
+	name := resourceName(s)
+	if strings.HasSuffix(name, "y") && len(name) > 1 {
+		return strings.TrimSuffix(name, "y") + "ies"
+	}
+	for _, suffix := range []string{"s", "x", "z", "ch", "sh"} {
+		if strings.HasSuffix(name, suffix) {
+			return name + "es"
+		}
+	}
+	return name + "s"
+}
+
 func resourceName(s string) string {
 	var b strings.Builder
 	var prev rune

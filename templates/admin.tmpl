@@ -56,8 +56,8 @@ type AdminHandler struct {
 	fieldTransforms         map[string]vent.FieldTransformFunc
 	authMiddleware          func(http.Handler) http.Handler
 	userMiddleware          func(http.Handler) http.Handler
-	staffMiddleware         func(http.Handler) http.Handler
-	loggerMiddleware        func(http.Handler) http.Handler
+	staffMiddleware  func(http.Handler) http.Handler
+	loggerMiddleware func(http.Handler) http.Handler
 }
 
 const adminBasePath = "{{ $adminPath }}"
@@ -118,13 +118,14 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	// Schema routes
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
+	{{ $rc := $item.RC }}
 	{{ $permSuffix := resourceName $node.Name }}
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("POST "+adminBasePath+"{{ lower $node.Name }}s/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("PATCH "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ lower $node.Name }}s/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("POST "+adminBasePath+"{{ $rc.RouteName }}/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("PATCH "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
 
 	return h, nil
@@ -167,7 +168,8 @@ func (h *AdminHandler) buildLayoutProps(activeSchemaName string) gui.LayoutProps
 	schemas := []gui.SchemaMetadata{
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
-		{Name: "{{ $node.Name }}", Path: adminBasePath + "{{ lower $node.Name }}s/"},
+		{{ $rc := $item.RC }}
+		{Name: "{{ $node.Name }}", Path: adminBasePath + "{{ $rc.RouteName }}/"},
 		{{ end }}
 	}
 	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
@@ -355,7 +357,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 					{
 						Display: fmt.Sprintf("%v", e.{{ pascal $col.Name }}),
 						{{- if eq $idx 0 }}
-						LinkURL: fmt.Sprintf("%s{{ lower $node.Name }}s/%d/", adminBasePath, e.ID),
+						LinkURL: fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", adminBasePath, e.ID),
 						{{- end }}
 					},
 					{{- end }}
@@ -366,6 +368,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 		props := gui.SchemaTableProps{
 			LayoutProps: h.buildLayoutProps("{{ $node.Name }}"),
 			AdminPath:   adminBasePath,
+			RouteName:   "{{ $rc.RouteName }}",
 			SchemaName:  "{{ $node.Name }}",
 			Columns: []gui.SchemaTableColumn{
 				{{- range $col := $rc.TableColumns }}
@@ -428,6 +431,7 @@ func (h *AdminHandler) get{{ $node.Name }}AddHandler() http.Handler {
 		props := gui.SchemaEntityAddProps{
 			LayoutProps: h.buildLayoutProps("{{ $node.Name }}"),
 			AdminPath:   adminBasePath,
+			RouteName:   "{{ $rc.RouteName }}",
 			SchemaName:  "{{ $node.Name }}",
 			Fields:      fields,
 		}
@@ -528,6 +532,7 @@ func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 		props := gui.SchemaEntityProps{
 			LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
 			AdminPath:     adminBasePath,
+			RouteName:     "{{ $rc.RouteName }}",
 			SchemaName:    "{{ $node.Name }}",
 			EntityID:      id,
 			EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
@@ -570,7 +575,12 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			if transformed != nil {
-				builder.Set{{ pascal $field.SetterName }}(transformed.({{ $field.OutputType }}))
+				transformedValue, ok := transformed.({{ $field.OutputType }})
+				if !ok {
+					handleError(w, r, fmt.Errorf("transform \"{{ $field.TransformKey }}\" returned %T, expected {{ $field.OutputType }}", transformed), http.StatusInternalServerError)
+					return
+				}
+				builder.Set{{ pascal $field.SetterName }}(transformedValue)
 			}
 		}
 		{{- end }}
@@ -578,20 +588,22 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		{{- range $edge := $rc.Edges }}
 		// Add {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
-        if input.{{ pascal $edge.Name }} != "" {
-            id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
-            if err != nil {
-                panic(err)
-            }
-            builder.Set{{ pascal $edge.Name }}ID(id)
-        }
+		if input.{{ pascal $edge.Name }} != "" {
+			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
+			if err != nil {
+				handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
+				return
+			}
+			builder.Set{{ pascal $edge.Name }}ID(id)
+		}
 		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
 			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
 			for _, idStr := range input.{{ pascal $edge.Name }} {
 				id, err := strconv.Atoi(idStr)
 				if err != nil {
-					continue
+					handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
+					return
 				}
 				ids = append(ids, id)
 			}
@@ -606,7 +618,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+		sse.Redirect(adminBasePath + "{{ $rc.RouteName }}/")
 	})
 }
 
@@ -646,7 +658,12 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			if transformed != nil {
-				builder.Set{{ pascal $field.SetterName }}(transformed.({{ $field.OutputType }}))
+				transformedValue, ok := transformed.({{ $field.OutputType }})
+				if !ok {
+					handleError(w, r, fmt.Errorf("transform \"{{ $field.TransformKey }}\" returned %T, expected {{ $field.OutputType }}", transformed), http.StatusInternalServerError)
+					return
+				}
+				builder.Set{{ pascal $field.SetterName }}(transformedValue)
 			}
 		}
 		{{- end }}
@@ -656,11 +673,13 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != "" {
 			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
-			if err == nil {
-				builder.Set{{ pascal $edge.Name }}ID(id)
+			if err != nil {
+				handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
+				return
 			}
+			builder.Set{{ pascal $edge.Name }}ID(id)
 		} else {
-		    builder.Clear{{ pascal $edge.Name }}()
+			builder.Clear{{ pascal $edge.Name }}()
 		}
 		{{- else }}
 		builder.Clear{{ pascal $edge.Name }}()
@@ -669,7 +688,8 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			for _, idStr := range input.{{ pascal $edge.Name }} {
 				id, err := strconv.Atoi(idStr)
 				if err != nil {
-					continue
+					handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
+					return
 				}
 				ids = append(ids, id)
 			}
@@ -684,7 +704,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+		sse.Redirect(adminBasePath + "{{ $rc.RouteName }}/")
 	})
 }
 
@@ -703,7 +723,7 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(adminBasePath + "{{ lower $node.Name }}s/")
+		sse.Redirect(adminBasePath + "{{ $rc.RouteName }}/")
 	})
 }
 

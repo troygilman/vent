@@ -1,19 +1,17 @@
 package gui
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 type SchemaEntityAddProps struct {
 	LayoutProps LayoutProps
 	AdminPath   string
+	RouteName   string
 	SchemaName  string
 	Fields      []SchemaEntityFieldProps
 }
 
 templ SchemaEntityAddPage(props SchemaEntityAddProps) {
-	{{ schemaEntityPath := fmt.Sprintf("%s%ss/", props.AdminPath, strings.ToLower(props.SchemaName)) }}
+	{{ schemaEntityPath := fmt.Sprintf("%s%s/", props.AdminPath, props.RouteName) }}
 	@Index(props.AdminPath) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
