@@ -141,9 +141,10 @@ type RenderField struct {
 
 // RenderInputField represents a field in the CreateInput/UpdateInput struct
 type RenderInputField struct {
-	Name     string // Field name in the struct (PascalCase)
-	JSONName string // JSON tag name (snake_case)
-	Type     string // Go type (string, bool, int, []string for edges)
+	Name             string // Field name in the struct (PascalCase)
+	JSONName         string // JSON tag name (snake_case)
+	Type             string // Go type (string, bool, int, []string for edges)
+	OptionalOnCreate bool   // Whether create handlers should skip setting this field when omitted
 }
 
 // RenderEdge represents an edge for query building
@@ -163,8 +164,10 @@ type NodeRenderConfig struct {
 
 // RenderDirectField represents a field that can be set directly via builder without transformation
 type RenderDirectField struct {
-	Name string
-	Type string
+	Name             string
+	Type             string
+	OptionalOnCreate bool
+	Nillable         bool
 }
 
 // RenderMappedField represents a field that needs transformation before setting
@@ -309,7 +312,7 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 		})
 
 		for _, f := range node.Fields {
-			if f.Sensitive() {
+			if f.Sensitive() || !isSupportedInputField(f) {
 				continue
 			}
 			fields = append(fields, RenderField{
@@ -413,8 +416,8 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 	// Check real fields
 	for _, f := range node.Fields {
 		if f.Name == fieldName {
-			if f.Sensitive() {
-				return nil // Don't include sensitive fields directly
+			if f.Sensitive() || !isSupportedInputField(f) {
+				return nil // Don't include sensitive or unsupported fields directly
 			}
 			return &RenderField{
 				Name:     f.Name,
@@ -433,15 +436,21 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
 	var fields []RenderInputField
 
-	// Add all non-sensitive fields
+	// Add all non-sensitive supported fields
 	for _, f := range node.Fields {
-		if f.Sensitive() {
+		if f.Sensitive() || !isSupportedInputField(f) {
 			continue
 		}
+		fieldType := inputTypeForField(f)
+		optionalOnCreate := optionalOnCreate(f)
+		if optionalOnCreate {
+			fieldType = pointerInputType(fieldType)
+		}
 		fields = append(fields, RenderInputField{
-			Name:     f.Name,
-			JSONName: f.Name,
-			Type:     inputTypeForField(f),
+			Name:             f.Name,
+			JSONName:         f.Name,
+			Type:             fieldType,
+			OptionalOnCreate: optionalOnCreate,
 		})
 	}
 
@@ -478,6 +487,22 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 	}
 
 	return fields
+}
+
+func isSupportedInputField(field *gen.Field) bool {
+	if field.IsEnum() || field.IsJSON() || field.IsBytes() || field.IsUUID() || field.IsOther() {
+		return false
+	}
+	switch field.Type.Type.String() {
+	case "string", "bool", "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "float32", "float64", "time.Time":
+		return true
+	default:
+		return false
+	}
+}
+
+func optionalOnCreate(field *gen.Field) bool {
+	return field.Optional || field.Nillable || field.Default
 }
 
 func inputTypeForField(field *gen.Field) string {
@@ -524,9 +549,9 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 		}
 	}
 
-	// Add non-sensitive, non-mapped fields as direct fields
+	// Add non-sensitive, supported, non-mapped fields as direct fields
 	for _, f := range node.Fields {
-		if f.Sensitive() {
+		if f.Sensitive() || !isSupportedInputField(f) {
 			continue
 		}
 		// Skip if this field is the source of a mapping
@@ -534,8 +559,10 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 			continue
 		}
 		directFields = append(directFields, RenderDirectField{
-			Name: f.Name,
-			Type: getFieldType(node, f.Name),
+			Name:             f.Name,
+			Type:             getFieldType(node, f.Name),
+			OptionalOnCreate: optionalOnCreate(f),
+			Nillable:         f.Nillable,
 		})
 	}
 
@@ -767,6 +794,11 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 
 	for _, fieldSet := range annotation.FieldSets {
 		for _, fieldName := range fieldSet.Fields {
+			if fieldName != "id" {
+				if field, ok := findField(node, fieldName); ok && !field.Sensitive() && !isSupportedInputField(field) {
+					errs = append(errs, fmt.Sprintf("schema %q field set references unsupported field %q", node.Name, fieldName))
+				}
+			}
 			if !hasFieldOrID(node, fieldName) && !hasEdge(node, fieldName) {
 				if _, ok := customFields[fieldName]; !ok {
 					errs = append(errs, fmt.Sprintf("schema %q field set references unknown field or edge %q", node.Name, fieldName))
@@ -797,12 +829,17 @@ func hasFieldOrID(node *gen.Type, name string) bool {
 }
 
 func hasField(node *gen.Type, name string) bool {
+	_, ok := findField(node, name)
+	return ok
+}
+
+func findField(node *gen.Type, name string) (*gen.Field, bool) {
 	for _, field := range node.Fields {
 		if field.Name == name {
-			return true
+			return field, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 func hasEdge(node *gen.Type, name string) bool {

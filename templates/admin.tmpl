@@ -188,6 +188,19 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, status int) 
 	http.Error(w, err.Error(), status)
 }
 
+func handleMutationError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case IsValidationError(err):
+		handleError(w, r, err, http.StatusBadRequest)
+	case IsConstraintError(err):
+		handleError(w, r, err, http.StatusConflict)
+	case IsNotFound(err):
+		handleError(w, r, err, http.StatusNotFound)
+	default:
+		handleError(w, r, err, http.StatusInternalServerError)
+	}
+}
+
 // getLoginHandler returns the handler for GET /admin/login/
 func (h *AdminHandler) getLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -561,7 +574,30 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
-		{{- if eq $field.Type "time.Time" }}
+		{{- if $field.OptionalOnCreate }}
+		if input.{{ pascal $field.Name }} != nil {
+			{{- if eq $field.Type "time.Time" }}
+			if *input.{{ pascal $field.Name }} != "" {
+				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
+				if err != nil {
+					handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
+					return
+				}
+				{{- if $field.Nillable }}
+				builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
+				{{- else }}
+				builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
+				{{- end }}
+			}
+			{{- else }}
+			{{- if $field.Nillable }}
+			builder.SetNillable{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
+			{{- else }}
+			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
+			{{- end }}
+			{{- end }}
+		}
+		{{- else if eq $field.Type "time.Time" }}
 		{{ pascal $field.Name }}Value, err := parseDateTimeLocal(input.{{ pascal $field.Name }})
 		if err != nil {
 			handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
@@ -625,7 +661,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 
 		if _, err := builder.Save(r.Context()); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			handleMutationError(w, r, err)
 			return
 		}
 
@@ -660,9 +696,17 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 				handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
 				return
 			}
+			{{- if $field.Nillable }}
+			builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
+			{{- else }}
 			builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
+			{{- end }}
+			{{- else }}
+			{{- if $field.Nillable }}
+			builder.SetNillable{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
 			{{- else }}
 			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
+			{{- end }}
 			{{- end }}
 		}
 		{{- end }}
@@ -726,7 +770,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 
 		if err := builder.Exec(r.Context()); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			handleMutationError(w, r, err)
 			return
 		}
 
@@ -745,7 +789,7 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 		}
 
 		if err := h.client.{{ $node.Name }}.DeleteOneID(id).Exec(r.Context()); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			handleMutationError(w, r, err)
 			return
 		}
 
