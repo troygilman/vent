@@ -164,6 +164,7 @@ type NodeRenderConfig struct {
 // RenderDirectField represents a field that can be set directly via builder without transformation
 type RenderDirectField struct {
 	Name string
+	Type string
 }
 
 // RenderMappedField represents a field that needs transformation before setting
@@ -440,7 +441,7 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 		fields = append(fields, RenderInputField{
 			Name:     f.Name,
 			JSONName: f.Name,
-			Type:     f.Type.Type.String(),
+			Type:     inputTypeForField(f),
 		})
 	}
 
@@ -477,6 +478,13 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 	}
 
 	return fields
+}
+
+func inputTypeForField(field *gen.Field) string {
+	if field.IsTime() {
+		return "string"
+	}
+	return field.Type.Type.String()
 }
 
 // buildUpdateInputFields determines which fields go in UpdateInput structs.
@@ -527,6 +535,7 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 		}
 		directFields = append(directFields, RenderDirectField{
 			Name: f.Name,
+			Type: getFieldType(node, f.Name),
 		})
 	}
 

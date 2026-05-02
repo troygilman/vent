@@ -526,7 +526,7 @@ func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 			Name:     "{{ $field.Name }}",
 			Label:    "{{ $field.Label }}",
 			Type:     "{{ $field.Type }}",
-			Value:    fmt.Sprintf("%v", e.{{ pascal $field.Name }}),
+			Value:    formatFormValue(e.{{ pascal $field.Name }}),
 			Editable: {{ $field.Editable }},
 		})
 		{{- end }}
@@ -561,7 +561,16 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
+		{{- if eq $field.Type "time.Time" }}
+		{{ pascal $field.Name }}Value, err := parseDateTimeLocal(input.{{ pascal $field.Name }})
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
+			return
+		}
+		builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
+		{{- else }}
 		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
+		{{- end }}
 		{{- end }}
 
 		// Mapped fields (with transformation)
@@ -645,7 +654,16 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
 		if input.{{ pascal $field.Name }} != nil {
+			{{- if eq $field.Type "time.Time" }}
+			{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
+			if err != nil {
+				handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
+				return
+			}
+			builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
+			{{- else }}
 			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
+			{{- end }}
 		}
 		{{- end }}
 
@@ -741,6 +759,31 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+func formatFormValue(value any) string {
+	switch v := value.(type) {
+	case time.Time:
+		if v.IsZero() {
+			return ""
+		}
+		return v.Format("2006-01-02T15:04")
+	default:
+		return fmt.Sprintf("%v", value)
+	}
+}
+
+func parseDateTimeLocal(value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, errors.New("value is required")
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02T15:04", time.RFC3339} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("must use datetime-local or RFC3339 format")
+}
 
 func GetUser(ctx context.Context) (*{{ $userSchema }}, error) {
     user, ok := ctx.Value(userContextKey{}).(*{{ $userSchema }})
