@@ -326,14 +326,14 @@ func (h *AdminHandler) getAdminHandler() http.Handler {
 
 // {{ $node.Name }}CreateInput is the typed input for creating a {{ $node.Name }}
 type {{ $node.Name }}CreateInput struct {
-	{{- range $field := $rc.InputFields }}
+	{{- range $field := $rc.CreateInputFields }}
 	{{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
 	{{- end }}
 }
 
 // {{ $node.Name }}UpdateInput is the typed input for updating a {{ $node.Name }}
 type {{ $node.Name }}UpdateInput struct {
-	{{- range $field := $rc.InputFields }}
+	{{- range $field := $rc.UpdateInputFields }}
 	{{ pascal $field.Name }} {{ $field.Type }} `json:"{{ $field.JSONName }}"`
 	{{- end }}
 }
@@ -644,18 +644,20 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
-		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
+		if input.{{ pascal $field.Name }} != nil {
+			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
+		}
 		{{- end }}
 
 		// Mapped fields (with transformation)
 		{{- range $field := $rc.MappedFields }}
-		{
+		if input.{{ pascal $field.InputName }} != nil {
 			transformFunc, ok := h.fieldTransforms["{{ $field.TransformKey }}"]
 			if !ok {
 				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
 				return
 			}
-			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
+			transformed, err := transformFunc(*input.{{ pascal $field.InputName }})
 			if err != nil {
 				handleError(w, r, err, http.StatusInternalServerError)
 				return
@@ -674,29 +676,33 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- range $edge := $rc.Edges }}
 		// Update {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
-		if input.{{ pascal $edge.Name }} != "" {
-			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
-			if err != nil {
-				handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
-				return
-			}
-			builder.Set{{ pascal $edge.Name }}ID(id)
-		} else {
-			builder.Clear{{ pascal $edge.Name }}()
-		}
-		{{- else }}
-		builder.Clear{{ pascal $edge.Name }}()
-		if len(input.{{ pascal $edge.Name }}) > 0 {
-			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
-			for _, idStr := range input.{{ pascal $edge.Name }} {
-				id, err := strconv.Atoi(idStr)
+		if input.{{ pascal $edge.Name }} != nil {
+			if *input.{{ pascal $edge.Name }} != "" {
+				id, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
 				if err != nil {
 					handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
 					return
 				}
-				ids = append(ids, id)
+				builder.Set{{ pascal $edge.Name }}ID(id)
+			} else {
+				builder.Clear{{ pascal $edge.Name }}()
 			}
-			builder.Add{{ $edge.Singular }}IDs(ids...)
+		}
+		{{- else }}
+		if input.{{ pascal $edge.Name }} != nil {
+			builder.Clear{{ pascal $edge.Name }}()
+			if len(*input.{{ pascal $edge.Name }}) > 0 {
+				ids := make([]int, 0, len(*input.{{ pascal $edge.Name }}))
+				for _, idStr := range *input.{{ pascal $edge.Name }} {
+					id, err := strconv.Atoi(idStr)
+					if err != nil {
+						handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
+						return
+					}
+					ids = append(ids, id)
+				}
+				builder.Add{{ $edge.Singular }}IDs(ids...)
+			}
 		}
 		{{- end }}
 		{{- end }}

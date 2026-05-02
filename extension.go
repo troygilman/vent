@@ -104,8 +104,11 @@ type RenderConfig struct {
 	// FormFields defines which fields to show in add/edit forms (in order)
 	FormFields []RenderField
 
-	// InputFields defines fields for the CreateInput/UpdateInput structs
-	InputFields []RenderInputField
+	// CreateInputFields defines fields for the CreateInput structs.
+	CreateInputFields []RenderInputField
+
+	// UpdateInputFields defines fields for the UpdateInput structs.
+	UpdateInputFields []RenderInputField
 
 	// Edges defines the edges for this schema
 	Edges []RenderEdge
@@ -238,7 +241,8 @@ func renderConfig(node *gen.Type) RenderConfig {
 	config.FormFields = buildFormFields(node, annotation, hasAnnotation)
 
 	// Build input fields for structs
-	config.InputFields = buildInputFields(node, annotation, hasAnnotation)
+	config.CreateInputFields = buildCreateInputFields(node, annotation, hasAnnotation)
+	config.UpdateInputFields = buildUpdateInputFields(node, annotation, hasAnnotation)
 
 	// Build direct fields and mapped fields
 	config.DirectFields, config.MappedFields = buildFieldMappings(node, annotation, hasAnnotation)
@@ -424,8 +428,8 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 	return nil
 }
 
-// buildInputFields determines which fields go in CreateInput/UpdateInput structs
-func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
+// buildCreateInputFields determines which fields go in CreateInput structs.
+func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
 	var fields []RenderInputField
 
 	// Add all non-sensitive fields
@@ -473,6 +477,22 @@ func buildInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnota
 	}
 
 	return fields
+}
+
+// buildUpdateInputFields determines which fields go in UpdateInput structs.
+func buildUpdateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
+	fields := buildCreateInputFields(node, annotation, hasAnnotation)
+	for i := range fields {
+		fields[i].Type = pointerInputType(fields[i].Type)
+	}
+	return fields
+}
+
+func pointerInputType(t string) string {
+	if strings.HasPrefix(t, "*") {
+		return t
+	}
+	return "*" + t
 }
 
 // buildFieldMappings builds DirectFields and MappedFields from node fields and annotations
