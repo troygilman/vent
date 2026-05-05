@@ -105,15 +105,24 @@ func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
 		},
 	}
 
-	directFields, mappedFields := buildFieldMappings(node, VentSchemaAnnotation{}, false)
+	createDirectFields, updateDirectFields, mappedFields := buildFieldMappings(node, VentSchemaAnnotation{}, false)
 	if len(mappedFields) != 0 {
 		t.Fatalf("mappedFields length = %d, want 0", len(mappedFields))
 	}
-	if len(directFields) != 2 {
-		t.Fatalf("directFields length = %d, want 2", len(directFields))
+	if len(createDirectFields) != 2 {
+		t.Fatalf("createDirectFields length = %d, want 2", len(createDirectFields))
+	}
+	if len(updateDirectFields) != 2 {
+		t.Fatalf("updateDirectFields length = %d, want 2", len(updateDirectFields))
 	}
 
-	for _, field := range directFields {
+	assertCreateDirectFieldKinds(t, createDirectFields)
+	assertUpdateDirectFieldKinds(t, updateDirectFields)
+}
+
+func assertCreateDirectFieldKinds(t *testing.T, fields []RenderCreateDirectField) {
+	t.Helper()
+	for _, field := range fields {
 		switch field.Name {
 		case "name":
 			if field.Kind != FieldKindString {
@@ -124,7 +133,25 @@ func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
 				t.Fatalf("starts_at Kind = %q, want %q", field.Kind, FieldKindTime)
 			}
 		default:
-			t.Fatalf("unexpected direct field %q", field.Name)
+			t.Fatalf("unexpected create direct field %q", field.Name)
+		}
+	}
+}
+
+func assertUpdateDirectFieldKinds(t *testing.T, fields []RenderUpdateDirectField) {
+	t.Helper()
+	for _, field := range fields {
+		switch field.Name {
+		case "name":
+			if field.Kind != FieldKindString {
+				t.Fatalf("name Kind = %q, want %q", field.Kind, FieldKindString)
+			}
+		case "starts_at":
+			if field.Kind != FieldKindTime {
+				t.Fatalf("starts_at Kind = %q, want %q", field.Kind, FieldKindTime)
+			}
+		default:
+			t.Fatalf("unexpected update direct field %q", field.Name)
 		}
 	}
 }

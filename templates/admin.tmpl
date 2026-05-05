@@ -625,7 +625,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		builder := h.client.{{ $node.Name }}.Create()
 
 		// Direct fields (no transformation)
-		{{- range $field := $rc.DirectFields }}
+		{{- range $field := $rc.CreateDirectFields }}
 		{{- if $field.OptionalOnCreate }}
 		if input.{{ pascal $field.Name }} != nil {
 			{{- if isFieldKindTime $field.Kind }}
@@ -736,7 +736,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		builder := h.client.{{ $node.Name }}.UpdateOneID(id)
 
 		// Direct fields (no transformation)
-		{{- range $field := $rc.DirectFields }}
+		{{- range $field := $rc.UpdateDirectFields }}
 		{{- if $field.Nillable }}
 		if input.{{ pascal $field.Name }}.Set {
 			if input.{{ pascal $field.Name }}.Value == nil {

@@ -117,8 +117,11 @@ type RenderConfig struct {
 	// Edges defines the edges for this schema
 	Edges []RenderEdge
 
-	// DirectFields defines fields that can be set directly without transformation
-	DirectFields []RenderDirectField
+	// CreateDirectFields defines fields that can be set directly in create handlers.
+	CreateDirectFields []RenderCreateDirectField
+
+	// UpdateDirectFields defines fields that can be set directly in update handlers.
+	UpdateDirectFields []RenderUpdateDirectField
 
 	// MappedFields defines fields that need transformation before setting
 	MappedFields []RenderMappedField
@@ -167,13 +170,21 @@ type NodeRenderConfig struct {
 	RC   RenderConfig
 }
 
-// RenderDirectField represents a field that can be set directly via builder without transformation
-type RenderDirectField struct {
+// RenderCreateDirectField represents a field that can be set directly in create handlers.
+type RenderCreateDirectField struct {
 	Name             string
 	Type             string
 	Kind             FieldKind
 	OptionalOnCreate bool
 	Nillable         bool
+}
+
+// RenderUpdateDirectField represents a field that can be set directly in update handlers.
+type RenderUpdateDirectField struct {
+	Name     string
+	Type     string
+	Kind     FieldKind
+	Nillable bool
 }
 
 // RenderMappedField represents a field that needs transformation before setting
@@ -255,7 +266,7 @@ func renderConfig(node *gen.Type) RenderConfig {
 	config.UpdateInputFields = buildUpdateInputFields(node, annotation, hasAnnotation)
 
 	// Build direct fields and mapped fields
-	config.DirectFields, config.MappedFields = buildFieldMappings(node, annotation, hasAnnotation)
+	config.CreateDirectFields, config.UpdateDirectFields, config.MappedFields = buildFieldMappings(node, annotation, hasAnnotation)
 
 	return config
 }
@@ -677,9 +688,10 @@ func pointerInputType(t string) string {
 	return "*" + t
 }
 
-// buildFieldMappings builds DirectFields and MappedFields from node fields and annotations
-func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) ([]RenderDirectField, []RenderMappedField) {
-	var directFields []RenderDirectField
+// buildFieldMappings builds direct fields and mapped fields from node fields and annotations.
+func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) ([]RenderCreateDirectField, []RenderUpdateDirectField, []RenderMappedField) {
+	var createDirectFields []RenderCreateDirectField
+	var updateDirectFields []RenderUpdateDirectField
 	var mappedFields []RenderMappedField
 
 	// Build a set of fields that are mapped (From field names)
@@ -707,16 +719,30 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 		if mappedFromFields[f.Name] {
 			continue
 		}
-		directFields = append(directFields, RenderDirectField{
-			Name:             f.Name,
-			Type:             getFieldType(node, f.Name),
-			Kind:             formInputTypeForField(f),
-			OptionalOnCreate: optionalOnCreate(f),
-			Nillable:         f.Nillable,
-		})
+		createDirectFields = append(createDirectFields, renderCreateDirectFieldForEntField(f))
+		updateDirectFields = append(updateDirectFields, renderUpdateDirectFieldForEntField(f))
 	}
 
-	return directFields, mappedFields
+	return createDirectFields, updateDirectFields, mappedFields
+}
+
+func renderCreateDirectFieldForEntField(field *gen.Field) RenderCreateDirectField {
+	return RenderCreateDirectField{
+		Name:             field.Name,
+		Type:             field.Type.Type.String(),
+		Kind:             formInputTypeForField(field),
+		OptionalOnCreate: optionalOnCreate(field),
+		Nillable:         field.Nillable,
+	}
+}
+
+func renderUpdateDirectFieldForEntField(field *gen.Field) RenderUpdateDirectField {
+	return RenderUpdateDirectField{
+		Name:     field.Name,
+		Type:     field.Type.Type.String(),
+		Kind:     formInputTypeForField(field),
+		Nillable: field.Nillable,
+	}
 }
 
 // getFieldType returns the type of a field by name
