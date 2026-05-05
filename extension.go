@@ -67,6 +67,7 @@ func (e *AdminExtension) Templates() []*gen.Template {
 				Funcs(template.FuncMap{
 					"fieldKindGoIdent":    fieldKindGoIdent,
 					"isFieldKindPassword": isFieldKindPassword,
+					"isFieldKindTime":     isFieldKindTime,
 					"renderConfigs":       renderConfigs,
 					"resourceName":        resourceName,
 				}).
@@ -170,6 +171,7 @@ type NodeRenderConfig struct {
 type RenderDirectField struct {
 	Name             string
 	Type             string
+	Kind             FieldKind
 	OptionalOnCreate bool
 	Nillable         bool
 }
@@ -533,6 +535,10 @@ func isFieldKindPassword(kind FieldKind) bool {
 	return kind == FieldKindPassword
 }
 
+func isFieldKindTime(kind FieldKind) bool {
+	return kind == FieldKindTime
+}
+
 func fieldKindGoIdent(kind FieldKind) string {
 	switch kind {
 	case FieldKindString:
@@ -629,6 +635,7 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 		directFields = append(directFields, RenderDirectField{
 			Name:             f.Name,
 			Type:             getFieldType(node, f.Name),
+			Kind:             formInputTypeForField(f),
 			OptionalOnCreate: optionalOnCreate(f),
 			Nillable:         f.Nillable,
 		})

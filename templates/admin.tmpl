@@ -628,7 +628,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		{{- range $field := $rc.DirectFields }}
 		{{- if $field.OptionalOnCreate }}
 		if input.{{ pascal $field.Name }} != nil {
-			{{- if eq $field.Type "time.Time" }}
+			{{- if isFieldKindTime $field.Kind }}
 			if *input.{{ pascal $field.Name }} != "" {
 							{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
 							if err != nil {
@@ -649,7 +649,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 			{{- end }}
 			{{- end }}
 		}
-		{{- else if eq $field.Type "time.Time" }}
+		{{- else if isFieldKindTime $field.Kind }}
 		{{ pascal $field.Name }}Value, err := parseDateTimeLocal(input.{{ pascal $field.Name }})
 				if err != nil {
 					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
@@ -746,7 +746,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			if input.{{ pascal $field.Name }}.Value == nil {
 				builder.Clear{{ pascal $field.Name }}()
 			} else {
-				{{- if eq $field.Type "time.Time" }}
+				{{- if isFieldKindTime $field.Kind }}
 				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }}.Value)
 								if err != nil {
 									h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
@@ -760,7 +760,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		}
 		{{- else }}
 		if input.{{ pascal $field.Name }} != nil {
-			{{- if eq $field.Type "time.Time" }}
+			{{- if isFieldKindTime $field.Kind }}
 			{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
 						if err != nil {
 							h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))

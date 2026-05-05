@@ -96,6 +96,39 @@ func TestFieldKindForEntField(t *testing.T) {
 	}
 }
 
+func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
+	node := &gen.Type{
+		Name: "Event",
+		Fields: []*gen.Field{
+			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
+		},
+	}
+
+	directFields, mappedFields := buildFieldMappings(node, VentSchemaAnnotation{}, false)
+	if len(mappedFields) != 0 {
+		t.Fatalf("mappedFields length = %d, want 0", len(mappedFields))
+	}
+	if len(directFields) != 2 {
+		t.Fatalf("directFields length = %d, want 2", len(directFields))
+	}
+
+	for _, field := range directFields {
+		switch field.Name {
+		case "name":
+			if field.Kind != FieldKindString {
+				t.Fatalf("name Kind = %q, want %q", field.Kind, FieldKindString)
+			}
+		case "starts_at":
+			if field.Kind != FieldKindTime {
+				t.Fatalf("starts_at Kind = %q, want %q", field.Kind, FieldKindTime)
+			}
+		default:
+			t.Fatalf("unexpected direct field %q", field.Name)
+		}
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",
