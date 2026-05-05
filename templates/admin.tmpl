@@ -630,11 +630,11 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		if input.{{ pascal $field.Name }} != nil {
 			{{- if isFieldKindTime $field.Kind }}
 			if *input.{{ pascal $field.Name }} != "" {
-							{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
-							if err != nil {
-								h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
-								return
-							}
+				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
+				if err != nil {
+					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+					return
+				}
 				{{- if $field.Nillable }}
 				builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
 				{{- else }}
@@ -651,10 +651,10 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		}
 		{{- else if isFieldKindTime $field.Kind }}
 		{{ pascal $field.Name }}Value, err := parseDateTimeLocal(input.{{ pascal $field.Name }})
-				if err != nil {
-					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
-					return
-				}
+		if err != nil {
+			h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+			return
+		}
 		builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
 		{{- else }}
 		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
@@ -670,10 +670,10 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
-						if err != nil {
-							h.patch{{ $node.Name }}AddPageError(w, r, err)
-							return
-						}
+			if err != nil {
+				h.patch{{ $node.Name }}AddPageError(w, r, err)
+				return
+			}
 			if transformed != nil {
 				transformedValue, ok := transformed.({{ $field.OutputType }})
 				if !ok {
@@ -689,22 +689,22 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		// Add {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != "" {
-					id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
-					if err != nil {
-						h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
-						return
-					}
+			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
+			if err != nil {
+				h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
+				return
+			}
 			builder.Set{{ pascal $edge.Name }}ID(id)
 		}
 		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
 			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
 			for _, idStr := range input.{{ pascal $edge.Name }} {
-							id, err := strconv.Atoi(idStr)
-							if err != nil {
-								h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
-								return
-							}
+				id, err := strconv.Atoi(idStr)
+				if err != nil {
+					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
+					return
+				}
 				ids = append(ids, id)
 			}
 			builder.Add{{ $edge.Singular }}IDs(ids...)
@@ -748,10 +748,10 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			} else {
 				{{- if isFieldKindTime $field.Kind }}
 				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }}.Value)
-								if err != nil {
-									h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
-									return
-								}
+				if err != nil {
+					h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+					return
+				}
 				builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
 				{{- else }}
 				builder.SetNillable{{ pascal $field.Name }}(input.{{ pascal $field.Name }}.Value)
@@ -762,10 +762,10 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		if input.{{ pascal $field.Name }} != nil {
 			{{- if isFieldKindTime $field.Kind }}
 			{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
-						if err != nil {
-							h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
-							return
-						}
+			if err != nil {
+				h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+				return
+			}
 			builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
 			{{- else }}
 			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
@@ -783,10 +783,10 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			transformed, err := transformFunc(*input.{{ pascal $field.InputName }})
-						if err != nil {
-							h.patch{{ $node.Name }}PageError(w, r, id, err)
-							return
-						}
+			if err != nil {
+				h.patch{{ $node.Name }}PageError(w, r, id, err)
+				return
+			}
 			if transformed != nil {
 				transformedValue, ok := transformed.({{ $field.OutputType }})
 				if !ok {
@@ -803,12 +803,12 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != nil {
 			if *input.{{ pascal $edge.Name }} != "" {
-							{{ lower $edge.Name }}ID, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
-							if err != nil {
-								h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
-								return
-							}
-							builder.Set{{ pascal $edge.Name }}ID({{ lower $edge.Name }}ID)
+				{{ lower $edge.Name }}ID, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
+				if err != nil {
+					h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
+					return
+				}
+				builder.Set{{ pascal $edge.Name }}ID({{ lower $edge.Name }}ID)
 			} else {
 				builder.Clear{{ pascal $edge.Name }}()
 			}
@@ -819,13 +819,13 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			if len(*input.{{ pascal $edge.Name }}) > 0 {
 				ids := make([]int, 0, len(*input.{{ pascal $edge.Name }}))
 				for _, idStr := range *input.{{ pascal $edge.Name }} {
-									{{ lower $edge.Name }}ID, err := strconv.Atoi(idStr)
-									if err != nil {
-										h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
-										return
-									}
-									ids = append(ids, {{ lower $edge.Name }}ID)
-								}
+					{{ lower $edge.Name }}ID, err := strconv.Atoi(idStr)
+					if err != nil {
+						h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
+						return
+					}
+					ids = append(ids, {{ lower $edge.Name }}ID)
+				}
 				builder.Add{{ $edge.Singular }}IDs(ids...)
 			}
 		}
