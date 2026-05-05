@@ -7,6 +7,14 @@ import (
 	"github.com/troygilman/vent"
 )
 
+func entitySignal(name string) string {
+	return "entity." + name
+}
+
+func entitySignalExpression(name string) string {
+	return "$entity." + name
+}
+
 type SchemaEntityFormProps struct {
 	TitleText    string
 	ErrorMessage string
@@ -56,7 +64,7 @@ templ SchemaEntitySaveButton(path string) {
 		class="btn btn-neutral"
 		type="none"
 		data-on:click={ fmt.Sprintf("@patch('%s')", path) }
-		data-indicator="indicator"
+		data-indicator="_indicator"
 	>
 		Save
 	</button>
@@ -67,7 +75,7 @@ templ SchemaEntityDeleteButton(path string) {
 		class="btn btn-error"
 		type="none"
 		data-on:click={ fmt.Sprintf("@delete('%s')", path) }
-		data-indicator="indicator"
+		data-indicator="_indicator"
 	>
 		Delete
 	</button>
@@ -78,7 +86,7 @@ templ SchemaEntityAddButton(path string) {
 		class="btn btn-neutral"
 		type="none"
 		data-on:click={ fmt.Sprintf("@post('%s')", path) }
-		data-indicator="indicator"
+		data-indicator="_indicator"
 	>
 		Add
 	</button>
@@ -89,32 +97,32 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 		case vent.FieldKindString:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		case vent.FieldKindPassword:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="password" data-bind={ props.Name } placeholder="Enter new password" readonly?={ !props.Editable }/>
+				<input class="flex-1" type="password" data-bind={ entitySignal(props.Name) } placeholder="Enter new password" readonly?={ !props.Editable }/>
 			</label>
 		case vent.FieldKindInt:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="number" step="1" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="number" step="1" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		case vent.FieldKindFloat:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="number" step="any" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="number" step="any" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		case vent.FieldKindBool:
 			<label class="label w-fit">
-				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
+				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ entitySignal(props.Name) } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
 				{ props.Label }
 			</label>
 		case vent.FieldKindForeignKeyUnique:
 			<label class="flex items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable }>
+				<select class="select select-bordered flex-1" data-bind={ entitySignal(props.Name) } readonly?={ !props.Editable }>
 					<option value="">-- Select --</option>
 					for _, opt := range props.Options {
 						<option
@@ -130,24 +138,24 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 			<label class="flex items-start gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<div class="flex items-start grow gap-2">
-					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
+					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ entitySignal(props.Name) } readonly?={ !props.Editable } multiple size="4">
 						for _, opt := range props.Options {
 							<option
 								value={ strconv.Itoa(opt.Value) }
 								selected?={ opt.Selected }
-								data-show={ fmt.Sprintf("!$%s.includes('%d')", props.Name, opt.Value) }
+								data-show={ fmt.Sprintf("!%s.includes('%d')", entitySignalExpression(props.Name), opt.Value) }
 								style="display: none"
 							>
 								{ opt.Label }
 							</option>
 						}
 					</select>
-					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ props.Name } readonly?={ !props.Editable } multiple size="4">
+					<select class="select select-bordered flex-1 fixed-height-multiselect" data-bind={ entitySignal(props.Name) } readonly?={ !props.Editable } multiple size="4">
 						for _, opt := range props.Options {
 							<option
 								value={ strconv.Itoa(opt.Value) }
 								selected?={ opt.Selected }
-								data-show={ fmt.Sprintf("$%s.includes('%d')", props.Name, opt.Value) }
+								data-show={ fmt.Sprintf("%s.includes('%d')", entitySignalExpression(props.Name), opt.Value) }
 								style="display: none"
 							>
 								{ opt.Label }
@@ -159,12 +167,12 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 		case vent.FieldKindTime:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="datetime-local" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="datetime-local" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 		default:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
-				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
+				<input class="flex-1" type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
 	}
 	if props.Desc != "" {

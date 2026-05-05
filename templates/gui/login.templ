@@ -16,7 +16,7 @@ templ LoginPage(props LoginProps) {
 templ Login(props LoginProps) {
 	<div id="login" class="flex w-full h-full bg-base-200 justify-center place-items-center">
 		<div class="card card-border bg-base-100 w-96 shadow">
-			<form class="card-body" data-on:submit={ "@post('" + props.AdminPath + "login/')" } data-indicator="indicator">
+			<form class="card-body" data-on:submit={ "@post('" + props.AdminPath + "login/')" } data-indicator="_indicator">
 				<h2 class="card-title text-3xl font-bold">Admin Login</h2>
 				<div class="flex flex-col py-2 gap-2">
 					<div>
@@ -33,7 +33,7 @@ templ Login(props LoginProps) {
 									<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
 								</g>
 							</svg>
-							<input type="email" data-bind="email" placeholder="mail@site.com" required/>
+							<input type="email" data-bind="login.email" placeholder="mail@site.com" required/>
 						</label>
 						<div class="text-error mt-1">{ props.EmailError }</div>
 					</div>
@@ -55,7 +55,7 @@ templ Login(props LoginProps) {
 							</svg>
 							<input
 								type="password"
-								data-bind="password"
+								data-bind="login.password"
 								required
 								placeholder="Password"
 							/>
