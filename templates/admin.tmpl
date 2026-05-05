@@ -849,7 +849,7 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 		}
 
 		if err := h.client.{{ $node.Name }}.DeleteOneID(id).Exec(r.Context()); err != nil {
-			handleMutationError(w, r, err)
+			h.patch{{ $node.Name }}PageError(w, r, id, err)
 			return
 		}
 
