@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
+	schemafield "entgo.io/ent/schema/field"
 )
 
 //go:embed templates
@@ -64,8 +65,10 @@ func (e *AdminExtension) Templates() []*gen.Template {
 		gen.MustParse(
 			gen.NewTemplate("admin").
 				Funcs(template.FuncMap{
-					"renderConfigs": renderConfigs,
-					"resourceName":  resourceName,
+					"fieldKindGoIdent":    fieldKindGoIdent,
+					"isFieldKindPassword": isFieldKindPassword,
+					"renderConfigs":       renderConfigs,
+					"resourceName":        resourceName,
 				}).
 				ParseFS(templates, "templates/admin.tmpl"),
 		),
@@ -129,14 +132,14 @@ type RenderColumn struct {
 
 // RenderField represents a field in the add/edit form
 type RenderField struct {
-	Name             string // Field name
-	Label            string // Display label
-	Type             string // Input type (string, int, bool, password, foreign_key, foreign_key_unique)
-	Editable         bool   // Whether the field can be edited
-	IsEdge           bool   // Whether this is an edge (relation)
-	EdgeType         string // For edges: the target schema name
-	EdgeUnique       bool   // For edges: whether it's a unique (belongs-to) relation
-	EdgeDisplayField string // For edges: the field to display (e.g., "Name", "Email")
+	Name             string    // Field name
+	Label            string    // Display label
+	Type             FieldKind // Input render kind
+	Editable         bool      // Whether the field can be edited
+	IsEdge           bool      // Whether this is an edge (relation)
+	EdgeType         string    // For edges: the target schema name
+	EdgeUnique       bool      // For edges: whether it's a unique (belongs-to) relation
+	EdgeDisplayField string    // For edges: the field to display (e.g., "Name", "Email")
 }
 
 // RenderInputField represents a field in the CreateInput/UpdateInput struct
@@ -145,6 +148,7 @@ type RenderInputField struct {
 	JSONName         string // JSON tag name (snake_case)
 	Type             string // Go type (string, bool, int, []string for edges)
 	OptionalOnCreate bool   // Whether create handlers should skip setting this field when omitted
+	Nillable         bool   // Whether update handlers can distinguish set/null/omitted values
 }
 
 // RenderEdge represents an edge for query building
@@ -306,7 +310,7 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 		fields = append(fields, RenderField{
 			Name:     "id",
 			Label:    "ID",
-			Type:     "int",
+			Type:     FieldKindInt,
 			Editable: false,
 			IsEdge:   false,
 		})
@@ -318,7 +322,7 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 			fields = append(fields, RenderField{
 				Name:     f.Name,
 				Label:    pascalCase(f.Name),
-				Type:     f.Type.Type.String(),
+				Type:     formInputTypeForField(f),
 				Editable: true,
 				IsEdge:   false,
 			})
@@ -327,10 +331,7 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 		// Add custom fields from annotation
 		if hasAnnotation {
 			for _, cf := range annotation.CustomFields {
-				fieldType := cf.Type
-				if cf.InputType != "" {
-					fieldType = cf.InputType
-				}
+				fieldType := customFieldKind(cf)
 				fields = append(fields, RenderField{
 					Name:     cf.Name,
 					Label:    pascalCase(cf.Name),
@@ -343,9 +344,9 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 
 		// Add edges
 		for _, edge := range node.Edges {
-			edgeType := "foreign_key"
+			edgeType := FieldKindForeignKey
 			if edge.Unique {
-				edgeType = "foreign_key_unique"
+				edgeType = FieldKindForeignKeyUnique
 			}
 			fields = append(fields, RenderField{
 				Name:             edge.Name,
@@ -370,7 +371,7 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 		return &RenderField{
 			Name:     "id",
 			Label:    "ID",
-			Type:     "int",
+			Type:     FieldKindInt,
 			Editable: false,
 			IsEdge:   false,
 		}
@@ -379,9 +380,9 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 	// Check edges
 	for _, edge := range node.Edges {
 		if edge.Name == fieldName {
-			edgeType := "foreign_key"
+			edgeType := FieldKindForeignKey
 			if edge.Unique {
-				edgeType = "foreign_key_unique"
+				edgeType = FieldKindForeignKeyUnique
 			}
 			return &RenderField{
 				Name:             edge.Name,
@@ -399,10 +400,7 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 	// Check custom fields from annotation
 	for _, cf := range annotation.CustomFields {
 		if cf.Name == fieldName {
-			fieldType := cf.Type
-			if cf.InputType != "" {
-				fieldType = cf.InputType
-			}
+			fieldType := customFieldKind(cf)
 			return &RenderField{
 				Name:     cf.Name,
 				Label:    pascalCase(cf.Name),
@@ -422,7 +420,7 @@ func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName
 			return &RenderField{
 				Name:     f.Name,
 				Label:    pascalCase(f.Name),
-				Type:     f.Type.Type.String(),
+				Type:     formInputTypeForField(f),
 				Editable: true,
 				IsEdge:   false,
 			}
@@ -451,6 +449,7 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 			JSONName:         f.Name,
 			Type:             fieldType,
 			OptionalOnCreate: optionalOnCreate,
+			Nillable:         f.Nillable,
 		})
 	}
 
@@ -489,16 +488,77 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 	return fields
 }
 
-func isSupportedInputField(field *gen.Field) bool {
-	if field.IsEnum() || field.IsJSON() || field.IsBytes() || field.IsUUID() || field.IsOther() {
-		return false
+func formInputTypeForField(field *gen.Field) FieldKind {
+	kind, ok := fieldKindForEntField(field)
+	if !ok {
+		return FieldKindString
 	}
-	switch field.Type.Type.String() {
-	case "string", "bool", "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "float32", "float64", "time.Time":
-		return true
+	return kind
+}
+
+func fieldKindForEntField(field *gen.Field) (FieldKind, bool) {
+	switch field.Type.Type {
+	case schemafield.TypeString:
+		return FieldKindString, true
+	case schemafield.TypeTime:
+		return FieldKindTime, true
+	case schemafield.TypeBool:
+		return FieldKindBool, true
+	case schemafield.TypeInt, schemafield.TypeInt8, schemafield.TypeInt16, schemafield.TypeInt32, schemafield.TypeInt64,
+		schemafield.TypeUint, schemafield.TypeUint8, schemafield.TypeUint16, schemafield.TypeUint32, schemafield.TypeUint64:
+		return FieldKindInt, true
+	case schemafield.TypeFloat32, schemafield.TypeFloat64:
+		return FieldKindFloat, true
 	default:
-		return false
+		return "", false
 	}
+}
+
+func customFieldKind(field Field) FieldKind {
+	kind, ok := FieldKindFromString(customFieldKindValue(field))
+	if !ok {
+		return FieldKindString
+	}
+	return kind
+}
+
+func customFieldKindValue(field Field) string {
+	if field.InputType != "" {
+		return field.InputType
+	}
+	return field.Type
+}
+
+func isFieldKindPassword(kind FieldKind) bool {
+	return kind == FieldKindPassword
+}
+
+func fieldKindGoIdent(kind FieldKind) string {
+	switch kind {
+	case FieldKindString:
+		return "vent.FieldKindString"
+	case FieldKindPassword:
+		return "vent.FieldKindPassword"
+	case FieldKindInt:
+		return "vent.FieldKindInt"
+	case FieldKindFloat:
+		return "vent.FieldKindFloat"
+	case FieldKindBool:
+		return "vent.FieldKindBool"
+	case FieldKindForeignKey:
+		return "vent.FieldKindForeignKey"
+	case FieldKindForeignKeyUnique:
+		return "vent.FieldKindForeignKeyUnique"
+	case FieldKindTime:
+		return "vent.FieldKindTime"
+	default:
+		return fmt.Sprintf("vent.FieldKind(%q)", string(kind))
+	}
+}
+
+func isSupportedInputField(field *gen.Field) bool {
+	_, ok := fieldKindForEntField(field)
+	return ok
 }
 
 func optionalOnCreate(field *gen.Field) bool {
@@ -516,9 +576,17 @@ func inputTypeForField(field *gen.Field) string {
 func buildUpdateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
 	fields := buildCreateInputFields(node, annotation, hasAnnotation)
 	for i := range fields {
-		fields[i].Type = pointerInputType(fields[i].Type)
+		if fields[i].Nillable {
+			fields[i].Type = optionalInputType(fields[i].Type)
+		} else {
+			fields[i].Type = pointerInputType(fields[i].Type)
+		}
 	}
 	return fields
+}
+
+func optionalInputType(t string) string {
+	return "OptionalInput[" + strings.TrimPrefix(t, "*") + "]"
 }
 
 func pointerInputType(t string) string {
@@ -788,6 +856,9 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 		}
 		if hasEdge(node, field.Name) {
 			errs = append(errs, fmt.Sprintf("schema %q custom field %q conflicts with an existing edge", node.Name, field.Name))
+		}
+		if _, ok := FieldKindFromString(customFieldKindValue(field)); !ok {
+			errs = append(errs, fmt.Sprintf("schema %q custom field %q has unsupported input type %q", node.Name, field.Name, customFieldKindValue(field)))
 		}
 		customFields[field.Name] = struct{}{}
 	}

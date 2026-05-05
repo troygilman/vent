@@ -8,6 +8,7 @@ type SchemaEntityAddProps struct {
 	RouteName           string
 	SchemaName          string
 	SingularDisplayName string
+	ErrorMessage        string
 	Fields              []SchemaEntityFieldProps
 }
 
@@ -16,8 +17,9 @@ templ SchemaEntityAddPage(props SchemaEntityAddProps) {
 	@Index(props.AdminPath) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText: fmt.Sprintf("Add %s", props.SingularDisplayName),
-				Fields:    props.Fields,
+				TitleText:    fmt.Sprintf("Add %s", props.SingularDisplayName),
+				ErrorMessage: props.ErrorMessage,
+				Fields:       props.Fields,
 				Buttons: []templ.Component{
 					SchemaEntityAddButton(schemaEntityPath),
 				},

@@ -9,6 +9,7 @@ type SchemaEntityProps struct {
 	SchemaName    string
 	EntityID      int
 	EntityDisplay string
+	ErrorMessage  string
 	Fields        []SchemaEntityFieldProps
 }
 
@@ -17,8 +18,9 @@ templ SchemaEntityPage(props SchemaEntityProps) {
 	@Index(props.AdminPath) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText: fmt.Sprintf("Change %s", props.EntityDisplay),
-				Fields:    props.Fields,
+				TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
+				ErrorMessage: props.ErrorMessage,
+				Fields:       props.Fields,
 				Buttons: []templ.Component{
 					SchemaEntitySaveButton(schemaEntityPath),
 					SchemaEntityDeleteButton(schemaEntityPath),

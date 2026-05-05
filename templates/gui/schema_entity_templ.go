@@ -17,6 +17,7 @@ type SchemaEntityProps struct {
 	SchemaName    string
 	EntityID      int
 	EntityDisplay string
+	ErrorMessage  string
 	Fields        []SchemaEntityFieldProps
 }
 
@@ -67,8 +68,9 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText: fmt.Sprintf("Change %s", props.EntityDisplay),
-					Fields:    props.Fields,
+					TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
+					ErrorMessage: props.ErrorMessage,
+					Fields:       props.Fields,
 					Buttons: []templ.Component{
 						SchemaEntitySaveButton(schemaEntityPath),
 						SchemaEntityDeleteButton(schemaEntityPath),

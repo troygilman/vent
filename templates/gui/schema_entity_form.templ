@@ -3,19 +3,22 @@ package gui
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/troygilman/vent"
 )
 
 type SchemaEntityFormProps struct {
-	TitleText string
-	Fields    []SchemaEntityFieldProps
-	Buttons   []templ.Component
+	TitleText    string
+	ErrorMessage string
+	Fields       []SchemaEntityFieldProps
+	Buttons      []templ.Component
 }
 
 type SchemaEntityFieldProps struct {
 	Name     string
 	Label    string
 	Desc     string
-	Type     string
+	Type     vent.FieldKind
 	Value    string
 	Editable bool
 	Options  []SelectOption // For foreign key dropdowns
@@ -30,6 +33,11 @@ type SelectOption struct {
 templ SchemaEntityForm(props SchemaEntityFormProps) {
 	<div class="flex flex-col px-12 py-4 gap-2 w-full">
 		<div class="text-xl font-bold mb-4">{ props.TitleText }</div>
+		if props.ErrorMessage != "" {
+			<div class="alert alert-error shadow-lg max-w-196">
+				<span>{ props.ErrorMessage }</span>
+			</div>
+		}
 		<fieldset class="fieldset w-full max-w-196 gap-4">
 			for _, field := range props.Fields {
 				@SchemaEntityField(field)
@@ -78,32 +86,32 @@ templ SchemaEntityAddButton(path string) {
 
 templ SchemaEntityField(props SchemaEntityFieldProps) {
 	switch props.Type {
-		case "string":
+		case vent.FieldKindString:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="text" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
-		case "password":
+		case vent.FieldKindPassword:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="password" data-bind={ props.Name } placeholder="Enter new password" readonly?={ !props.Editable }/>
 			</label>
-		case "int":
+		case vent.FieldKindInt:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="number" step="1" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
-		case "float", "float64":
+		case vent.FieldKindFloat:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="number" step="any" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>
 			</label>
-		case "bool":
+		case vent.FieldKindBool:
 			<label class="label w-fit">
 				<input class="checkbox checkbox-sm" type="checkbox" data-bind={ props.Name } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
 				{ props.Label }
 			</label>
-		case "foreign_key_unique":
+		case vent.FieldKindForeignKeyUnique:
 			<label class="flex items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<select class="select select-bordered flex-1" data-bind={ props.Name } readonly?={ !props.Editable }>
@@ -118,7 +126,7 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 					}
 				</select>
 			</label>
-		case "foreign_key":
+		case vent.FieldKindForeignKey:
 			<label class="flex items-start gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<div class="flex items-start grow gap-2">
@@ -148,7 +156,7 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 					</select>
 				</div>
 			</label>
-		case "time":
+		case vent.FieldKindTime:
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="datetime-local" data-bind={ props.Name } value={ props.Value } readonly?={ !props.Editable }/>

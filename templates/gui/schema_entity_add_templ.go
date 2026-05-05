@@ -16,6 +16,7 @@ type SchemaEntityAddProps struct {
 	RouteName           string
 	SchemaName          string
 	SingularDisplayName string
+	ErrorMessage        string
 	Fields              []SchemaEntityFieldProps
 }
 
@@ -66,8 +67,9 @@ func SchemaEntityAddPage(props SchemaEntityAddProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText: fmt.Sprintf("Add %s", props.SingularDisplayName),
-					Fields:    props.Fields,
+					TitleText:    fmt.Sprintf("Add %s", props.SingularDisplayName),
+					ErrorMessage: props.ErrorMessage,
+					Fields:       props.Fields,
 					Buttons: []templ.Component{
 						SchemaEntityAddButton(schemaEntityPath),
 					},

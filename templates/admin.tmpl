@@ -15,6 +15,7 @@
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -188,17 +189,25 @@ func handleError(w http.ResponseWriter, r *http.Request, err error, status int) 
 	http.Error(w, err.Error(), status)
 }
 
-func handleMutationError(w http.ResponseWriter, r *http.Request, err error) {
+func mutationErrorStatus(err error) int {
 	switch {
 	case IsValidationError(err):
-		handleError(w, r, err, http.StatusBadRequest)
+		return http.StatusBadRequest
 	case IsConstraintError(err):
-		handleError(w, r, err, http.StatusConflict)
+		return http.StatusConflict
 	case IsNotFound(err):
-		handleError(w, r, err, http.StatusNotFound)
+		return http.StatusNotFound
 	default:
-		handleError(w, r, err, http.StatusInternalServerError)
+		return http.StatusInternalServerError
 	}
+}
+
+func mutationErrorMessage(err error) string {
+	return err.Error()
+}
+
+func handleMutationError(w http.ResponseWriter, r *http.Request, err error) {
+	handleError(w, r, err, mutationErrorStatus(err))
 }
 
 // getLoginHandler returns the handler for GET /admin/login/
@@ -399,63 +408,188 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	})
 }
 
-// get{{ $node.Name }}AddHandler returns the handler for GET /admin/{{ lower $node.Name }}s/add/
-func (h *AdminHandler) get{{ $node.Name }}AddHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		_ = err // avoid unused variable error if no edges
+// build{{ $node.Name }}AddPageProps builds the add page props for {{ $node.Name }}.
+func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	var err error
+	_ = err // avoid unused variable error if no edges
 
-		fields := []gui.SchemaEntityFieldProps{}
+	fields := []gui.SchemaEntityFieldProps{}
 
-		{{ range $field := $rc.FormFields }}
-		{{- if eq $field.Name "id" }}
-		// Skip id field for add form
-		{{- else if $field.IsEdge }}
-		// Load {{ $field.Name }} options
-		{
-			{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(r.Context())
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
-			for i, opt := range {{ lower $field.EdgeType }}Entities {
-				options[i] = gui.SelectOption{
-					Value: opt.ID,
-					Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
-				}
-			}
-			fields = append(fields, gui.SchemaEntityFieldProps{
-				Name:     "{{ $field.Name }}",
-				Label:    "{{ $field.Label }}",
-				Type:     "{{ $field.Type }}",
-				Editable: true,
-				Options:  options,
-			})
+	{{ range $field := $rc.FormFields }}
+	{{- if eq $field.Name "id" }}
+	// Skip id field for add form
+	{{- else if $field.IsEdge }}
+	// Load {{ $field.Name }} options
+	{
+		{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
 		}
-		{{- else }}
+		options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
+		for i, opt := range {{ lower $field.EdgeType }}Entities {
+			options[i] = gui.SelectOption{
+				Value: opt.ID,
+				Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
+			}
+		}
 		fields = append(fields, gui.SchemaEntityFieldProps{
 			Name:     "{{ $field.Name }}",
 			Label:    "{{ $field.Label }}",
-			Type:     "{{ $field.Type }}",
-			Editable: {{ $field.Editable }},
+			Type:     {{ fieldKindGoIdent $field.Type }},
+			Editable: true,
+			Options:  options,
 		})
-		{{- end }}
-		{{ end }}
+	}
+	{{- else }}
+	fields = append(fields, gui.SchemaEntityFieldProps{
+		Name:     "{{ $field.Name }}",
+		Label:    "{{ $field.Label }}",
+		Type:     {{ fieldKindGoIdent $field.Type }},
+		Editable: {{ $field.Editable }},
+	})
+	{{- end }}
+	{{ end }}
 
-		props := gui.SchemaEntityAddProps{
-			LayoutProps:         h.buildLayoutProps("{{ $node.Name }}"),
-			AdminPath:           adminBasePath,
-			RouteName:           "{{ $rc.RouteName }}",
-			SchemaName:          "{{ $node.Name }}",
-			SingularDisplayName: "{{ $rc.SingularDisplayName }}",
-			Fields:      fields,
+	return gui.SchemaEntityAddProps{
+		LayoutProps:         h.buildLayoutProps("{{ $node.Name }}"),
+		AdminPath:           adminBasePath,
+		RouteName:           "{{ $rc.RouteName }}",
+		SchemaName:          "{{ $node.Name }}",
+		SingularDisplayName: "{{ $rc.SingularDisplayName }}",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patch{{ $node.Name }}AddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
+	props, buildErr := h.build{{ $node.Name }}AddPageProps(r.Context(), mutationErrorMessage(err))
+	if buildErr != nil {
+		handleError(w, r, buildErr, http.StatusInternalServerError)
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		handleError(w, r, patchErr, http.StatusInternalServerError)
+	}
+}
+
+// get{{ $node.Name }}AddHandler returns the handler for GET /admin/{{ lower $node.Name }}s/add/
+func (h *AdminHandler) get{{ $node.Name }}AddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.build{{ $node.Name }}AddPageProps(r.Context(), "")
+		if err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
 		}
 
 		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})
+}
+
+// build{{ $node.Name }}PageProps builds the edit page props for {{ $node.Name }}.
+func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityProps, error) {
+	e, err := h.client.{{ $node.Name }}.Query().
+		Where({{ lower $node.Name }}.IDEQ(id)).
+		{{- range $edge := $rc.Edges }}
+		With{{ pascal $edge.Name }}().
+		{{- end }}
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityProps{}, err
+	}
+
+	// Build selected edge IDs for multi-select fields
+	{{- range $edge := $rc.Edges }}
+	{{- if not $edge.Unique }}
+	{{ lower $edge.Name }}IDs := make(map[int]struct{})
+	for _, related := range e.Edges.{{ pascal $edge.Name }} {
+		{{ lower $edge.Name }}IDs[related.ID] = struct{}{}
+	}
+	{{- end }}
+	{{- end }}
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	{{ range $field := $rc.FormFields }}
+	{{- if eq $field.Name "id" }}
+	fields = append(fields, gui.SchemaEntityFieldProps{
+		Name:     "id",
+		Label:    "ID",
+		Type:     vent.FieldKindInt,
+		Value:    fmt.Sprintf("%d", e.ID),
+		Editable: false,
+	})
+	{{- else if $field.IsEdge }}
+	// Load {{ $field.Name }} options
+	{
+		{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(ctx)
+		if err != nil {
+			return gui.SchemaEntityProps{}, err
+		}
+		options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
+		for i, opt := range {{ lower $field.EdgeType }}Entities {
+			options[i] = gui.SelectOption{
+				Value: opt.ID,
+				Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
+				{{- if $field.EdgeUnique }}
+				Selected: e.Edges.{{ pascal $field.Name }} != nil && e.Edges.{{ pascal $field.Name }}.ID == opt.ID,
+				{{- else }}
+				Selected: func() bool { _, ok := {{ lower $field.Name }}IDs[opt.ID]; return ok }(),
+				{{- end }}
+			}
+		}
+		fields = append(fields, gui.SchemaEntityFieldProps{
+			Name:     "{{ $field.Name }}",
+			Label:    "{{ $field.Label }}",
+			Type:     {{ fieldKindGoIdent $field.Type }},
+			Editable: true,
+			Options:  options,
+		})
+	}
+	{{- else if isFieldKindPassword $field.Type }}
+	fields = append(fields, gui.SchemaEntityFieldProps{
+		Name:     "{{ $field.Name }}",
+		Label:    "{{ $field.Label }}",
+		Type:     vent.FieldKindPassword,
+		Editable: true,
+	})
+	{{- else }}
+	fields = append(fields, gui.SchemaEntityFieldProps{
+		Name:     "{{ $field.Name }}",
+		Label:    "{{ $field.Label }}",
+		Type:     {{ fieldKindGoIdent $field.Type }},
+		Value:    formatFormValue(e.{{ pascal $field.Name }}),
+		Editable: {{ $field.Editable }},
+	})
+	{{- end }}
+	{{ end }}
+
+	return gui.SchemaEntityProps{
+		LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
+		AdminPath:     adminBasePath,
+		RouteName:     "{{ $rc.RouteName }}",
+		SchemaName:    "{{ $node.Name }}",
+		EntityID:      id,
+		EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+	}, nil
+}
+
+func (h *AdminHandler) patch{{ $node.Name }}PageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
+	props, buildErr := h.build{{ $node.Name }}PageProps(r.Context(), id, mutationErrorMessage(err))
+	if buildErr != nil {
+		handleError(w, r, buildErr, http.StatusInternalServerError)
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityPage(props)); patchErr != nil {
+		handleError(w, r, patchErr, http.StatusInternalServerError)
+	}
 }
 
 // get{{ $node.Name }}Handler returns the handler for GET /admin/{{ lower $node.Name }}s/{id}/
@@ -467,92 +601,10 @@ func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 			return
 		}
 
-		e, err := h.client.{{ $node.Name }}.Query().
-			Where({{ lower $node.Name }}.IDEQ(id)).
-			{{- range $edge := $rc.Edges }}
-			With{{ pascal $edge.Name }}().
-			{{- end }}
-			Only(r.Context())
+		props, err := h.build{{ $node.Name }}PageProps(r.Context(), id, "")
 		if err != nil {
 			handleError(w, r, err, http.StatusNotFound)
 			return
-		}
-
-		// Build selected edge IDs for multi-select fields
-		{{- range $edge := $rc.Edges }}
-		{{- if not $edge.Unique }}
-		{{ lower $edge.Name }}IDs := make(map[int]struct{})
-		for _, related := range e.Edges.{{ pascal $edge.Name }} {
-			{{ lower $edge.Name }}IDs[related.ID] = struct{}{}
-		}
-		{{- end }}
-		{{- end }}
-
-		fields := []gui.SchemaEntityFieldProps{}
-
-		{{ range $field := $rc.FormFields }}
-		{{- if eq $field.Name "id" }}
-		fields = append(fields, gui.SchemaEntityFieldProps{
-			Name:     "id",
-			Label:    "ID",
-			Type:     "int",
-			Value:    fmt.Sprintf("%d", e.ID),
-			Editable: false,
-		})
-		{{- else if $field.IsEdge }}
-		// Load {{ $field.Name }} options
-		{
-			{{ lower $field.EdgeType }}Entities, err := h.client.{{ $field.EdgeType }}.Query().All(r.Context())
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			options := make([]gui.SelectOption, len({{ lower $field.EdgeType }}Entities))
-			for i, opt := range {{ lower $field.EdgeType }}Entities {
-				options[i] = gui.SelectOption{
-					Value: opt.ID,
-					Label: fmt.Sprintf("%v", opt.{{ $field.EdgeDisplayField }}),
-					{{- if $field.EdgeUnique }}
-					Selected: e.Edges.{{ pascal $field.Name }} != nil && e.Edges.{{ pascal $field.Name }}.ID == opt.ID,
-					{{- else }}
-					Selected: func() bool { _, ok := {{ lower $field.Name }}IDs[opt.ID]; return ok }(),
-					{{- end }}
-				}
-			}
-			fields = append(fields, gui.SchemaEntityFieldProps{
-				Name:     "{{ $field.Name }}",
-				Label:    "{{ $field.Label }}",
-				Type:     "{{ $field.Type }}",
-				Editable: true,
-				Options:  options,
-			})
-		}
-		{{- else if eq $field.Type "password" }}
-		fields = append(fields, gui.SchemaEntityFieldProps{
-			Name:     "{{ $field.Name }}",
-			Label:    "{{ $field.Label }}",
-			Type:     "password",
-			Editable: true,
-		})
-		{{- else }}
-		fields = append(fields, gui.SchemaEntityFieldProps{
-			Name:     "{{ $field.Name }}",
-			Label:    "{{ $field.Label }}",
-			Type:     "{{ $field.Type }}",
-			Value:    formatFormValue(e.{{ pascal $field.Name }}),
-			Editable: {{ $field.Editable }},
-		})
-		{{- end }}
-		{{ end }}
-
-		props := gui.SchemaEntityProps{
-			LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
-			AdminPath:     adminBasePath,
-			RouteName:     "{{ $rc.RouteName }}",
-			SchemaName:    "{{ $node.Name }}",
-			EntityID:      id,
-			EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
-			Fields:        fields,
 		}
 
 		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
@@ -566,7 +618,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input {{ $node.Name }}CreateInput
 		if err := datastar.ReadSignals(r, &input); err != nil {
-			handleError(w, r, err, http.StatusBadRequest)
+			h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid form data: %w", err))
 			return
 		}
 
@@ -578,11 +630,11 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		if input.{{ pascal $field.Name }} != nil {
 			{{- if eq $field.Type "time.Time" }}
 			if *input.{{ pascal $field.Name }} != "" {
-				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
-				if err != nil {
-					handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
-					return
-				}
+							{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
+							if err != nil {
+								h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+								return
+							}
 				{{- if $field.Nillable }}
 				builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
 				{{- else }}
@@ -599,10 +651,10 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		}
 		{{- else if eq $field.Type "time.Time" }}
 		{{ pascal $field.Name }}Value, err := parseDateTimeLocal(input.{{ pascal $field.Name }})
-		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
-			return
-		}
+				if err != nil {
+					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+					return
+				}
 		builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
 		{{- else }}
 		builder.Set{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
@@ -618,10 +670,10 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
+						if err != nil {
+							h.patch{{ $node.Name }}AddPageError(w, r, err)
+							return
+						}
 			if transformed != nil {
 				transformedValue, ok := transformed.({{ $field.OutputType }})
 				if !ok {
@@ -637,22 +689,22 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		// Add {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != "" {
-			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
-			if err != nil {
-				handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
-				return
-			}
+					id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
+					if err != nil {
+						h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
+						return
+					}
 			builder.Set{{ pascal $edge.Name }}ID(id)
 		}
 		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
 			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
 			for _, idStr := range input.{{ pascal $edge.Name }} {
-				id, err := strconv.Atoi(idStr)
-				if err != nil {
-					handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
-					return
-				}
+							id, err := strconv.Atoi(idStr)
+							if err != nil {
+								h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
+								return
+							}
 				ids = append(ids, id)
 			}
 			builder.Add{{ $edge.Singular }}IDs(ids...)
@@ -661,7 +713,7 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 
 		if _, err := builder.Save(r.Context()); err != nil {
-			handleMutationError(w, r, err)
+			h.patch{{ $node.Name }}AddPageError(w, r, err)
 			return
 		}
 
@@ -681,7 +733,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 
 		var input {{ $node.Name }}UpdateInput
 		if err := datastar.ReadSignals(r, &input); err != nil {
-			handleError(w, r, err, http.StatusBadRequest)
+			h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid form data: %w", err))
 			return
 		}
 
@@ -689,26 +741,37 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 
 		// Direct fields (no transformation)
 		{{- range $field := $rc.DirectFields }}
+		{{- if $field.Nillable }}
+		if input.{{ pascal $field.Name }}.Set {
+			if input.{{ pascal $field.Name }}.Value == nil {
+				builder.Clear{{ pascal $field.Name }}()
+			} else {
+				{{- if eq $field.Type "time.Time" }}
+				{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }}.Value)
+								if err != nil {
+									h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+									return
+								}
+				builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
+				{{- else }}
+				builder.SetNillable{{ pascal $field.Name }}(input.{{ pascal $field.Name }}.Value)
+				{{- end }}
+			}
+		}
+		{{- else }}
 		if input.{{ pascal $field.Name }} != nil {
 			{{- if eq $field.Type "time.Time" }}
 			{{ pascal $field.Name }}Value, err := parseDateTimeLocal(*input.{{ pascal $field.Name }})
-			if err != nil {
-				handleError(w, r, fmt.Errorf("invalid {{ $field.Name }}: %w", err), http.StatusBadRequest)
-				return
-			}
-			{{- if $field.Nillable }}
-			builder.SetNillable{{ pascal $field.Name }}(&{{ pascal $field.Name }}Value)
-			{{- else }}
+						if err != nil {
+							h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $field.Name }}: %w", err))
+							return
+						}
 			builder.Set{{ pascal $field.Name }}({{ pascal $field.Name }}Value)
-			{{- end }}
-			{{- else }}
-			{{- if $field.Nillable }}
-			builder.SetNillable{{ pascal $field.Name }}(input.{{ pascal $field.Name }})
 			{{- else }}
 			builder.Set{{ pascal $field.Name }}(*input.{{ pascal $field.Name }})
 			{{- end }}
-			{{- end }}
 		}
+		{{- end }}
 		{{- end }}
 
 		// Mapped fields (with transformation)
@@ -720,10 +783,10 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 				return
 			}
 			transformed, err := transformFunc(*input.{{ pascal $field.InputName }})
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
+						if err != nil {
+							h.patch{{ $node.Name }}PageError(w, r, id, err)
+							return
+						}
 			if transformed != nil {
 				transformedValue, ok := transformed.({{ $field.OutputType }})
 				if !ok {
@@ -740,12 +803,12 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != nil {
 			if *input.{{ pascal $edge.Name }} != "" {
-				id, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
-				if err != nil {
-					handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
-					return
-				}
-				builder.Set{{ pascal $edge.Name }}ID(id)
+							{{ lower $edge.Name }}ID, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
+							if err != nil {
+								h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
+								return
+							}
+							builder.Set{{ pascal $edge.Name }}ID({{ lower $edge.Name }}ID)
 			} else {
 				builder.Clear{{ pascal $edge.Name }}()
 			}
@@ -756,13 +819,13 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			if len(*input.{{ pascal $edge.Name }}) > 0 {
 				ids := make([]int, 0, len(*input.{{ pascal $edge.Name }}))
 				for _, idStr := range *input.{{ pascal $edge.Name }} {
-					id, err := strconv.Atoi(idStr)
-					if err != nil {
-						handleError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"), http.StatusBadRequest)
-						return
-					}
-					ids = append(ids, id)
-				}
+									{{ lower $edge.Name }}ID, err := strconv.Atoi(idStr)
+									if err != nil {
+										h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
+										return
+									}
+									ids = append(ids, {{ lower $edge.Name }}ID)
+								}
 				builder.Add{{ $edge.Singular }}IDs(ids...)
 			}
 		}
@@ -770,7 +833,7 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 
 		if err := builder.Exec(r.Context()); err != nil {
-			handleMutationError(w, r, err)
+			h.patch{{ $node.Name }}PageError(w, r, id, err)
 			return
 		}
 
@@ -803,6 +866,25 @@ func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+type OptionalInput[T any] struct {
+	Set   bool
+	Value *T
+}
+
+func (o *OptionalInput[T]) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var value T
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	o.Value = &value
+	return nil
+}
 
 func formatFormValue(value any) string {
 	switch v := value.(type) {
