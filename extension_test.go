@@ -129,6 +129,105 @@ func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
 	}
 }
 
+func TestBuildCreateInputFieldsUsesCreateSemantics(t *testing.T) {
+	node := testInputNode()
+	annotation := VentSchemaAnnotation{CustomFields: []Field{{Name: "password", Type: "string", InputType: "password"}}}
+
+	fields := buildCreateInputFields(node, annotation, true)
+
+	assertInputField(t, fields, "title", "title", "string", false, false)
+	assertInputField(t, fields, "published", "published", "*bool", true, false)
+	assertInputField(t, fields, "nickname", "nickname", "*string", true, true)
+	assertInputField(t, fields, "starts_at", "starts_at", "string", false, false)
+	assertInputField(t, fields, "ends_at", "ends_at", "*string", true, true)
+	assertInputField(t, fields, "password", "password", "string", false, false)
+	assertInputField(t, fields, "author", "author", "string", false, false)
+	assertInputField(t, fields, "tags", "tags", "[]string", false, false)
+
+	if field := findInputField(fields, "settings"); field != nil {
+		t.Fatalf("unsupported JSON field was included: %+v", *field)
+	}
+}
+
+func TestBuildUpdateInputFieldsUsesPatchSemantics(t *testing.T) {
+	node := testInputNode()
+	annotation := VentSchemaAnnotation{CustomFields: []Field{{Name: "password", Type: "string", InputType: "password"}}}
+
+	fields := buildUpdateInputFields(node, annotation, true)
+
+	assertInputField(t, fields, "title", "title", "*string", false, false)
+	assertInputField(t, fields, "published", "published", "*bool", true, false)
+	assertInputField(t, fields, "nickname", "nickname", "OptionalInput[string]", true, true)
+	assertInputField(t, fields, "starts_at", "starts_at", "*string", false, false)
+	assertInputField(t, fields, "ends_at", "ends_at", "OptionalInput[string]", true, true)
+	assertInputField(t, fields, "password", "password", "*string", false, false)
+	assertInputField(t, fields, "author", "author", "*string", false, false)
+	assertInputField(t, fields, "tags", "tags", "*[]string", false, false)
+}
+
+func testInputNode() *gen.Type {
+	return &gen.Type{
+		Name: "Article",
+		Fields: []*gen.Field{
+			{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+			{Name: "published", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
+			{Name: "nickname", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}, Optional: true, Nillable: true},
+			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
+			{Name: "ends_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}, Optional: true, Nillable: true},
+			{Name: "settings", Type: &schemafield.TypeInfo{Type: schemafield.TypeJSON}},
+		},
+		Edges: []*gen.Edge{
+			{Name: "author", Type: &gen.Type{Name: "User"}, Unique: true},
+			{Name: "tags", Type: &gen.Type{Name: "Tag"}},
+		},
+	}
+}
+
+func assertInputField(t *testing.T, fields []RenderInputField, name string, jsonName string, fieldType string, optionalOnCreate bool, nillable bool) {
+	t.Helper()
+	field := findInputField(fields, name)
+	if field == nil {
+		t.Fatalf("input field %q not found in %+v", name, fields)
+	}
+	if field.JSONName != jsonName {
+		t.Fatalf("%s JSONName = %q, want %q", name, field.JSONName, jsonName)
+	}
+	if field.Type != fieldType {
+		t.Fatalf("%s Type = %q, want %q", name, field.Type, fieldType)
+	}
+	if field.OptionalOnCreate != optionalOnCreate {
+		t.Fatalf("%s OptionalOnCreate = %v, want %v", name, field.OptionalOnCreate, optionalOnCreate)
+	}
+	if field.Nillable != nillable {
+		t.Fatalf("%s Nillable = %v, want %v", name, field.Nillable, nillable)
+	}
+}
+
+func findInputField(fields []RenderInputField, name string) *RenderInputField {
+	for i := range fields {
+		if fields[i].Name == name {
+			return &fields[i]
+		}
+	}
+	return nil
+}
+
+func TestAppendCustomInputFieldsSkipsExistingAndDuplicateNames(t *testing.T) {
+	fields := []RenderInputField{{Name: "title", JSONName: "title", Type: "string"}}
+	fields = appendCustomInputFields(fields, []Field{
+		{Name: "Title", Type: "string"},
+		{Name: "password", Type: "string"},
+		{Name: "Password", Type: "string"},
+	}, createInputFieldForCustomField)
+
+	if len(fields) != 2 {
+		t.Fatalf("fields length = %d, want 2: %+v", len(fields), fields)
+	}
+	if fields[1].Name != "password" {
+		t.Fatalf("second field = %q, want password", fields[1].Name)
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",

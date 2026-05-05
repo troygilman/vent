@@ -441,50 +441,17 @@ func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, has
 		if f.Sensitive() || !isSupportedInputField(f) {
 			continue
 		}
-		fieldType := inputTypeForField(f)
-		optionalOnCreate := optionalOnCreate(f)
-		if optionalOnCreate {
-			fieldType = pointerInputType(fieldType)
-		}
-		fields = append(fields, RenderInputField{
-			Name:             f.Name,
-			JSONName:         f.Name,
-			Type:             fieldType,
-			OptionalOnCreate: optionalOnCreate,
-			Nillable:         f.Nillable,
-		})
+		fields = append(fields, createInputFieldForEntField(f))
 	}
 
 	// Add custom fields from annotation
 	if hasAnnotation {
-		existingFields := make(map[string]bool)
-		for _, f := range fields {
-			existingFields[strings.ToLower(f.JSONName)] = true
-		}
-		for _, cf := range annotation.CustomFields {
-			if !existingFields[strings.ToLower(cf.Name)] {
-				fields = append(fields, RenderInputField{
-					Name:     cf.Name,
-					JSONName: cf.Name,
-					Type:     cf.Type,
-				})
-			}
-		}
+		fields = appendCustomInputFields(fields, annotation.CustomFields, createInputFieldForCustomField)
 	}
 
 	// Add edges (as []string for IDs)
 	for _, edge := range node.Edges {
-		field := RenderInputField{
-			Name:     edge.Name,
-			JSONName: edge.Name,
-			Type:     "[]string",
-		}
-		if edge.Unique {
-			field.Type = "string"
-		} else {
-			field.Type = "[]string"
-		}
-		fields = append(fields, field)
+		fields = append(fields, createInputFieldForEdge(edge))
 	}
 
 	return fields
@@ -571,23 +538,131 @@ func optionalOnCreate(field *gen.Field) bool {
 	return field.Optional || field.Nillable || field.Default
 }
 
-func inputTypeForField(field *gen.Field) string {
+func appendCustomInputFields(fields []RenderInputField, customFields []Field, buildField func(Field) RenderInputField) []RenderInputField {
+	existingFields := inputFieldNames(fields)
+	for _, field := range customFields {
+		name := strings.ToLower(field.Name)
+		if !existingFields[name] {
+			fields = append(fields, buildField(field))
+			existingFields[name] = true
+		}
+	}
+	return fields
+}
+
+func inputFieldNames(fields []RenderInputField) map[string]bool {
+	names := make(map[string]bool, len(fields))
+	for _, field := range fields {
+		names[strings.ToLower(field.JSONName)] = true
+	}
+	return names
+}
+
+func createInputFieldForEntField(field *gen.Field) RenderInputField {
+	optional := optionalOnCreate(field)
+	return RenderInputField{
+		Name:             field.Name,
+		JSONName:         field.Name,
+		Type:             createInputTypeForEntField(field),
+		OptionalOnCreate: optional,
+		Nillable:         field.Nillable,
+	}
+}
+
+func createInputFieldForCustomField(field Field) RenderInputField {
+	return RenderInputField{
+		Name:     field.Name,
+		JSONName: field.Name,
+		Type:     field.Type,
+	}
+}
+
+func createInputFieldForEdge(edge *gen.Edge) RenderInputField {
+	return RenderInputField{
+		Name:     edge.Name,
+		JSONName: edge.Name,
+		Type:     createInputTypeForEdge(edge),
+	}
+}
+
+func createInputTypeForEntField(field *gen.Field) string {
+	fieldType := baseInputTypeForEntField(field)
+	if optionalOnCreate(field) {
+		return pointerInputType(fieldType)
+	}
+	return fieldType
+}
+
+func baseInputTypeForEntField(field *gen.Field) string {
 	if field.IsTime() {
 		return "string"
 	}
 	return field.Type.Type.String()
 }
 
+func createInputTypeForEdge(edge *gen.Edge) string {
+	if edge.Unique {
+		return "string"
+	}
+	return "[]string"
+}
+
+func updateInputFieldForEntField(field *gen.Field) RenderInputField {
+	return RenderInputField{
+		Name:             field.Name,
+		JSONName:         field.Name,
+		Type:             updateInputTypeForEntField(field),
+		OptionalOnCreate: optionalOnCreate(field),
+		Nillable:         field.Nillable,
+	}
+}
+
+func updateInputFieldForCustomField(field Field) RenderInputField {
+	return RenderInputField{
+		Name:     field.Name,
+		JSONName: field.Name,
+		Type:     pointerInputType(field.Type),
+	}
+}
+
+func updateInputFieldForEdge(edge *gen.Edge) RenderInputField {
+	return RenderInputField{
+		Name:     edge.Name,
+		JSONName: edge.Name,
+		Type:     pointerInputType(createInputTypeForEdge(edge)),
+	}
+}
+
+func updateInputTypeForEntField(field *gen.Field) string {
+	fieldType := baseInputTypeForEntField(field)
+	if field.Nillable {
+		return optionalInputType(fieldType)
+	}
+	return pointerInputType(fieldType)
+}
+
 // buildUpdateInputFields determines which fields go in UpdateInput structs.
 func buildUpdateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
-	fields := buildCreateInputFields(node, annotation, hasAnnotation)
-	for i := range fields {
-		if fields[i].Nillable {
-			fields[i].Type = optionalInputType(fields[i].Type)
-		} else {
-			fields[i].Type = pointerInputType(fields[i].Type)
+	var fields []RenderInputField
+
+	// Add all non-sensitive supported fields
+	for _, f := range node.Fields {
+		if f.Sensitive() || !isSupportedInputField(f) {
+			continue
 		}
+		fields = append(fields, updateInputFieldForEntField(f))
 	}
+
+	// Add custom fields from annotation
+	if hasAnnotation {
+		fields = appendCustomInputFields(fields, annotation.CustomFields, updateInputFieldForCustomField)
+	}
+
+	// Add edges (as IDs)
+	for _, edge := range node.Edges {
+		fields = append(fields, updateInputFieldForEdge(edge))
+	}
+
 	return fields
 }
 
