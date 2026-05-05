@@ -228,6 +228,27 @@ func TestAppendCustomInputFieldsSkipsExistingAndDuplicateNames(t *testing.T) {
 	}
 }
 
+func TestDuplicateCustomFieldValidation(t *testing.T) {
+	node := &gen.Type{
+		Name: "Article",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				CustomFields: []Field{
+					{Name: "password", Type: "string"},
+					{Name: "Password", Type: "string"},
+				},
+			},
+		},
+	}
+	errs := validateVentSchemaAnnotation(node)
+	if len(errs) == 0 {
+		t.Fatalf("validateVentSchemaAnnotation(duplicate custom fields) returned no errors")
+	}
+	if !strings.Contains(errs[0], `custom field "Password" is duplicated`) {
+		t.Fatalf("validateVentSchemaAnnotation(duplicate custom fields) = %v", errs)
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",

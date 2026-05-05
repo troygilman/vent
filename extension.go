@@ -933,6 +933,11 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 
 	customFields := make(map[string]struct{}, len(annotation.CustomFields))
 	for _, field := range annotation.CustomFields {
+		fieldKey := strings.ToLower(field.Name)
+		if _, exists := customFields[fieldKey]; exists {
+			errs = append(errs, fmt.Sprintf("schema %q custom field %q is duplicated", node.Name, field.Name))
+			continue
+		}
 		if hasFieldOrID(node, field.Name) {
 			errs = append(errs, fmt.Sprintf("schema %q custom field %q conflicts with an existing field", node.Name, field.Name))
 		}
@@ -942,7 +947,7 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 		if _, ok := FieldKindFromString(customFieldKindValue(field)); !ok {
 			errs = append(errs, fmt.Sprintf("schema %q custom field %q has unsupported input type %q", node.Name, field.Name, customFieldKindValue(field)))
 		}
-		customFields[field.Name] = struct{}{}
+		customFields[fieldKey] = struct{}{}
 	}
 
 	for _, fieldSet := range annotation.FieldSets {
