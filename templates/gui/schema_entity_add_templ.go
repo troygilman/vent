@@ -14,7 +14,6 @@ type SchemaEntityAddProps struct {
 	LayoutProps         LayoutProps
 	AdminPath           string
 	RouteName           string
-	SchemaName          string
 	SingularDisplayName string
 	ErrorMessage        string
 	Fields              []SchemaEntityFieldProps
