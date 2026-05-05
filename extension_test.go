@@ -96,7 +96,7 @@ func TestFieldKindForEntField(t *testing.T) {
 	}
 }
 
-func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
+func TestBuildDirectFieldsSetsDirectFieldKind(t *testing.T) {
 	node := &gen.Type{
 		Name: "Event",
 		Fields: []*gen.Field{
@@ -105,10 +105,7 @@ func TestBuildFieldMappingsSetsDirectFieldKind(t *testing.T) {
 		},
 	}
 
-	createDirectFields, updateDirectFields, mappedFields := buildFieldMappings(node, VentSchemaAnnotation{}, false)
-	if len(mappedFields) != 0 {
-		t.Fatalf("mappedFields length = %d, want 0", len(mappedFields))
-	}
+	createDirectFields, updateDirectFields := buildDirectFields(node)
 	if len(createDirectFields) != 2 {
 		t.Fatalf("createDirectFields length = %d, want 2", len(createDirectFields))
 	}

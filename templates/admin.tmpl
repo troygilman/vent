@@ -39,11 +39,6 @@ type AdminConfig struct {
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
 	SecureCookies           bool
-
-	// FieldTransforms is a registry of transform functions for custom field mappings.
-	// Keys are transform names (e.g., "hash"), values are transform functions.
-	// If nil, a default registry will be created with built-in transforms.
-	FieldTransforms map[string]vent.FieldTransformFunc
 }
 
 // AdminHandler is the main HTTP handler for the admin panel
@@ -54,7 +49,6 @@ type AdminHandler struct {
 	credentialGenerator     auth.CredentialGenerator
 	tokenGenerator          auth.TokenGenerator
 	secureCookies           bool
-	fieldTransforms         map[string]vent.FieldTransformFunc
 	authMiddleware          func(http.Handler) http.Handler
 	userMiddleware          func(http.Handler) http.Handler
 	staffMiddleware  func(http.Handler) http.Handler
@@ -71,28 +65,6 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 
 	tokenAuthenticator := auth.NewJwtTokenAuthenticator(config.SecretProvider)
 
-	// Initialize field transforms registry
-	fieldTransforms := config.FieldTransforms
-	if fieldTransforms == nil {
-		fieldTransforms = make(map[string]vent.FieldTransformFunc)
-	}
-
-	// Register built-in "hash" transform if CredentialGenerator is provided
-	if config.CredentialGenerator != nil {
-		if _, exists := fieldTransforms["hash_password"]; !exists {
-			fieldTransforms["hash_password"] = func(value any) (any, error) {
-				str, ok := value.(string)
-				if !ok {
-					return nil, errors.New("hash transform requires string value")
-				}
-				if str == "" {
-					return nil, nil // Skip empty passwords
-				}
-				return config.CredentialGenerator.Generate(str)
-			}
-		}
-	}
-
 	h := &AdminHandler{
 		mux:                     http.NewServeMux(),
 		client:                  config.Client,
@@ -100,7 +72,6 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
-		fieldTransforms:         fieldTransforms,
 		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
 		userMiddleware:          NewUserMiddleware(config.Client),
 		staffMiddleware:         NewStaffMiddleware(),
@@ -123,8 +94,13 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	{{ $permSuffix := resourceName $node.Name }}
 	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
 	h.handle("POST "+adminBasePath+"{{ $rc.RouteName }}/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/{$}", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
 	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	{{- if eq $node.Name $userSchema }}
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("PUT "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	{{- end }}
 	h.handle("PATCH "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
 	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
@@ -257,28 +233,31 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 		}
 
 		err := func() error {
+			invalidCredentials := errors.New("invalid credentials")
+
 			// Find user by email - direct ent query, type-safe
 			user, err := h.client.{{ $userSchema }}.Query().
 				Where({{ lower $userSchema }}.EmailEQ(signals.Login.Email)).
 				Only(r.Context())
 			if err != nil {
-				loginProps.EmailError = "User with this email does not exist"
-				return errors.New("invalid email")
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				return invalidCredentials
 			}
 
-			if !user.IsActive {
-				loginProps.EmailError = "User account is inactive"
-				return errors.New("inactive user")
+			if !user.IsActive || !user.IsStaff {
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				return invalidCredentials
 			}
-			if !user.IsStaff {
-				loginProps.EmailError = "User does not have admin access"
-				return errors.New("non-staff user")
+
+			if user.PasswordHash == nil || *user.PasswordHash == "" {
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				return invalidCredentials
 			}
 
 			// Verify password - direct field access, type-safe
-			if err := h.credentialAuthenticator.Authenticate(signals.Login.Password, user.PasswordHash); err != nil {
-				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Password is invalid")
-				return err
+			if err := h.credentialAuthenticator.Authenticate(signals.Login.Password, *user.PasswordHash); err != nil {
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				return invalidCredentials
 			}
 
 			// Generate token
@@ -419,6 +398,8 @@ func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, er
 	{{ range $field := $rc.FormFields }}
 	{{- if eq $field.Name "id" }}
 	// Skip id field for add form
+	{{- else if $field.IsPasswordStatus }}
+	// Skip password status field for add form
 	{{- else if $field.IsEdge }}
 	// Load {{ $field.Name }} options
 	{
@@ -514,7 +495,21 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 	fields := []gui.SchemaEntityFieldProps{}
 
 	{{ range $field := $rc.FormFields }}
-	{{- if eq $field.Name "id" }}
+	{{- if $field.IsPasswordStatus }}
+	passwordStatus := "Not set"
+	if passwordHashIsSet(e.PasswordHash) {
+		passwordStatus = "Set"
+	}
+	fields = append(fields, gui.SchemaEntityFieldProps{
+		Name:        "{{ $field.Name }}",
+		Label:       "{{ $field.Label }}",
+		Type:        vent.FieldKindString,
+		Value:       passwordStatus,
+		Editable:    false,
+		ActionLabel: "Manage Password",
+		ActionURL:   fmt.Sprintf("%s{{ $rc.RouteName }}/%d/password/", adminBasePath, id),
+	})
+	{{- else if eq $field.Name "id" }}
 	fields = append(fields, gui.SchemaEntityFieldProps{
 		Name:     "id",
 		Label:    "ID",
@@ -567,7 +562,7 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 	{{- end }}
 	{{ end }}
 
-	return gui.SchemaEntityProps{
+	props := gui.SchemaEntityProps{
 		LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
 		AdminPath:     adminBasePath,
 		RouteName:     "{{ $rc.RouteName }}",
@@ -575,7 +570,8 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 		EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
 		ErrorMessage:  errorMessage,
 		Fields:        fields,
-	}, nil
+	}
+	return props, nil
 }
 
 func (h *AdminHandler) patch{{ $node.Name }}PageError(w http.ResponseWriter, r *http.Request, id int, err error) {
@@ -663,29 +659,6 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 		{{- end }}
 
-		// Mapped fields (with transformation)
-		{{- range $field := $rc.MappedFields }}
-		{
-			transformFunc, err := h.fieldTransform("{{ $field.TransformKey }}")
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
-			if err != nil {
-				h.patch{{ $node.Name }}AddPageError(w, r, err)
-				return
-			}
-			if transformed != nil {
-				transformedValue, ok := transformed.({{ $field.OutputType }})
-				if !ok {
-					handleError(w, r, fmt.Errorf("transform \"{{ $field.TransformKey }}\" returned %T, expected {{ $field.OutputType }}", transformed), http.StatusInternalServerError)
-					return
-				}
-				builder.Set{{ pascal $field.SetterName }}(transformedValue)
-			}
-		}
-		{{- end }}
 
 		{{- range $edge := $rc.Edges }}
 		// Add {{ $edge.Name }} edges
@@ -775,29 +748,6 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- end }}
 		{{- end }}
 
-		// Mapped fields (with transformation)
-		{{- range $field := $rc.MappedFields }}
-		if input.{{ pascal $field.InputName }} != nil {
-			transformFunc, err := h.fieldTransform("{{ $field.TransformKey }}")
-			if err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
-				return
-			}
-			transformed, err := transformFunc(*input.{{ pascal $field.InputName }})
-			if err != nil {
-				h.patch{{ $node.Name }}PageError(w, r, id, err)
-				return
-			}
-			if transformed != nil {
-				transformedValue, ok := transformed.({{ $field.OutputType }})
-				if !ok {
-					handleError(w, r, fmt.Errorf("transform \"{{ $field.TransformKey }}\" returned %T, expected {{ $field.OutputType }}", transformed), http.StatusInternalServerError)
-					return
-				}
-				builder.Set{{ pascal $field.SetterName }}(transformedValue)
-			}
-		}
-		{{- end }}
 
 		{{- range $edge := $rc.Edges }}
 		// Update {{ $edge.Name }} edges
@@ -838,6 +788,137 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		sse.Redirect(adminBasePath + "{{ $rc.RouteName }}/")
 	})
 }
+
+{{- if eq $node.Name $userSchema }}
+type {{ $node.Name }}PasswordInput struct {
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
+}
+
+// build{{ $node.Name }}PasswordPageProps builds the manage password page props for {{ $node.Name }}.
+func (h *AdminHandler) build{{ $node.Name }}PasswordPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityPasswordProps, error) {
+	e, err := h.client.{{ $node.Name }}.Query().
+		Where({{ lower $node.Name }}.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityPasswordProps{}, err
+	}
+
+	return gui.SchemaEntityPasswordProps{
+		LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
+		AdminPath:     adminBasePath,
+		RouteName:     "{{ $rc.RouteName }}",
+		EntityID:      id,
+		EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
+		PasswordSet:   passwordHashIsSet(e.PasswordHash),
+		ErrorMessage:  errorMessage,
+	}, nil
+}
+
+func (h *AdminHandler) patch{{ $node.Name }}PasswordPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
+	props, buildErr := h.build{{ $node.Name }}PasswordPageProps(r.Context(), id, mutationErrorMessage(err))
+	if buildErr != nil {
+		handleError(w, r, buildErr, http.StatusInternalServerError)
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityPasswordPage(props)); patchErr != nil {
+		handleError(w, r, patchErr, http.StatusInternalServerError)
+	}
+}
+
+// get{{ $node.Name }}PasswordHandler returns the handler for GET /admin/{{ $rc.RouteName }}/{id}/password/.
+func (h *AdminHandler) get{{ $node.Name }}PasswordHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		props, err := h.build{{ $node.Name }}PasswordPageProps(r.Context(), id, "")
+		if err != nil {
+			handleError(w, r, err, http.StatusNotFound)
+			return
+		}
+
+		if err := gui.SchemaEntityPasswordPage(props).Render(r.Context(), w); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
+// put{{ $node.Name }}PasswordHandler returns the handler for PUT /admin/{{ $rc.RouteName }}/{id}/password/.
+func (h *AdminHandler) put{{ $node.Name }}PasswordHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		var signals struct {
+			Password {{ $node.Name }}PasswordInput `json:"password"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, fmt.Errorf("invalid form data: %w", err))
+			return
+		}
+		input := signals.Password
+		if input.Password == "" {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, errors.New("password is required"))
+			return
+		}
+		if input.Password != input.ConfirmPassword {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, vent.ErrPasswordMismatch)
+			return
+		}
+
+		hash, err := h.credentialGenerator.Generate(input.Password)
+		if err != nil {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, err)
+			return
+		}
+		if err := h.client.{{ $node.Name }}.UpdateOneID(id).SetPasswordHash(hash).Exec(r.Context()); err != nil {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", adminBasePath, id))
+	})
+}
+
+// delete{{ $node.Name }}PasswordHandler returns the handler for DELETE /admin/{{ $rc.RouteName }}/{id}/password/.
+func (h *AdminHandler) delete{{ $node.Name }}PasswordHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			return
+		}
+
+		currentUser, err := GetUser(r.Context())
+		if err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		if currentUser.ID == id {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, errors.New("cannot remove your own password"))
+			return
+		}
+
+		if err := h.client.{{ $node.Name }}.UpdateOneID(id).ClearPasswordHash().Exec(r.Context()); err != nil {
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", adminBasePath, id))
+	})
+}
+{{- end }}
 
 // delete{{ $node.Name }}Handler returns the handler for DELETE /admin/{{ lower $node.Name }}s/{id}/
 func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
@@ -916,12 +997,8 @@ func parseDateTimeLocalField(value string, label string) (time.Time, error) {
 	return parsed, nil
 }
 
-func (h *AdminHandler) fieldTransform(key string) (vent.FieldTransformFunc, error) {
-	transformFunc, ok := h.fieldTransforms[key]
-	if !ok {
-		return nil, fmt.Errorf("transform %q not registered", key)
-	}
-	return transformFunc, nil
+func passwordHashIsSet(hash *string) bool {
+	return hash != nil && *hash != ""
 }
 
 func parseID(value string, label string) (int, error) {

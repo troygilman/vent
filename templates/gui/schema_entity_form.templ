@@ -23,13 +23,15 @@ type SchemaEntityFormProps struct {
 }
 
 type SchemaEntityFieldProps struct {
-	Name     string
-	Label    string
-	Desc     string
-	Type     vent.FieldKind
-	Value    string
-	Editable bool
-	Options  []SelectOption // For foreign key dropdowns
+	Name        string
+	Label       string
+	Desc        string
+	Type        vent.FieldKind
+	Value       string
+	Editable    bool
+	Options     []SelectOption // For foreign key dropdowns
+	ActionLabel string
+	ActionURL   string
 }
 
 type SelectOption struct {
@@ -98,6 +100,9 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+				if props.ActionLabel != "" && props.ActionURL != "" {
+					<a class="btn btn-neutral btn-sm self-center" href={ templ.SafeURL(props.ActionURL) }>{ props.ActionLabel }</a>
+				}
 			</label>
 		case vent.FieldKindPassword:
 			<label class="input items-baseline gap-2 w-full">
@@ -173,6 +178,9 @@ templ SchemaEntityField(props SchemaEntityFieldProps) {
 			<label class="input items-baseline gap-2 w-full">
 				<span class="label w-48 flex-shrink-0 text-right">{ props.Label }</span>
 				<input class="flex-1" type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+				if props.ActionLabel != "" && props.ActionURL != "" {
+					<a class="btn btn-neutral btn-sm self-center" href={ templ.SafeURL(props.ActionURL) }>{ props.ActionLabel }</a>
+				}
 			</label>
 	}
 	if props.Desc != "" {

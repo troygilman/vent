@@ -16,7 +16,7 @@ type AuthUserMixin struct {
 func (AuthUserMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("email").NotEmpty().Unique(),
-		field.String("password_hash").Sensitive(),
+		field.String("password_hash").Optional().Nillable().Sensitive(),
 		field.Bool("is_staff").Default(false),
 		field.Bool("is_superuser").Default(false),
 		field.Bool("is_active").Default(true),
@@ -37,20 +37,6 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 		VentAuthMixinAnnotation{Role: AuthRoleUser},
 		VentSchemaAnnotation{
 			DisplayField: "email",
-			CustomFields: []Field{
-				{
-					Name:      "password",
-					Type:      "string",
-					InputType: "password",
-				},
-			},
-			FieldMappings: []FieldMapping{
-				{
-					From:      "password",
-					To:        "password_hash",
-					Transform: "hash_password",
-				},
-			},
 			TableColumns: []string{
 				"email",
 				"is_staff",

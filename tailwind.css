@@ -26,3 +26,7 @@
 @utility fixed-height-multiselect {
     @apply h-32 min-h-32 max-h-32 overflow-y-auto;
 }
+
+.input {
+    outline: none;
+}

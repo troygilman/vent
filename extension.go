@@ -122,9 +122,6 @@ type RenderConfig struct {
 
 	// UpdateDirectFields defines fields that can be set directly in update handlers.
 	UpdateDirectFields []RenderUpdateDirectField
-
-	// MappedFields defines fields that need transformation before setting
-	MappedFields []RenderMappedField
 }
 
 // RenderColumn represents a column in the list view
@@ -144,6 +141,7 @@ type RenderField struct {
 	EdgeType         string    // For edges: the target schema name
 	EdgeUnique       bool      // For edges: whether it's a unique (belongs-to) relation
 	EdgeDisplayField string    // For edges: the field to display (e.g., "Name", "Email")
+	IsPasswordStatus bool      // Whether this field renders auth user password status/action
 }
 
 // RenderInputField represents a field in the CreateInput/UpdateInput struct
@@ -183,14 +181,6 @@ type RenderUpdateDirectField struct {
 	Name     string
 	Kind     FieldKind
 	Nillable bool
-}
-
-// RenderMappedField represents a field that needs transformation before setting
-type RenderMappedField struct {
-	InputName    string // Source field in input struct (e.g., "Password")
-	SetterName   string // Target builder method (e.g., "PasswordHash") for builder.Set{SetterName}()
-	TransformKey string // Key in FieldTransforms registry (e.g., "hash")
-	OutputType   string // Go type for assertion after transform (e.g., "string")
 }
 
 // renderConfigs builds RenderConfigs for all admin-enabled nodes
@@ -263,8 +253,8 @@ func renderConfig(node *gen.Type) RenderConfig {
 	config.CreateInputFields = buildCreateInputFields(node, annotation, hasAnnotation)
 	config.UpdateInputFields = buildUpdateInputFields(node, annotation, hasAnnotation)
 
-	// Build direct fields and mapped fields
-	config.CreateDirectFields, config.UpdateDirectFields, config.MappedFields = buildFieldMappings(node, annotation, hasAnnotation)
+	// Build direct fields
+	config.CreateDirectFields, config.UpdateDirectFields = buildDirectFields(node)
 
 	return config
 }
@@ -377,6 +367,18 @@ func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotat
 
 // buildRenderField creates a RenderField for a given field name
 func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName string) *RenderField {
+	// Check for reserved auth password status field.
+	if fieldName == "password" && isAuthUserNode(node) {
+		return &RenderField{
+			Name:             "password",
+			Label:            "Password",
+			Type:             FieldKindString,
+			Editable:         false,
+			IsEdge:           false,
+			IsPasswordStatus: true,
+		}
+	}
+
 	// Check for "id"
 	if fieldName == "id" {
 		return &RenderField{
@@ -686,42 +688,20 @@ func pointerInputType(t string) string {
 	return "*" + t
 }
 
-// buildFieldMappings builds direct fields and mapped fields from node fields and annotations.
-func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) ([]RenderCreateDirectField, []RenderUpdateDirectField, []RenderMappedField) {
+// buildDirectFields builds direct create/update fields from non-sensitive supported node fields.
+func buildDirectFields(node *gen.Type) ([]RenderCreateDirectField, []RenderUpdateDirectField) {
 	var createDirectFields []RenderCreateDirectField
 	var updateDirectFields []RenderUpdateDirectField
-	var mappedFields []RenderMappedField
 
-	// Build a set of fields that are mapped (From field names)
-	mappedFromFields := make(map[string]bool)
-	if hasAnnotation {
-		for _, mapping := range annotation.FieldMappings {
-			mappedFromFields[mapping.From] = true
-
-			// Add to mapped fields
-			mappedFields = append(mappedFields, RenderMappedField{
-				InputName:    mapping.From,
-				SetterName:   mapping.To,
-				TransformKey: mapping.Transform,
-				OutputType:   getFieldType(node, mapping.To),
-			})
-		}
-	}
-
-	// Add non-sensitive, supported, non-mapped fields as direct fields
 	for _, f := range node.Fields {
 		if f.Sensitive() || !isSupportedInputField(f) {
-			continue
-		}
-		// Skip if this field is the source of a mapping
-		if mappedFromFields[f.Name] {
 			continue
 		}
 		createDirectFields = append(createDirectFields, renderCreateDirectFieldForEntField(f))
 		updateDirectFields = append(updateDirectFields, renderUpdateDirectFieldForEntField(f))
 	}
 
-	return createDirectFields, updateDirectFields, mappedFields
+	return createDirectFields, updateDirectFields
 }
 
 func renderCreateDirectFieldForEntField(field *gen.Field) RenderCreateDirectField {
@@ -980,28 +960,19 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 				}
 			}
 			if !hasFieldOrID(node, fieldName) && !hasEdge(node, fieldName) {
-				if _, ok := customFields[fieldName]; !ok {
+				if _, ok := customFields[fieldName]; !ok && !(fieldName == "password" && isAuthUserNode(node)) {
 					errs = append(errs, fmt.Sprintf("schema %q field set references unknown field or edge %q", node.Name, fieldName))
 				}
 			}
 		}
 	}
 
-	for _, mapping := range annotation.FieldMappings {
-		if !hasFieldOrID(node, mapping.From) {
-			if _, ok := customFields[mapping.From]; !ok {
-				errs = append(errs, fmt.Sprintf("schema %q field mapping source %q does not exist", node.Name, mapping.From))
-			}
-		}
-		if !hasField(node, mapping.To) {
-			errs = append(errs, fmt.Sprintf("schema %q field mapping target %q does not exist", node.Name, mapping.To))
-		}
-		if mapping.Transform == "" {
-			errs = append(errs, fmt.Sprintf("schema %q field mapping from %q to %q is missing a transform", node.Name, mapping.From, mapping.To))
-		}
-	}
-
 	return errs
+}
+
+func isAuthUserNode(node *gen.Type) bool {
+	var annotation VentAuthMixinAnnotation
+	return annotation.parse(node) == nil && annotation.Role == AuthRoleUser
 }
 
 func hasFieldOrID(node *gen.Type, name string) bool {
