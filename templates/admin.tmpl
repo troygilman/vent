@@ -689,23 +689,19 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		// Add {{ $edge.Name }} edges
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != "" {
-			id, err := strconv.Atoi(input.{{ pascal $edge.Name }})
+			{{ lower $edge.Name }}ID, err := parseID(input.{{ pascal $edge.Name }}, "{{ $edge.Name }}")
 			if err != nil {
-				h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
+				h.patch{{ $node.Name }}AddPageError(w, r, err)
 				return
 			}
-			builder.Set{{ pascal $edge.Name }}ID(id)
+			builder.Set{{ pascal $edge.Name }}ID({{ lower $edge.Name }}ID)
 		}
 		{{- else }}
 		if len(input.{{ pascal $edge.Name }}) > 0 {
-			ids := make([]int, 0, len(input.{{ pascal $edge.Name }}))
-			for _, idStr := range input.{{ pascal $edge.Name }} {
-				id, err := strconv.Atoi(idStr)
-				if err != nil {
-					h.patch{{ $node.Name }}AddPageError(w, r, fmt.Errorf("invalid {{ $edge.Name }} id"))
-					return
-				}
-				ids = append(ids, id)
+			ids, err := parseIDList(input.{{ pascal $edge.Name }}, "{{ $edge.Name }}")
+			if err != nil {
+				h.patch{{ $node.Name }}AddPageError(w, r, err)
+				return
 			}
 			builder.Add{{ $edge.Singular }}IDs(ids...)
 		}
@@ -803,9 +799,9 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		{{- if $edge.Unique }}
 		if input.{{ pascal $edge.Name }} != nil {
 			if *input.{{ pascal $edge.Name }} != "" {
-				{{ lower $edge.Name }}ID, err := strconv.Atoi(*input.{{ pascal $edge.Name }})
+				{{ lower $edge.Name }}ID, err := parseID(*input.{{ pascal $edge.Name }}, "{{ $edge.Name }}")
 				if err != nil {
-					h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
+					h.patch{{ $node.Name }}PageError(w, r, id, err)
 					return
 				}
 				builder.Set{{ pascal $edge.Name }}ID({{ lower $edge.Name }}ID)
@@ -817,14 +813,10 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		if input.{{ pascal $edge.Name }} != nil {
 			builder.Clear{{ pascal $edge.Name }}()
 			if len(*input.{{ pascal $edge.Name }}) > 0 {
-				ids := make([]int, 0, len(*input.{{ pascal $edge.Name }}))
-				for _, idStr := range *input.{{ pascal $edge.Name }} {
-					{{ lower $edge.Name }}ID, err := strconv.Atoi(idStr)
-					if err != nil {
-						h.patch{{ $node.Name }}PageError(w, r, id, fmt.Errorf("invalid {{ $edge.Name }} id"))
-						return
-					}
-					ids = append(ids, {{ lower $edge.Name }}ID)
+				ids, err := parseIDList(*input.{{ pascal $edge.Name }}, "{{ $edge.Name }}")
+				if err != nil {
+					h.patch{{ $node.Name }}PageError(w, r, id, err)
+					return
 				}
 				builder.Add{{ $edge.Singular }}IDs(ids...)
 			}
@@ -909,6 +901,26 @@ func parseDateTimeLocal(value string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("must use datetime-local or RFC3339 format")
+}
+
+func parseID(value string, label string) (int, error) {
+	id, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s id", label)
+	}
+	return id, nil
+}
+
+func parseIDList(values []string, label string) ([]int, error) {
+	ids := make([]int, 0, len(values))
+	for _, value := range values {
+		id, err := parseID(value, label)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func GetUser(ctx context.Context) (*{{ $userSchema }}, error) {
