@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"entgo.io/ent/entc/gen"
+	"entgo.io/ent/schema"
 )
 
 type VentConfigAnnotation struct {
@@ -65,6 +66,11 @@ type VentSchemaAnnotation struct {
 
 func (VentSchemaAnnotation) Name() string {
 	return "VentSchema"
+}
+
+// Merge allows schema-level VentSchema annotations to override mixin defaults.
+func (VentSchemaAnnotation) Merge(annotation schema.Annotation) schema.Annotation {
+	return annotation
 }
 
 func (a *VentSchemaAnnotation) parse(node *gen.Type) error {
