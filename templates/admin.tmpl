@@ -664,9 +664,9 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		// Mapped fields (with transformation)
 		{{- range $field := $rc.MappedFields }}
 		{
-			transformFunc, ok := h.fieldTransforms["{{ $field.TransformKey }}"]
-			if !ok {
-				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
+			transformFunc, err := h.fieldTransform("{{ $field.TransformKey }}")
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
 				return
 			}
 			transformed, err := transformFunc(input.{{ pascal $field.InputName }})
@@ -773,9 +773,9 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 		// Mapped fields (with transformation)
 		{{- range $field := $rc.MappedFields }}
 		if input.{{ pascal $field.InputName }} != nil {
-			transformFunc, ok := h.fieldTransforms["{{ $field.TransformKey }}"]
-			if !ok {
-				handleError(w, r, errors.New("transform '{{ $field.TransformKey }}' not registered"), http.StatusInternalServerError)
+			transformFunc, err := h.fieldTransform("{{ $field.TransformKey }}")
+			if err != nil {
+				handleError(w, r, err, http.StatusInternalServerError)
 				return
 			}
 			transformed, err := transformFunc(*input.{{ pascal $field.InputName }})
@@ -909,6 +909,14 @@ func parseDateTimeLocalField(value string, label string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("invalid %s: %w", label, err)
 	}
 	return parsed, nil
+}
+
+func (h *AdminHandler) fieldTransform(key string) (vent.FieldTransformFunc, error) {
+	transformFunc, ok := h.fieldTransforms[key]
+	if !ok {
+		return nil, fmt.Errorf("transform %q not registered", key)
+	}
+	return transformFunc, nil
 }
 
 func parseID(value string, label string) (int, error) {
