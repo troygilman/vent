@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/troygilman/vent/auth"
-	"github.com/troygilman/vent/ent"
+	"github.com/troygilman/vent/examples/basic/ent"
 
 	_ "github.com/mattn/go-sqlite3"
 )
