@@ -173,7 +173,6 @@ type NodeRenderConfig struct {
 // RenderCreateDirectField represents a field that can be set directly in create handlers.
 type RenderCreateDirectField struct {
 	Name             string
-	Type             string
 	Kind             FieldKind
 	OptionalOnCreate bool
 	Nillable         bool
@@ -182,7 +181,6 @@ type RenderCreateDirectField struct {
 // RenderUpdateDirectField represents a field that can be set directly in update handlers.
 type RenderUpdateDirectField struct {
 	Name     string
-	Type     string
 	Kind     FieldKind
 	Nillable bool
 }
@@ -729,7 +727,6 @@ func buildFieldMappings(node *gen.Type, annotation VentSchemaAnnotation, hasAnno
 func renderCreateDirectFieldForEntField(field *gen.Field) RenderCreateDirectField {
 	return RenderCreateDirectField{
 		Name:             field.Name,
-		Type:             field.Type.Type.String(),
 		Kind:             formInputTypeForField(field),
 		OptionalOnCreate: optionalOnCreate(field),
 		Nillable:         field.Nillable,
@@ -739,7 +736,6 @@ func renderCreateDirectFieldForEntField(field *gen.Field) RenderCreateDirectFiel
 func renderUpdateDirectFieldForEntField(field *gen.Field) RenderUpdateDirectField {
 	return RenderUpdateDirectField{
 		Name:     field.Name,
-		Type:     field.Type.Type.String(),
 		Kind:     formInputTypeForField(field),
 		Nillable: field.Nillable,
 	}
