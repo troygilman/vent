@@ -1,6 +1,13 @@
 package gui
 
+import (
+	"context"
+	"encoding/json"
+	"io"
+)
+
 templ Index(adminPath string) {
+	{{ datastarPath := templ.SafeURL(adminPath + "static/datastar.js") }}
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -9,10 +16,26 @@ templ Index(adminPath string) {
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<title>Vent Admin</title>
 			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/style.css") }/>
-			<script type="module" src={ templ.SafeURL(adminPath + "static/datastar.js") }></script>
+			<script type="module" src={ datastarPath }></script>
+			@ImportMap(map[string]any{
+				"imports": map[string]any{
+					"datastar": datastarPath,
+				},
+			})
 		</head>
 		<body class="flex w-screen h-screen relative">
 			{ children... }
 		</body>
 	</html>
+}
+
+func ImportMap(data map[string]any) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		b, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, `<script type="importmap">`+string(b)+`</script>`)
+		return err
+	})
 }

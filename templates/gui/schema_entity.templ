@@ -12,16 +12,6 @@ type SchemaEntityProps struct {
 	Fields        []SchemaEntityFieldProps
 }
 
-type SchemaEntityPasswordProps struct {
-	LayoutProps   LayoutProps
-	AdminPath     string
-	RouteName     string
-	EntityID      int
-	EntityDisplay string
-	PasswordSet   bool
-	ErrorMessage  string
-}
-
 templ SchemaEntityPage(props SchemaEntityProps) {
 	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", props.AdminPath, props.RouteName, props.EntityID) }}
 	@Index(props.AdminPath) {
@@ -35,49 +25,6 @@ templ SchemaEntityPage(props SchemaEntityProps) {
 					SchemaEntityDeleteButton(schemaEntityPath),
 				},
 			})
-			@Indicator()
-		}
-	}
-}
-
-templ SchemaEntityPasswordPage(props SchemaEntityPasswordProps) {
-	{{ entityPath := fmt.Sprintf("%s%s/%d/", props.AdminPath, props.RouteName, props.EntityID) }}
-	{{ passwordPath := fmt.Sprintf("%s%s/%d/password/", props.AdminPath, props.RouteName, props.EntityID) }}
-	{{ status := "Not set" }}
-	if props.PasswordSet {
-		{{ status = "Set" }}
-	}
-	@Index(props.AdminPath) {
-		@Layout(props.LayoutProps) {
-			<div class="flex flex-col px-12 py-4 gap-2 w-full">
-				<div class="text-xl font-bold mb-4">Manage Password for { props.EntityDisplay }</div>
-				if props.ErrorMessage != "" {
-					<div class="alert alert-error shadow-lg max-w-196">
-						<span>{ props.ErrorMessage }</span>
-					</div>
-				}
-				<fieldset class="fieldset w-full max-w-196 gap-4">
-					<label class="input items-baseline gap-2 w-full">
-						<span class="label w-48 flex-shrink-0 text-right">Password</span>
-						<input class="flex-1" type="text" value={ status } readonly/>
-					</label>
-					<label class="input items-baseline gap-2 w-full">
-						<span class="label w-48 flex-shrink-0 text-right">New password</span>
-						<input class="flex-1" type="password" data-bind="password.password" autocomplete="new-password" placeholder="Enter new password"/>
-					</label>
-					<label class="input items-baseline gap-2 w-full">
-						<span class="label w-48 flex-shrink-0 text-right">Confirm password</span>
-						<input class="flex-1" type="password" data-bind="password.confirmPassword" autocomplete="new-password" placeholder="Confirm new password"/>
-					</label>
-				</fieldset>
-				<div class="flex mt-4 justify-between max-w-196">
-					<div class="flex gap-2">
-						<button class="btn btn-neutral" type="button" data-on:click={ fmt.Sprintf("@put('%s')", passwordPath) } data-indicator="_indicator">Save Password</button>
-						<button class="btn btn-error" disabled?={ !props.PasswordSet } type="button" data-on:click={ fmt.Sprintf("@delete('%s')", passwordPath) } data-indicator="_indicator">Remove Password</button>
-					</div>
-					<a class="btn btn-neutral" href={ templ.SafeURL(entityPath) }>Back</a>
-				</div>
-			</div>
 			@Indicator()
 		}
 	}
