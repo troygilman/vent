@@ -2,7 +2,7 @@ dev: gen
     go run ./examples/basic/cmd/server
 
 gen:
-    npx @tailwindcss/cli -i ./tailwind.css -o ./static/style.css
+    npx @tailwindcss/cli -i ./tailwind.css -o ./static/css/style.css
     templ generate ./templates/gui/
     go run ./cmd/vent gen --schema ./examples/basic/ent/schema
 

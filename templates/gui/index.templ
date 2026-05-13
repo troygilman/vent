@@ -7,7 +7,7 @@ import (
 )
 
 templ Index(adminPath string) {
-	{{ datastarPath := templ.SafeURL(adminPath + "static/datastar.js") }}
+	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -15,8 +15,9 @@ templ Index(adminPath string) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<title>Vent Admin</title>
-			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/style.css") }/>
+			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/css/style.css") }/>
 			<script type="module" src={ datastarPath }></script>
+			<script type="module" src={ templ.URL(adminPath + "static/js/datastar-plugins.js") }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{
 					"datastar": datastarPath,
