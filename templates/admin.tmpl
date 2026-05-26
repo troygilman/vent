@@ -73,7 +73,7 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
 		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
-		userMiddleware:          NewUserMiddleware(config.Client),
+		userMiddleware:          NewUserMiddleware(config.Client, config.SecureCookies),
 		staffMiddleware:         NewStaffMiddleware(),
 		loggerMiddleware:        newLoggerMiddleware(),
 	}
@@ -201,15 +201,7 @@ func (h *AdminHandler) getLoginHandler() http.Handler {
 // getLogoutHandler returns the handler for GET /admin/logout/
 func (h *AdminHandler) getLogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "vent-auth-token",
-			Value:    "",
-			Path:     adminBasePath,
-			MaxAge:   -1,
-			HttpOnly: true,
-			Secure:   h.secureCookies,
-			SameSite: http.SameSiteLaxMode,
-		})
+		clearAuthTokenCookie(w, h.secureCookies)
 		http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
 	})
 }
@@ -1066,7 +1058,19 @@ func NewAuthenticationMiddleware(authenticator auth.TokenAuthenticator) func(htt
 	}
 }
 
-func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
+func clearAuthTokenCookie(w http.ResponseWriter, secureCookies bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "vent-auth-token",
+		Value:    "",
+		Path:     adminBasePath,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func NewUserMiddleware(client *Client, secureCookies bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := GetClaims(r.Context())
@@ -1088,7 +1092,12 @@ func NewUserMiddleware(client *Client) func(http.Handler) http.Handler {
 				}).
 				Only(r.Context())
 			if err != nil {
-				http.Error(w, "could not find user", http.StatusInternalServerError)
+				http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
+				return
+			}
+			if !user.IsActive {
+				clearAuthTokenCookie(w, secureCookies)
+				http.Redirect(w, r, adminBasePath+"login/", http.StatusSeeOther)
 				return
 			}
 
