@@ -51,13 +51,6 @@ type AdminHandler struct {
 	credentialGenerator     auth.CredentialGenerator
 	tokenGenerator          auth.TokenGenerator
 	secureCookies           bool
-	authMiddleware          func(http.Handler) http.Handler
-	userMiddleware          func(http.Handler) http.Handler
-	staffMiddleware           func(http.Handler) http.Handler
-	loggerMiddleware          func(http.Handler) http.Handler
-	csrfTokenMiddleware      func(http.Handler) http.Handler
-	csrfLoadMiddleware       func(http.Handler) http.Handler
-	csrfValidationMiddleware func(http.Handler) http.Handler
 }
 
 const adminBasePath = "{{ $adminPath }}"
@@ -68,24 +61,15 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		return nil, err
 	}
 
-	tokenAuthenticator := auth.NewJwtTokenAuthenticator(config.SecretProvider)
-
 	h := &AdminHandler{
 		client:                  config.Client,
 		credentialAuthenticator: config.CredentialAuthenticator,
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
-		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
-		userMiddleware:          NewUserMiddleware(config.Client, config.SecureCookies),
-		staffMiddleware:          NewStaffMiddleware(),
-		loggerMiddleware:         newLoggerMiddleware(),
-		csrfTokenMiddleware:      requestctx.CSRFTokenMiddleware(config.SecureCookies),
-		csrfLoadMiddleware:       requestctx.CSRFLoadMiddleware(),
-		csrfValidationMiddleware: requestctx.CSRFValidationMiddleware(),
 	}
 
-	routes, err := h.registerRoutes()
+	routes, err := h.registerRoutes(config.SecretProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -94,37 +78,48 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	return h, nil
 }
 
-func (h *AdminHandler) registerRoutes() (http.Handler, error) {
+// registerRoutes wires the admin HTTP tree. Convention: only safe reads use GET;
+// state changes use POST, PUT, PATCH, or DELETE so CSRF validation applies.
+func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.Handler, error) {
+	tokenAuthenticator := auth.NewJwtTokenAuthenticator(secretProvider)
+	loggerMiddleware := newLoggerMiddleware()
+	csrfMiddleware := requestctx.CSRFMiddleware(h.secureCookies)
+	authMiddleware := NewAuthenticationMiddleware(tokenAuthenticator)
+	userMiddleware := NewUserMiddleware(h.client, h.secureCookies)
+	staffMiddleware := NewStaffMiddleware()
+
 	root := route.New()
 	if err := root.Mount(adminBasePath, func(admin *route.Router) {
-		admin.Use(h.loggerMiddleware, requestctx.AdminPathMiddleware(adminBasePath))
+		admin.Use(loggerMiddleware, requestctx.AdminPathMiddleware(adminBasePath))
 
 		admin.Handle("/static/", vent.StaticDirHandler())
 
-		admin.GET("/login/", h.getLoginHandler(), h.csrfTokenMiddleware)
-		admin.POST("/login/", h.postLoginHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware)
-		admin.GET("/logout/", h.getLogoutHandler())
+		admin.Use(csrfMiddleware)
+
+		admin.GET("/login/", h.getLoginHandler())
+		admin.POST("/login/", h.postLoginHandler())
+		admin.POST("/logout/", h.postLogoutHandler())
 
 		admin.Group("", func(authed *route.Router) {
-			authed.Use(h.authMiddleware, h.userMiddleware, h.staffMiddleware)
+			authed.Use(authMiddleware, userMiddleware, staffMiddleware)
 
-			authed.GET("/{$}", h.getAdminHandler(), h.csrfTokenMiddleware)
+			authed.GET("/{$}", h.getAdminHandler())
 
 			{{ range $item := $adminNodes }}
 			{{ $node := $item.Node }}
 			{{ $rc := $item.RC }}
 			{{ $permSuffix := resourceName $node.Name }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
-				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.POST("/", h.post{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+				schema.GET("/", h.get{{ $node.Name }}ListHandler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.POST("/", h.post{{ $node.Name }}Handler(), NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 				{{- if eq $node.Name $userSchema }}
-				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
 				{{- end }}
 			})
 			{{ end }}
@@ -215,11 +210,14 @@ func (h *AdminHandler) getLoginHandler() http.Handler {
 	})
 }
 
-// getLogoutHandler returns the handler for GET /admin/logout/
-func (h *AdminHandler) getLogoutHandler() http.Handler {
+// postLogoutHandler returns the handler for POST /admin/logout/
+func (h *AdminHandler) postLogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clearAuthTokenCookie(w, r, h.secureCookies)
-		http.Redirect(w, r, requestctx.MustAdminPath(r.Context())+"login/", http.StatusSeeOther)
+		sse := datastar.NewSSE(w, r)
+		if err := sse.Redirect(requestctx.MustAdminPath(r.Context()) + "login/"); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
 	})
 }
 

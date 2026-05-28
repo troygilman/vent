@@ -43,41 +43,48 @@ func AdminPathMiddleware(path string) func(http.Handler) http.Handler {
 	}
 }
 
-func CSRFTokenMiddleware(secureCookies bool) func(http.Handler) http.Handler {
+// CSRFMiddleware manages CSRF tokens for admin requests.
+// Safe methods rotate the token on each request. Mutating methods require a valid
+// cookie and matching X-CSRF-Token header, then load the token into context for
+// templates and error re-renders.
+func CSRFMiddleware(secureCookies bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token, err := auth.NewCSRFToken()
-			if err != nil {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			if isSafeMethod(r.Method) {
+				token, err := auth.NewCSRFToken()
+				if err != nil {
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				auth.SetCSRFTokenCookie(w, token, MustAdminPath(r.Context()), secureCookies)
+				next.ServeHTTP(w, r.WithContext(WithCSRFToken(r.Context(), token)))
 				return
 			}
-			auth.SetCSRFTokenCookie(w, token, MustAdminPath(r.Context()), secureCookies)
-			ctx := WithCSRFToken(r.Context(), token)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
 
-func CSRFLoadMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie(auth.CSRFTokenCookieName)
-			if err == nil && cookie.Value != "" {
-				r = r.WithContext(WithCSRFToken(r.Context(), cookie.Value))
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func CSRFValidationMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !auth.ValidateCSRFToken(r) {
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 				return
 			}
-			next.ServeHTTP(w, r)
+			token := csrfTokenFromCookie(r)
+			next.ServeHTTP(w, r.WithContext(WithCSRFToken(r.Context(), token)))
 		})
 	}
 }
+
+func csrfTokenFromCookie(r *http.Request) string {
+	cookie, err := r.Cookie(auth.CSRFTokenCookieName)
+	if err != nil || cookie.Value == "" {
+		return ""
+	}
+	return cookie.Value
+}
+
+func isSafeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
+}
+

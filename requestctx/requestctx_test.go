@@ -68,12 +68,13 @@ func TestAdminPathMiddleware(t *testing.T) {
 	}
 }
 
-func TestCSRFTokenMiddleware(t *testing.T) {
+func TestCSRFMiddlewareIssuesTokenWhenNoCookie(t *testing.T) {
 	var got string
 	handler := AdminPathMiddleware("/admin/")(
-		CSRFTokenMiddleware(false)(
+		CSRFMiddleware(false)(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				got = MustCSRFToken(r.Context())
+				w.WriteHeader(http.StatusNoContent)
 			}),
 		),
 	)
@@ -82,33 +83,124 @@ func TestCSRFTokenMiddleware(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/admin/login/", nil)
 	handler.ServeHTTP(rec, req)
 
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
 	if got == "" {
 		t.Fatal("expected csrf token in context")
 	}
-	cookies := rec.Result().Cookies()
-	var found bool
-	for _, c := range cookies {
-		if c.Name == auth.CSRFTokenCookieName && c.Value == got {
-			found = true
-		}
+	if len(got) != 64 {
+		t.Fatalf("token length = %d, want 64", len(got))
 	}
-	if !found {
+	if findCSRFCookie(rec) == nil || findCSRFCookie(rec).Value != got {
 		t.Fatal("expected csrf cookie to match context token")
 	}
 }
 
-func TestCSRFLoadMiddleware(t *testing.T) {
+func TestCSRFMiddlewareRotatesTokenOnGET(t *testing.T) {
 	handler := AdminPathMiddleware("/admin/")(
-		CSRFLoadMiddleware()(
+		CSRFMiddleware(false)(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if MustCSRFToken(r.Context()) == "existing-token" {
+					t.Fatal("GET should rotate csrf token, not reuse cookie value")
+				}
+				w.WriteHeader(http.StatusNoContent)
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/login/", nil)
+	req.AddCookie(&http.Cookie{Name: auth.CSRFTokenCookieName, Value: "existing-token"})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	cookie := findCSRFCookie(rec)
+	if cookie == nil || cookie.Value == "existing-token" {
+		t.Fatal("expected rotated csrf cookie on GET")
+	}
+}
+
+func TestCSRFMiddlewareLoadsExistingCookieOnPOST(t *testing.T) {
+	handler := AdminPathMiddleware("/admin/")(
+		CSRFMiddleware(false)(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if MustCSRFToken(r.Context()) != "existing-token" {
 					t.Fatalf("unexpected csrf token in context")
 				}
+				w.WriteHeader(http.StatusNoContent)
+			}),
+		),
+	)
+
+	t.Run(http.MethodPost, func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/admin/login/", nil)
+		req.AddCookie(&http.Cookie{Name: auth.CSRFTokenCookieName, Value: "existing-token"})
+		req.Header.Set(auth.CSRFTokenHeaderName, "existing-token")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+		}
+	})
+}
+
+func TestCSRFMiddlewareRejectsPOSTWithoutValidToken(t *testing.T) {
+	called := false
+	handler := AdminPathMiddleware("/admin/")(
+		CSRFMiddleware(false)(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.WriteHeader(http.StatusNoContent)
 			}),
 		),
 	)
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/login/", nil)
-	req.AddCookie(&http.Cookie{Name: auth.CSRFTokenCookieName, Value: "existing-token"})
-	handler.ServeHTTP(httptest.NewRecorder(), req)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if called {
+		t.Fatal("handler was called without valid csrf token")
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestCSRFMiddlewareRejectsPOSTWithMismatchedToken(t *testing.T) {
+	called := false
+	handler := AdminPathMiddleware("/admin/")(
+		CSRFMiddleware(false)(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.WriteHeader(http.StatusNoContent)
+			}),
+		),
+	)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/login/", nil)
+	req.AddCookie(&http.Cookie{Name: auth.CSRFTokenCookieName, Value: "cookie-token"})
+	req.Header.Set(auth.CSRFTokenHeaderName, "header-token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if called {
+		t.Fatal("handler was called with mismatched csrf token")
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func findCSRFCookie(rec *httptest.ResponseRecorder) *http.Cookie {
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.CSRFTokenCookieName {
+			return cookie
+		}
+	}
+	return nil
 }

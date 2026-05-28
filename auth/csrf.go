@@ -10,6 +10,8 @@ import (
 const (
 	CSRFTokenCookieName = "vent-csrf-token"
 	CSRFTokenHeaderName = "X-CSRF-Token"
+	// CSRFTokenMaxAge matches the auth session lifetime.
+	CSRFTokenMaxAge = 24 * 60 * 60
 )
 
 func NewCSRFToken() (string, error) {
@@ -25,6 +27,7 @@ func SetCSRFTokenCookie(w http.ResponseWriter, token, path string, secure bool) 
 		Name:     CSRFTokenCookieName,
 		Value:    token,
 		Path:     path,
+		MaxAge:   CSRFTokenMaxAge,
 		HttpOnly: false,
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,

@@ -112,4 +112,7 @@ func TestSetCSRFTokenCookie(t *testing.T) {
 	if cookie.SameSite != http.SameSiteStrictMode {
 		t.Fatalf("SameSite = %v, want Strict", cookie.SameSite)
 	}
+	if cookie.MaxAge != CSRFTokenMaxAge {
+		t.Fatalf("MaxAge = %d, want %d", cookie.MaxAge, CSRFTokenMaxAge)
+	}
 }

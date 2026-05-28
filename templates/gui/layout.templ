@@ -27,7 +27,14 @@ templ Layout(props LayoutProps) {
 					</li>
 				}
 				<li></li>
-				<li><a href={ templ.SafeURL(requestctx.MustAdminPath(ctx) + "logout/") }>Logout</a></li>
+				<li>
+					<button
+						type="button"
+						class="w-full text-left"
+						data-on:click={ "@post('" + requestctx.MustAdminPath(ctx) + "logout/')" }
+						data-indicator="_indicator"
+					>Logout</button>
+				</li>
 			</ul>
 		</div>
 		<div class="flex grow min-w-0 justify-center">
