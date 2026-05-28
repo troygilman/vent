@@ -28,6 +28,7 @@ import (
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/auth"
 	"github.com/troygilman/vent/requestctx"
+	"github.com/troygilman/vent/route"
 	"github.com/troygilman/vent/templates/gui"
 
 	"github.com/starfederation/datastar-go/datastar"
@@ -44,7 +45,7 @@ type AdminConfig struct {
 
 // AdminHandler is the main HTTP handler for the admin panel
 type AdminHandler struct {
-	mux                     *http.ServeMux
+	routes                  http.Handler
 	client                  *Client
 	credentialAuthenticator auth.CredentialAuthenticator
 	credentialGenerator     auth.CredentialGenerator
@@ -70,7 +71,6 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	tokenAuthenticator := auth.NewJwtTokenAuthenticator(config.SecretProvider)
 
 	h := &AdminHandler{
-		mux:                     http.NewServeMux(),
 		client:                  config.Client,
 		credentialAuthenticator: config.CredentialAuthenticator,
 		credentialGenerator:     config.CredentialGenerator,
@@ -85,34 +85,55 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		csrfValidationMiddleware: requestctx.CSRFValidationMiddleware(),
 	}
 
-	// Unauthorized routes
-	h.handle("GET "+adminBasePath+"static/", http.StripPrefix(adminBasePath, vent.StaticDirHandler()))
-	h.handle("GET "+adminBasePath+"login/", h.getLoginHandler(), h.loggerMiddleware, h.csrfTokenMiddleware)
-	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware)
-	h.handle("GET "+adminBasePath+"logout/", h.getLogoutHandler(), h.loggerMiddleware)
-
-	// Authorized routes - admin home
-	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware)
-
-	// Schema routes
-	{{ range $item := $adminNodes }}
-	{{ $node := $item.Node }}
-	{{ $rc := $item.RC }}
-	{{ $permSuffix := resourceName $node.Name }}
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("POST "+adminBasePath+"{{ $rc.RouteName }}/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/{$}", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	{{- if eq $node.Name $userSchema }}
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("PUT "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	{{- end }}
-	h.handle("PATCH "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.csrfLoadMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
-	{{ end }}
+	routes, err := h.registerRoutes()
+	if err != nil {
+		return nil, err
+	}
+	h.routes = routes
 
 	return h, nil
+}
+
+func (h *AdminHandler) registerRoutes() (http.Handler, error) {
+	root := route.New()
+	if err := root.Mount(adminBasePath, func(admin *route.Router) {
+		admin.Use(h.loggerMiddleware, requestctx.AdminPathMiddleware(adminBasePath))
+
+		admin.Handle("/static/", vent.StaticDirHandler())
+
+		admin.GET("/login/", h.getLoginHandler(), h.csrfTokenMiddleware)
+		admin.POST("/login/", h.postLoginHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware)
+		admin.GET("/logout/", h.getLogoutHandler())
+
+		admin.Group("", func(authed *route.Router) {
+			authed.Use(h.authMiddleware, h.userMiddleware, h.staffMiddleware)
+
+			authed.GET("/{$}", h.getAdminHandler(), h.csrfTokenMiddleware)
+
+			{{ range $item := $adminNodes }}
+			{{ $node := $item.Node }}
+			{{ $rc := $item.RC }}
+			{{ $permSuffix := resourceName $node.Name }}
+			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
+				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.POST("/", h.post{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+				{{- if eq $node.Name $userSchema }}
+				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.csrfValidationMiddleware, h.csrfLoadMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				{{- end }}
+			})
+			{{ end }}
+		})
+	}); err != nil {
+		return nil, err
+	}
+
+	return root.Handler(), nil
 }
 
 func validateAdminConfig(config AdminConfig) error {
@@ -136,16 +157,7 @@ func validateAdminConfig(config AdminConfig) error {
 }
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
-}
-
-func (h *AdminHandler) handle(pattern string, handler http.Handler, middleware ...func(http.Handler) http.Handler) {
-	middleware = append([]func(http.Handler) http.Handler{requestctx.AdminPathMiddleware(adminBasePath)}, middleware...)
-	for i := len(middleware) - 1; i >= 0; i-- {
-		handler = middleware[i](handler)
-	}
-	h.mux.Handle(pattern, handler)
-	log.Printf("Registered handler on %s", pattern)
+	h.routes.ServeHTTP(w, r)
 }
 
 // buildLayoutProps creates LayoutProps with schema metadata
@@ -298,11 +310,6 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 // getAdminHandler returns the handler for GET /admin/
 func (h *AdminHandler) getAdminHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != adminBasePath {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
 		props := gui.AdminPageProps{
 			LayoutProps: h.buildLayoutProps(r.Context(),""),
 		}

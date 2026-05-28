@@ -1225,6 +1225,9 @@
       }
     }
   }
+  .absolute {
+    position: absolute;
+  }
   .relative {
     position: relative;
   }
@@ -1700,6 +1703,9 @@
   }
   .text-error {
     color: var(--color-error);
+  }
+  .uppercase {
+    text-transform: uppercase;
   }
   .opacity-50 {
     opacity: 50%;
