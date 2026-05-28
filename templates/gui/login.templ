@@ -2,12 +2,13 @@ package gui
 
 type LoginProps struct {
 	AdminPath      string
+	CSRFToken      string
 	EmailError     string
 	PasswordErrors []string
 }
 
 templ LoginPage(props LoginProps) {
-	@Index(props.AdminPath) {
+	@Index(props.AdminPath, props.CSRFToken) {
 		@Login(props)
 		@Indicator()
 	}

@@ -13,7 +13,7 @@ type SchemaEntityAddProps struct {
 
 templ SchemaEntityAddPage(props SchemaEntityAddProps) {
 	{{ schemaEntityPath := fmt.Sprintf("%s%s/", props.AdminPath, props.RouteName) }}
-	@Index(props.AdminPath) {
+	@Index(props.AdminPath, props.LayoutProps.CSRFToken) {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
 				TitleText:    fmt.Sprintf("Add %s", props.SingularDisplayName),

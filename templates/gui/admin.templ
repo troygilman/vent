@@ -5,7 +5,7 @@ type AdminPageProps struct {
 }
 
 templ AdminPage(props AdminPageProps) {
-	@Index(props.LayoutProps.AdminPath) {
+	@Index(props.LayoutProps.AdminPath, props.LayoutProps.CSRFToken) {
 		@Layout(props.LayoutProps)
 	}
 }

@@ -51,8 +51,10 @@ type AdminHandler struct {
 	secureCookies           bool
 	authMiddleware          func(http.Handler) http.Handler
 	userMiddleware          func(http.Handler) http.Handler
-	staffMiddleware  func(http.Handler) http.Handler
-	loggerMiddleware func(http.Handler) http.Handler
+	staffMiddleware           func(http.Handler) http.Handler
+	loggerMiddleware          func(http.Handler) http.Handler
+	csrfTokenMiddleware       func(http.Handler) http.Handler
+	csrfValidationMiddleware  func(http.Handler) http.Handler
 }
 
 const adminBasePath = "{{ $adminPath }}"
@@ -74,35 +76,37 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		secureCookies:           config.SecureCookies,
 		authMiddleware:          NewAuthenticationMiddleware(tokenAuthenticator),
 		userMiddleware:          NewUserMiddleware(config.Client, config.SecureCookies),
-		staffMiddleware:         NewStaffMiddleware(),
-		loggerMiddleware:        newLoggerMiddleware(),
+		staffMiddleware:          NewStaffMiddleware(),
+		loggerMiddleware:         newLoggerMiddleware(),
+		csrfTokenMiddleware:      NewCSRFTokenMiddleware(config.SecureCookies),
+		csrfValidationMiddleware: NewCSRFValidationMiddleware(),
 	}
 
 	// Unauthorized routes
 	h.handle("GET "+adminBasePath+"static/", http.StripPrefix(adminBasePath, vent.StaticDirHandler()))
-	h.handle("GET "+adminBasePath+"login/", h.getLoginHandler(), h.loggerMiddleware)
-	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware)
+	h.handle("GET "+adminBasePath+"login/", h.getLoginHandler(), h.loggerMiddleware, h.csrfTokenMiddleware)
+	h.handle("POST "+adminBasePath+"login/", h.postLoginHandler(), h.loggerMiddleware, h.csrfValidationMiddleware)
 	h.handle("GET "+adminBasePath+"logout/", h.getLogoutHandler(), h.loggerMiddleware)
 
 	// Authorized routes - admin home
-	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware)
+	h.handle("GET "+adminBasePath, h.getAdminHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware)
 
 	// Schema routes
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
 	{{ $rc := $item.RC }}
 	{{ $permSuffix := resourceName $node.Name }}
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("POST "+adminBasePath+"{{ $rc.RouteName }}/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/{$}", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/", h.get{{ $node.Name }}ListHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("POST "+adminBasePath+"{{ $rc.RouteName }}/", h.post{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/add/{$}", h.get{{ $node.Name }}AddHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.get{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
 	{{- if eq $node.Name $userSchema }}
-	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-	h.handle("PUT "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("GET "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, h.csrfTokenMiddleware, NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
+	h.handle("PUT "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
 	{{- end }}
-	h.handle("PATCH "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+	h.handle("PATCH "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.patch{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+	h.handle("DELETE "+adminBasePath+"{{ $rc.RouteName }}/{id}/", h.delete{{ $node.Name }}Handler(), h.loggerMiddleware, h.csrfValidationMiddleware, h.authMiddleware, h.userMiddleware, h.staffMiddleware, NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
 	{{ end }}
 
 	return h, nil
@@ -141,7 +145,7 @@ func (h *AdminHandler) handle(pattern string, handler http.Handler, middleware .
 }
 
 // buildLayoutProps creates LayoutProps with schema metadata
-func (h *AdminHandler) buildLayoutProps(activeSchemaName string) gui.LayoutProps {
+func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string) gui.LayoutProps {
 	schemas := []gui.SchemaMetadata{
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
@@ -154,6 +158,7 @@ func (h *AdminHandler) buildLayoutProps(activeSchemaName string) gui.LayoutProps
 	})
 	return gui.LayoutProps{
 		AdminPath:        adminBasePath,
+		CSRFToken:        GetCSRFToken(ctx),
 		Schemas:          schemas,
 		ActiveSchemaName: activeSchemaName,
 	}
@@ -191,6 +196,7 @@ func (h *AdminHandler) getLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props := gui.LoginProps{
 			AdminPath: adminBasePath,
+			CSRFToken: GetCSRFToken(r.Context()),
 		}
 		if err := gui.LoginPage(props).Render(r.Context(), w); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
@@ -222,6 +228,7 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 
 		loginProps := gui.LoginProps{
 			AdminPath: adminBasePath,
+			CSRFToken: GetCSRFToken(r.Context()),
 		}
 
 		err := func() error {
@@ -301,7 +308,7 @@ func (h *AdminHandler) getAdminHandler() http.Handler {
 		}
 
 		props := gui.AdminPageProps{
-			LayoutProps: h.buildLayoutProps(""),
+			LayoutProps: h.buildLayoutProps(r.Context(),""),
 		}
 
 		if err := gui.AdminPage(props).Render(r.Context(), w); err != nil {
@@ -361,7 +368,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 		}
 
 		props := gui.SchemaTableProps{
-			LayoutProps:         h.buildLayoutProps("{{ $node.Name }}"),
+			LayoutProps:         h.buildLayoutProps(r.Context(),"{{ $node.Name }}"),
 			AdminPath:           adminBasePath,
 			RouteName:           "{{ $rc.RouteName }}",
 			SingularDisplayName: "{{ $rc.SingularDisplayName }}",
@@ -425,7 +432,7 @@ func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, er
 	{{ end }}
 
 	return gui.SchemaEntityAddProps{
-		LayoutProps:         h.buildLayoutProps("{{ $node.Name }}"),
+		LayoutProps:         h.buildLayoutProps(ctx, "{{ $node.Name }}"),
 		AdminPath:           adminBasePath,
 		RouteName:           "{{ $rc.RouteName }}",
 		SingularDisplayName: "{{ $rc.SingularDisplayName }}",
@@ -555,7 +562,7 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 	{{ end }}
 
 	props := gui.SchemaEntityProps{
-		LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
+		LayoutProps:   h.buildLayoutProps(ctx, "{{ $node.Name }}"),
 		AdminPath:     adminBasePath,
 		RouteName:     "{{ $rc.RouteName }}",
 		EntityID:      id,
@@ -797,7 +804,7 @@ func (h *AdminHandler) build{{ $node.Name }}PasswordPageProps(ctx context.Contex
 	}
 
 	return gui.SchemaEntityPasswordProps{
-		LayoutProps:   h.buildLayoutProps("{{ $node.Name }}"),
+		LayoutProps:   h.buildLayoutProps(ctx, "{{ $node.Name }}"),
 		AdminPath:     adminBasePath,
 		RouteName:     "{{ $rc.RouteName }}",
 		EntityID:      id,
@@ -1035,6 +1042,39 @@ func GetClaims(ctx context.Context) (*auth.VentClaims, error) {
 
 type claimsContextKey struct{}
 type userContextKey struct{}
+type csrfTokenContextKey struct{}
+
+func GetCSRFToken(ctx context.Context) string {
+	token, _ := ctx.Value(csrfTokenContextKey{}).(string)
+	return token
+}
+
+func NewCSRFTokenMiddleware(secureCookies bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := auth.NewCSRFToken()
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			auth.SetCSRFTokenCookie(w, token, adminBasePath, secureCookies)
+			ctx := context.WithValue(r.Context(), csrfTokenContextKey{}, token)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func NewCSRFValidationMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !auth.ValidateCSRFToken(r) {
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
 
 func NewAuthenticationMiddleware(authenticator auth.TokenAuthenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

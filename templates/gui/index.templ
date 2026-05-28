@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-templ Index(adminPath string) {
+templ Index(adminPath string, csrfToken string) {
 	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	<!DOCTYPE html>
 	<html lang="en">
@@ -14,8 +14,12 @@ templ Index(adminPath string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+			if csrfToken != "" {
+				<meta name="csrf-token" content={ csrfToken }/>
+			}
 			<title>Vent Admin</title>
 			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/css/style.css") }/>
+			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>
 			<script type="module" src={ datastarPath }></script>
 			<script type="module" src={ templ.URL(adminPath + "static/js/datastar-plugins.js") }></script>
 			@ImportMap(map[string]any{
