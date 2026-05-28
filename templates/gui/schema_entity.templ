@@ -1,10 +1,13 @@
 package gui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/requestctx"
+)
 
 type SchemaEntityProps struct {
 	LayoutProps   LayoutProps
-	AdminPath     string
 	RouteName     string
 	EntityID      int
 	EntityDisplay string
@@ -13,8 +16,8 @@ type SchemaEntityProps struct {
 }
 
 templ SchemaEntityPage(props SchemaEntityProps) {
-	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", props.AdminPath, props.RouteName, props.EntityID) }}
-	@Index(props.AdminPath, props.LayoutProps.CSRFToken) {
+	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID) }}
+	@Index() {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
 				TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),

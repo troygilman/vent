@@ -8,9 +8,9 @@ package gui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "github.com/troygilman/vent/requestctx"
+
 type LayoutProps struct {
-	AdminPath        string
-	CSRFToken        string
 	Schemas          []SchemaMetadata
 	ActiveSchemaName string
 }
@@ -105,9 +105,9 @@ func Layout(props LayoutProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 templ.SafeURL
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(props.AdminPath + "logout/"))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(requestctx.MustAdminPath(ctx) + "logout/"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/layout.templ`, Line: 30, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/layout.templ`, Line: 30, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {

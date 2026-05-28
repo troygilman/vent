@@ -8,9 +8,9 @@ package gui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "github.com/troygilman/vent/requestctx"
+
 type LoginProps struct {
-	AdminPath      string
-	CSRFToken      string
 	EmailError     string
 	PasswordErrors []string
 }
@@ -62,7 +62,7 @@ func LoginPage(props LoginProps) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Index(props.AdminPath, props.CSRFToken).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Index().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -96,9 +96,9 @@ func Login(props LoginProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("@post('" + props.AdminPath + "login/')")
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("@post('" + requestctx.MustAdminPath(ctx) + "login/')")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 20, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 20, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {

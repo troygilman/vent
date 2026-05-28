@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+
+	"github.com/troygilman/vent/requestctx"
 )
 
-templ Index(adminPath string, csrfToken string) {
+templ Index() {
+	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	<!DOCTYPE html>
 	<html lang="en">
@@ -14,9 +17,7 @@ templ Index(adminPath string, csrfToken string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
-			if csrfToken != "" {
-				<meta name="csrf-token" content={ csrfToken }/>
-			}
+			<meta name="csrf-token" content={ requestctx.MustCSRFToken(ctx) }/>
 			<title>Vent Admin</title>
 			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/css/style.css") }/>
 			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>

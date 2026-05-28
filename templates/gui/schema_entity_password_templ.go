@@ -8,11 +8,14 @@ package gui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/requestctx"
+)
 
 type SchemaEntityPasswordProps struct {
 	LayoutProps   LayoutProps
-	AdminPath     string
 	RouteName     string
 	EntityID      int
 	EntityDisplay string
@@ -41,8 +44,8 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		entityPath := fmt.Sprintf("%s%s/%d/", props.AdminPath, props.RouteName, props.EntityID)
-		passwordPath := fmt.Sprintf("%s%s/%d/password/", props.AdminPath, props.RouteName, props.EntityID)
+		entityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID)
+		passwordPath := fmt.Sprintf("%s%s/%d/password/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID)
 		status := "Not set"
 		if props.PasswordSet {
 			status = "Set"
@@ -78,7 +81,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(props.EntityDisplay)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 25, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 28, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -96,7 +99,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.ErrorMessage)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 28, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 31, Col: 32}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -114,7 +117,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(status)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 34, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 37, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -127,7 +130,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@put('%s')", passwordPath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 47, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 50, Col: 107}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 				if templ_7745c5c3_Err != nil {
@@ -150,7 +153,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@delete('%s')", passwordPath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 52, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 55, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
@@ -163,7 +166,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.JSONString("Are you sure you want to remove the password for " + props.EntityDisplay))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 53, Col: 119}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 56, Col: 119}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -176,7 +179,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 				var templ_7745c5c3_Var10 templ.SafeURL
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(entityPath))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 59, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_password.templ`, Line: 62, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -198,7 +201,7 @@ func SchemaEntityPasswordPage(props SchemaEntityPasswordProps) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Index(props.AdminPath, props.LayoutProps.CSRFToken).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Index().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

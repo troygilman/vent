@@ -1,8 +1,8 @@
 package gui
 
+import "github.com/troygilman/vent/requestctx"
+
 type LayoutProps struct {
-	AdminPath        string
-	CSRFToken        string
 	Schemas          []SchemaMetadata
 	ActiveSchemaName string
 }
@@ -27,7 +27,7 @@ templ Layout(props LayoutProps) {
 					</li>
 				}
 				<li></li>
-				<li><a href={ templ.SafeURL(props.AdminPath + "logout/") }>Logout</a></li>
+				<li><a href={ templ.SafeURL(requestctx.MustAdminPath(ctx) + "logout/") }>Logout</a></li>
 			</ul>
 		</div>
 		<div class="flex grow min-w-0 justify-center">

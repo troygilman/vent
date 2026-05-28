@@ -1,10 +1,13 @@
 package gui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/requestctx"
+)
 
 type SchemaEntityAddProps struct {
 	LayoutProps         LayoutProps
-	AdminPath           string
 	RouteName           string
 	SingularDisplayName string
 	ErrorMessage        string
@@ -12,8 +15,8 @@ type SchemaEntityAddProps struct {
 }
 
 templ SchemaEntityAddPage(props SchemaEntityAddProps) {
-	{{ schemaEntityPath := fmt.Sprintf("%s%s/", props.AdminPath, props.RouteName) }}
-	@Index(props.AdminPath, props.LayoutProps.CSRFToken) {
+	{{ schemaEntityPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
+	@Index() {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
 				TitleText:    fmt.Sprintf("Add %s", props.SingularDisplayName),

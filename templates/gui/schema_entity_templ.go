@@ -8,11 +8,14 @@ package gui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/requestctx"
+)
 
 type SchemaEntityProps struct {
 	LayoutProps   LayoutProps
-	AdminPath     string
 	RouteName     string
 	EntityID      int
 	EntityDisplay string
@@ -41,7 +44,7 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		schemaEntityPath := fmt.Sprintf("%s%s/%d/", props.AdminPath, props.RouteName, props.EntityID)
+		schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID)
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -94,7 +97,7 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Index(props.AdminPath, props.LayoutProps.CSRFToken).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Index().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
