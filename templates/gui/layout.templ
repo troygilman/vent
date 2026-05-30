@@ -21,6 +21,9 @@ templ Layout(props LayoutProps) {
 				<div class="sidebar-brand-subtitle">Admin</div>
 			</div>
 			<ul class="sidebar-nav">
+				<li class={ "nav-item", templ.KV("active", props.ActiveSchemaName == "") }>
+					<a href={ templ.SafeURL(requestctx.MustAdminPath(ctx)) } class="nav-link">Home</a>
+				</li>
 				<li class="nav-title">Schemas</li>
 				for _, schema := range props.Schemas {
 					<li class={ "nav-item", templ.KV("active", schema.Name == props.ActiveSchemaName) }>

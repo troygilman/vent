@@ -6,6 +6,20 @@ type AdminPageProps struct {
 
 templ AdminPage(props AdminPageProps) {
 	@Index() {
-		@Layout(props.LayoutProps)
+		@Layout(props.LayoutProps) {
+			<div class="page-header">
+				<div class="page-title">Home</div>
+			</div>
+			<p class="home-intro">Welcome to Vent Admin. Select a schema below or from the sidebar to get started.</p>
+			if len(props.LayoutProps.Schemas) > 0 {
+				<div class="home-schemas">
+					for _, schema := range props.LayoutProps.Schemas {
+						<a href={ templ.SafeURL(schema.Path) } class="home-schema-card">
+							<span class="home-schema-name">{ schema.DisplayName }</span>
+						</a>
+					}
+				</div>
+			}
+		}
 	}
 }
