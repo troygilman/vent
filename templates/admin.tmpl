@@ -156,7 +156,7 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // buildLayoutProps creates LayoutProps with schema metadata
-func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string) gui.LayoutProps {
+func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
 	schemas := []gui.SchemaMetadata{
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
@@ -170,6 +170,7 @@ func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName st
 	return gui.LayoutProps{
 		Schemas:          schemas,
 		ActiveSchemaName: activeSchemaName,
+		Breadcrumbs:      breadcrumbs,
 	}
 }
 
@@ -309,7 +310,7 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 func (h *AdminHandler) getAdminHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props := gui.AdminPageProps{
-			LayoutProps: h.buildLayoutProps(r.Context(),""),
+			LayoutProps: h.buildLayoutProps(r.Context(), "", gui.HomeBreadcrumbs()),
 		}
 
 		if err := gui.AdminPage(props).Render(r.Context(), w); err != nil {
@@ -369,7 +370,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 		}
 
 		props := gui.SchemaTableProps{
-			LayoutProps:         h.buildLayoutProps(r.Context(),"{{ $node.Name }}"),
+			LayoutProps: h.buildLayoutProps(r.Context(), "{{ $node.Name }}", gui.SchemaListBreadcrumbs("{{ $rc.PluralDisplayName }}")),
 			RouteName:           "{{ $rc.RouteName }}",
 			SingularDisplayName: "{{ $rc.SingularDisplayName }}",
 			PluralDisplayName:   "{{ $rc.PluralDisplayName }}",
@@ -432,7 +433,12 @@ func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, er
 	{{ end }}
 
 	return gui.SchemaEntityAddProps{
-		LayoutProps:         h.buildLayoutProps(ctx, "{{ $node.Name }}"),
+		LayoutProps: h.buildLayoutProps(ctx, "{{ $node.Name }}", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"{{ $rc.RouteName }}",
+			"{{ $rc.PluralDisplayName }}",
+			"{{ $rc.SingularDisplayName }}",
+		)),
 		RouteName:           "{{ $rc.RouteName }}",
 		SingularDisplayName: "{{ $rc.SingularDisplayName }}",
 		ErrorMessage:        errorMessage,
@@ -560,11 +566,17 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 	{{- end }}
 	{{ end }}
 
+	entityDisplay := fmt.Sprintf("%v", e.{{ $rc.DisplayField }})
 	props := gui.SchemaEntityProps{
-		LayoutProps:   h.buildLayoutProps(ctx, "{{ $node.Name }}"),
+		LayoutProps: h.buildLayoutProps(ctx, "{{ $node.Name }}", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"{{ $rc.RouteName }}",
+			"{{ $rc.PluralDisplayName }}",
+			entityDisplay,
+		)),
 		RouteName:     "{{ $rc.RouteName }}",
 		EntityID:      id,
-		EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
+		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
 		Fields:        fields,
 	}
@@ -801,11 +813,18 @@ func (h *AdminHandler) build{{ $node.Name }}PasswordPageProps(ctx context.Contex
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
+	entityDisplay := fmt.Sprintf("%v", e.{{ $rc.DisplayField }})
 	return gui.SchemaEntityPasswordProps{
-		LayoutProps:   h.buildLayoutProps(ctx, "{{ $node.Name }}"),
+		LayoutProps: h.buildLayoutProps(ctx, "{{ $node.Name }}", gui.SchemaPasswordBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"{{ $rc.RouteName }}",
+			"{{ $rc.PluralDisplayName }}",
+			entityDisplay,
+			id,
+		)),
 		RouteName:     "{{ $rc.RouteName }}",
 		EntityID:      id,
-		EntityDisplay: fmt.Sprintf("%v", e.{{ $rc.DisplayField }}),
+		EntityDisplay: entityDisplay,
 		PasswordSet:   passwordHashIsSet(e.PasswordHash),
 		ErrorMessage:  errorMessage,
 	}, nil

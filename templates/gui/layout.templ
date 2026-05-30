@@ -5,6 +5,7 @@ import "github.com/troygilman/vent/requestctx"
 type LayoutProps struct {
 	Schemas          []SchemaMetadata
 	ActiveSchemaName string
+	Breadcrumbs      []BreadcrumbItem
 }
 
 type SchemaMetadata struct {
@@ -42,8 +43,17 @@ templ Layout(props LayoutProps) {
 			</ul>
 		</div>
 		<div class="content-area">
-			<div class="page-content">
-				{ children... }
+			if len(props.Breadcrumbs) > 0 {
+				<div class="content-chrome">
+					<div class="content-chrome-inner">
+						@Breadcrumbs(props.Breadcrumbs)
+					</div>
+				</div>
+			}
+			<div class="content-main">
+				<div class="page-content">
+					{ children... }
+				</div>
 			</div>
 		</div>
 	</div>

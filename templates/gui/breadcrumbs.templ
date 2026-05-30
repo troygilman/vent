@@ -1,0 +1,17 @@
+package gui
+
+templ Breadcrumbs(items []BreadcrumbItem) {
+	<nav class="breadcrumbs" aria-label="Breadcrumb">
+		<ol class="breadcrumb-list">
+			for _, item := range items {
+				<li class="breadcrumb-item">
+					if item.Href != "" {
+						<a href={ templ.SafeURL(item.Href) } class="breadcrumb-link">{ item.Label }</a>
+					} else {
+						<span class="breadcrumb-current" aria-current="page">{ item.Label }</span>
+					}
+				</li>
+			}
+		</ol>
+	</nav>
+}
