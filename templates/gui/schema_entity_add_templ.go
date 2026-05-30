@@ -72,7 +72,8 @@ func SchemaEntityAddPage(props SchemaEntityAddProps) templ.Component {
 					TitleText:    fmt.Sprintf("Add %s", props.SingularDisplayName),
 					ErrorMessage: props.ErrorMessage,
 					Fields:       props.Fields,
-					Buttons: []templ.Component{
+					BackURL:      schemaEntityPath,
+					ActionButtons: []templ.Component{
 						SchemaEntityAddButton(schemaEntityPath),
 					},
 				}).Render(ctx, templ_7745c5c3_Buffer)

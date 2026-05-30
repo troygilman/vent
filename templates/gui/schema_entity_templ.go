@@ -44,6 +44,7 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		schemaListPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName)
 		schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID)
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -73,9 +74,12 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 					TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
 					ErrorMessage: props.ErrorMessage,
 					Fields:       props.Fields,
-					Buttons: []templ.Component{
+					BackURL:      schemaListPath,
+					ActionButtons: []templ.Component{
 						SchemaEntitySaveButton(schemaEntityPath),
-						SchemaEntityDeleteButton(schemaEntityPath),
+					},
+					TrailingButtons: []templ.Component{
+						SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay),
 					},
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {

@@ -14,31 +14,32 @@ type SchemaMetadata struct {
 }
 
 templ Layout(props LayoutProps) {
-	<div class="flex flex-row w-full h-full bg-base-100">
-		<div class="rounded-box border border-base-content/5 bg-base-200 drop-shadow z-100">
-			<ul class="menu bg-base-200 rounded-box w-56">
-				<li class="menu-title">Schemas</li>
+	<div class="admin-layout">
+		<div class="sidebar">
+			<div class="sidebar-brand">
+				<div class="sidebar-brand-title">Vent</div>
+				<div class="sidebar-brand-subtitle">Admin</div>
+			</div>
+			<ul class="sidebar-nav">
+				<li class="nav-title">Schemas</li>
 				for _, schema := range props.Schemas {
-					<li>
-						<a
-							href={ schema.Path }
-							class={ templ.KV("menu-active", schema.Name == props.ActiveSchemaName) }
-						>{ schema.DisplayName }</a>
+					<li class={ "nav-item", templ.KV("active", schema.Name == props.ActiveSchemaName) }>
+						<a href={ schema.Path } class="nav-link">{ schema.DisplayName }</a>
 					</li>
 				}
-				<li></li>
-				<li>
+				<li class="nav-spacer"></li>
+				<li class="nav-item">
 					<button
 						type="button"
-						class="w-full text-left"
+						class="nav-link nav-link-muted"
 						data-on:click={ "@post('" + requestctx.MustAdminPath(ctx) + "logout/')" }
 						data-indicator="_indicator"
 					>Logout</button>
 				</li>
 			</ul>
 		</div>
-		<div class="flex grow min-w-0 justify-center">
-			<div class="flex grow max-w-7xl relative">
+		<div class="content-area">
+			<div class="page-content">
 				{ children... }
 			</div>
 		</div>

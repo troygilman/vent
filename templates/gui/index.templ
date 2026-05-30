@@ -19,17 +19,20 @@ templ Index() {
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<meta name="csrf-token" content={ requestctx.MustCSRFToken(ctx) }/>
 			<title>Vent Admin</title>
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
 			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/css/style.css") }/>
 			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>
-			<script type="module" src={ datastarPath }></script>
-			<script type="module" src={ templ.URL(adminPath + "static/js/datastar-plugins.js") }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{
 					"datastar": datastarPath,
 				},
 			})
+			<script type="module" src={ datastarPath }></script>
+			<script type="module" src={ templ.URL(adminPath + "static/js/datastar-plugins.js") }></script>
 		</head>
-		<body class="flex w-screen h-screen relative">
+		<body>
 			{ children... }
 		</body>
 	</html>

@@ -15,14 +15,14 @@ templ LoginPage(props LoginProps) {
 }
 
 templ Login(props LoginProps) {
-	<div id="login" class="flex w-full h-full bg-base-200 justify-center place-items-center">
-		<div class="card card-border bg-base-100 w-96 shadow">
-			<form class="card-body" data-on:submit={ "@post('" + requestctx.MustAdminPath(ctx) + "login/')" } data-indicator="_indicator">
-				<h2 class="card-title text-3xl font-bold">Admin Login</h2>
-				<div class="flex flex-col py-2 gap-2">
-					<div>
-						<label class={ "input", templ.KV("input-error", props.EmailError != "") }>
-							<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+	<div id="login" class="login-shell">
+		<div class="login-card">
+			<form class="login-body" data-on:submit={ "@post('" + requestctx.MustAdminPath(ctx) + "login/')" } data-indicator="_indicator">
+				<h2 class="login-title">Admin Login</h2>
+				<div class="login-fields">
+					<div class="login-field">
+						<label class={ "input", templ.KV("error", props.EmailError != "") }>
+							<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 								<g
 									stroke-linejoin="round"
 									stroke-linecap="round"
@@ -36,11 +36,13 @@ templ Login(props LoginProps) {
 							</svg>
 							<input type="email" data-bind="login.email" placeholder="mail@site.com" required/>
 						</label>
-						<div class="text-error mt-1">{ props.EmailError }</div>
+						if props.EmailError != "" {
+							<div class="text-error">{ props.EmailError }</div>
+						}
 					</div>
-					<div>
-						<label class={ "input", templ.KV("input-error", len(props.PasswordErrors) > 0) }>
-							<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+					<div class="login-field">
+						<label class={ "input", templ.KV("error", len(props.PasswordErrors) > 0) }>
+							<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 								<g
 									stroke-linejoin="round"
 									stroke-linecap="round"
@@ -61,17 +63,19 @@ templ Login(props LoginProps) {
 								placeholder="Password"
 							/>
 						</label>
-						<p class="text-error mt-1">
-							for idx, err := range props.PasswordErrors {
-								{ err }
-								if idx != len(props.PasswordErrors)-1 {
-									<br/>
+						if len(props.PasswordErrors) > 0 {
+							<p class="text-error">
+								for idx, err := range props.PasswordErrors {
+									{ err }
+									if idx != len(props.PasswordErrors)-1 {
+										<br/>
+									}
 								}
-							}
-						</p>
+							</p>
+						}
 					</div>
 				</div>
-				<div class="card-actions">
+				<div class="login-actions">
 					<button class="btn btn-primary btn-block" type="submit">Login</button>
 				</div>
 			</form>

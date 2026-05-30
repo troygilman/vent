@@ -13,7 +13,7 @@ Vent generates beautiful, fully functional admin interfaces from your Ent schema
   - [Ent](https://entgo.io/) for ORM
   - [Templ](https://templ.guide/) for type-safe components
   - HTMX + [Datastar](https://datastar.dev/) for reactive frontend
-  - Tailwind CSS for styling
+  - Native CSS (custom properties + specialized components)
 - **Built-in auth system** (users, groups, permissions with RBAC)
 - **Automatic CRUD** for any Ent schema
 - **Highly customizable** via schema annotations
@@ -98,7 +98,7 @@ just gen          # Regenerate CSS, Templ, and Vent admin code
 |-----------------|-------------------------------------|
 | Backend         | Go 1.26 + Ent                      |
 | UI Components   | Templ + HTMX + Datastar            |
-| Styling         | Tailwind CSS                       |
+| Styling         | Native CSS (palette + components)  |
 | Auth            | JWT + bcrypt                       |
 | Database        | Any Ent-supported DB (SQLite demo) |
 

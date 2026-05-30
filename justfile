@@ -2,9 +2,9 @@ dev: gen
     go run ./examples/basic/cmd/server
 
 gen:
-    npx @tailwindcss/cli -i ./tailwind.css -o ./static/css/style.css
     templ generate ./templates/gui/
     go run ./cmd/vent gen --schema ./examples/basic/ent/schema
+    # CSS is now native (static/css/style.css). No Tailwind build step required.
 
 migrations:
     go run examples/basic/ent/migrate/main.go create_users

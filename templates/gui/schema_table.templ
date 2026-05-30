@@ -34,14 +34,13 @@ templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
-			<div class="flex flex-col w-full px-12 py-4">
-				<div class="flex flex-row w-full justify-between pb-4">
-					<div class="text-xl font-bold mb-4">{ props.PluralDisplayName }</div>
-					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-neutral">Add { props.SingularDisplayName }</button></a>
-				</div>
-				<div class="w-full overflow-x-auto rounded-box border border-base-content/5 shadow">
-					<table class="table table-zebra">
-						<thead class="sticky top-0 bg-base-100">
+			<div class="page-header">
+				<div class="page-title">{ props.PluralDisplayName }</div>
+				<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+			</div>
+			<div class="table-container">
+					<table class="data-table">
+						<thead>
 							<tr>
 								for _, column := range props.Columns {
 									<th>{ column.Label }</th>
@@ -54,7 +53,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 									for _, cell := range row.Cells {
 										if cell.LinkURL != "" {
 											<td>
-												<a class="link link-info" href={ templ.SafeURL(cell.LinkURL) }>
+												<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
 													{ cell.Display }
 												</a>
 											</td>
@@ -65,8 +64,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								</tr>
 							}
 						</tbody>
-					</table>
-				</div>
+				</table>
 			</div>
 		}
 	}

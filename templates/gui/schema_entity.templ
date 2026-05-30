@@ -16,6 +16,7 @@ type SchemaEntityProps struct {
 }
 
 templ SchemaEntityPage(props SchemaEntityProps) {
+	{{ schemaListPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
@@ -23,9 +24,12 @@ templ SchemaEntityPage(props SchemaEntityProps) {
 				TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
 				ErrorMessage: props.ErrorMessage,
 				Fields:       props.Fields,
-				Buttons: []templ.Component{
+				BackURL:      schemaListPath,
+				ActionButtons: []templ.Component{
 					SchemaEntitySaveButton(schemaEntityPath),
-					SchemaEntityDeleteButton(schemaEntityPath),
+				},
+				TrailingButtons: []templ.Component{
+					SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay),
 				},
 			})
 			@Indicator()
