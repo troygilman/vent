@@ -453,6 +453,12 @@ a {
     overflow-x: auto;
     border-radius: var(--radius);
 }
+.table-empty {
+    padding: var(--space-6);
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
 
 /* Entity form grid */
 .entity-form {
@@ -741,9 +747,6 @@ select.select[multiple] option:hover {
 }
 .data-table tbody tr:last-child td {
     border-bottom: none;
-}
-.data-table tbody tr:hover td {
-    background: var(--color-bg-secondary);
 }
 .data-table .link {
     color: var(--color-primary);

@@ -39,15 +39,20 @@ templ SchemaTablePage(props SchemaTableProps) {
 				<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
 			</div>
 			<div class="table-container">
-					<table class="data-table">
-						<thead>
+				<table class="data-table">
+					<thead>
+						<tr>
+							for _, column := range props.Columns {
+								<th>{ column.Label }</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						if len(props.Rows) == 0 {
 							<tr>
-								for _, column := range props.Columns {
-									<th>{ column.Label }</th>
-								}
+								<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
 							</tr>
-						</thead>
-						<tbody>
+						} else {
 							for _, row := range props.Rows {
 								<tr>
 									for _, cell := range row.Cells {
@@ -63,7 +68,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 									}
 								</tr>
 							}
-						</tbody>
+						}
+					</tbody>
 				</table>
 			</div>
 		}
