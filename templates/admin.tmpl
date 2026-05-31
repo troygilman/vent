@@ -84,13 +84,14 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 	tokenAuthenticator := auth.NewJwtTokenAuthenticator(secretProvider)
 	loggerMiddleware := newLoggerMiddleware()
 	csrfMiddleware := requestctx.CSRFMiddleware(h.secureCookies)
+	themeMiddleware := requestctx.ThemeMiddleware(h.secureCookies)
 	authMiddleware := NewAuthenticationMiddleware(tokenAuthenticator)
 	userMiddleware := NewUserMiddleware(h.client, h.secureCookies)
 	staffMiddleware := NewStaffMiddleware()
 
 	root := route.New()
 	if err := root.Mount(adminBasePath, func(admin *route.Router) {
-		admin.Use(loggerMiddleware, requestctx.AdminPathMiddleware(adminBasePath))
+		admin.Use(loggerMiddleware, requestctx.AdminPathMiddleware(adminBasePath), themeMiddleware)
 
 		admin.Handle("/static/", vent.StaticDirHandler())
 
@@ -103,6 +104,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 		admin.Group("", func(authed *route.Router) {
 			authed.Use(authMiddleware, userMiddleware, staffMiddleware)
 
+			authed.POST("/preferences/theme/", h.postThemeHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
 			{{ range $item := $adminNodes }}
@@ -211,6 +213,23 @@ func (h *AdminHandler) getLoginHandler() http.Handler {
 	})
 }
 
+// postThemeHandler returns the handler for POST /admin/preferences/theme/
+func (h *AdminHandler) postThemeHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		newTheme := auth.NextTheme(requestctx.MustTheme(r.Context()))
+		auth.SetThemeCookie(w, newTheme, requestctx.MustAdminPath(r.Context()), h.secureCookies)
+
+		sse := datastar.NewSSE(w, r)
+		if err := sse.ExecuteScript(fmt.Sprintf(`document.documentElement.setAttribute("data-theme", %q)`, newTheme)); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+		if err := sse.PatchElementTempl(gui.ThemeToggle(newTheme)); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+		}
+	})
+}
+
 // postLogoutHandler returns the handler for POST /admin/logout/
 func (h *AdminHandler) postLogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -273,21 +292,7 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 				return err
 			}
 
-			// Set cookie
-			maxAge := int(time.Until(claims.ExpiresAt.Time).Seconds())
-			if maxAge < 0 {
-				maxAge = 0
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:     "vent-auth-token",
-				Value:    token,
-				Path:     requestctx.MustAdminPath(r.Context()),
-				Expires:  claims.ExpiresAt.Time,
-				MaxAge:   maxAge,
-				HttpOnly: true,
-				Secure:   h.secureCookies,
-				SameSite: http.SameSiteLaxMode,
-			})
+			setAuthTokenCookie(w, r, token, claims, h.secureCookies)
 
 			return nil
 		}()
@@ -303,6 +308,23 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 				handleError(w, r, err, http.StatusInternalServerError)
 			}
 		}
+	})
+}
+
+func setAuthTokenCookie(w http.ResponseWriter, r *http.Request, token string, claims *auth.VentClaims, secureCookies bool) {
+	maxAge := int(time.Until(claims.ExpiresAt.Time).Seconds())
+	if maxAge < 0 {
+		maxAge = 0
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "vent-auth-token",
+		Value:    token,
+		Path:     requestctx.MustAdminPath(r.Context()),
+		Expires:  claims.ExpiresAt.Time,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   secureCookies,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 

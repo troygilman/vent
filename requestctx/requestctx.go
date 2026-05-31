@@ -9,6 +9,7 @@ import (
 
 type adminPathKey struct{}
 type csrfTokenKey struct{}
+type themeKey struct{}
 
 func WithAdminPath(ctx context.Context, path string) context.Context {
 	return context.WithValue(ctx, adminPathKey{}, path)
@@ -32,6 +33,45 @@ func MustCSRFToken(ctx context.Context) string {
 		panic("requestctx: csrf token not found in context")
 	}
 	return token
+}
+
+func WithTheme(ctx context.Context, theme string) context.Context {
+	return context.WithValue(ctx, themeKey{}, auth.NormalizeTheme(theme))
+}
+
+func MustTheme(ctx context.Context) string {
+	theme, ok := ctx.Value(themeKey{}).(string)
+	if !ok || theme == "" {
+		panic("requestctx: theme not found in context")
+	}
+	return theme
+}
+
+// ThemeMiddleware reads the theme cookie into context and ensures a valid cookie
+// exists on safe methods. The theme cookie is never cleared — only set or updated.
+func ThemeMiddleware(secureCookies bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			raw := themeFromCookie(r)
+			theme := auth.NormalizeTheme(raw)
+
+			if isSafeMethod(r.Method) {
+				if raw == "" || raw != theme {
+					auth.SetThemeCookie(w, theme, MustAdminPath(r.Context()), secureCookies)
+				}
+			}
+
+			next.ServeHTTP(w, r.WithContext(WithTheme(r.Context(), theme)))
+		})
+	}
+}
+
+func themeFromCookie(r *http.Request) string {
+	cookie, err := r.Cookie(auth.ThemeCookieName)
+	if err != nil || cookie.Value == "" {
+		return ""
+	}
+	return cookie.Value
 }
 
 func AdminPathMiddleware(path string) func(http.Handler) http.Handler {

@@ -10,9 +10,10 @@ import (
 
 templ Index() {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
+	{{ theme := requestctx.MustTheme(ctx) }}
 	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="en" data-theme={ theme }>
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>

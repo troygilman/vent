@@ -1,5 +1,12 @@
 package gui
 
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/requestctx"
+)
+
 templ Indicator() {
 	<div class="indicator" data-class:show="$_indicator">
 		<span class="loading loading-bars loading-xl"></span>
@@ -23,4 +30,59 @@ templ LogoutIcon() {
 			<path d="M21 12H9"></path>
 		</g>
 	</svg>
+}
+
+templ ThemeSystemIcon() {
+	<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+		<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+			<rect width="20" height="14" x="2" y="3" rx="2"></rect>
+			<path d="M8 21h8"></path>
+			<path d="M12 17v4"></path>
+		</g>
+	</svg>
+}
+
+templ ThemeLightIcon() {
+	<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+		<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+			<circle cx="12" cy="12" r="4"></circle>
+			<path d="M12 2v2"></path>
+			<path d="M12 20v2"></path>
+			<path d="m4.93 4.93 1.41 1.41"></path>
+			<path d="m17.66 17.66 1.41 1.41"></path>
+			<path d="M2 12h2"></path>
+			<path d="M20 12h2"></path>
+			<path d="m6.34 17.66-1.41 1.41"></path>
+			<path d="m19.07 4.93-1.41 1.41"></path>
+		</g>
+	</svg>
+}
+
+templ ThemeDarkIcon() {
+	<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+		<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+			<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+		</g>
+	</svg>
+}
+
+templ ThemeToggle(theme string) {
+	{{ nextTheme := auth.NextTheme(theme) }}
+	<button
+		id="theme-toggle"
+		type="button"
+		class="nav-link nav-link-muted"
+		aria-label={ fmt.Sprintf("Theme: %s. Click to switch to %s.", auth.ThemeLabel(theme), auth.ThemeLabel(nextTheme)) }
+		data-on:click={ "@post('" + requestctx.MustAdminPath(ctx) + "preferences/theme/')" }
+	>
+		switch theme {
+		case auth.ThemeSystem:
+			@ThemeSystemIcon()
+		case auth.ThemeLight:
+			@ThemeLightIcon()
+		case auth.ThemeDark:
+			@ThemeDarkIcon()
+		}
+		<span>{ auth.ThemeLabel(theme) }</span>
+	</button>
 }
