@@ -180,6 +180,7 @@ a {
     position: relative;
     display: flex;
     align-items: center;
+    gap: var(--space-2);
     width: 100%;
     min-height: 2rem;
     padding: 0.4375rem var(--sidebar-pad-x);
@@ -225,6 +226,17 @@ a {
 }
 .nav-link-muted:hover {
     color: var(--color-text);
+}
+.nav-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    opacity: 0.55;
+    transition: opacity var(--ease);
+}
+.nav-link:hover .nav-icon,
+.nav-item.active > .nav-link .nav-icon {
+    opacity: 0.9;
 }
 .content-area {
     flex: 1;

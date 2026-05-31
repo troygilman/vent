@@ -23,7 +23,10 @@ templ Layout(props LayoutProps) {
 			</div>
 			<ul class="sidebar-nav">
 				<li class={ "nav-item", templ.KV("active", props.ActiveSchemaName == "") }>
-					<a href={ templ.SafeURL(requestctx.MustAdminPath(ctx)) } class="nav-link">Home</a>
+					<a href={ templ.SafeURL(requestctx.MustAdminPath(ctx)) } class="nav-link">
+						@HomeIcon()
+						Home
+					</a>
 				</li>
 				<li class="nav-title">Schemas</li>
 				for _, schema := range props.Schemas {
@@ -38,7 +41,10 @@ templ Layout(props LayoutProps) {
 						class="nav-link nav-link-muted"
 						data-on:click={ "@post('" + requestctx.MustAdminPath(ctx) + "logout/')" }
 						data-indicator="_indicator"
-					>Logout</button>
+					>
+						@LogoutIcon()
+						Logout
+					</button>
 				</li>
 			</ul>
 		</div>
