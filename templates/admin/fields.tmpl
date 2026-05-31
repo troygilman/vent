@@ -1,0 +1,351 @@
+{{ define "admin/handler/helper/schema_fields_file" }}
+{{ $node := .Node }}
+{{ $rc := .RC }}
+{{ template "admin/handler/helper/header" . }}
+
+import (
+	"context"
+	"fmt"
+
+	ent "{{ $.Config.Package }}"
+	"github.com/troygilman/vent"
+	"github.com/troygilman/vent/requestctx"
+	"github.com/troygilman/vent/templates/gui"
+)
+
+{{ $ctx := dict "Node" $node "RC" $rc }}
+{{ template "admin/handler/helper/schema_fields" $ctx }}
+{{ end }}
+
+{{ define "admin/handler/helper/schema_fields" }}
+{{ $node := get . "Node" }}
+{{ $rc := get . "RC" }}
+
+// {{ $node.Name }}Field is the typed admin field contract for {{ $node.Name }}.
+type {{ $node.Name }}Field interface {
+	ListCell(e *ent.{{ $node.Name }}) string
+	CreateHTML(ctx context.Context) (string, error)
+	UpdateHTML(ctx context.Context, e *ent.{{ $node.Name }}) (string, error)
+	ApplyCreate(ctx context.Context, builder *ent.{{ $node.Name }}Create, input {{ $node.Name }}CreateInput) error
+	ApplyUpdate(ctx context.Context, builder *ent.{{ $node.Name }}UpdateOne, input {{ $node.Name }}UpdateInput) error
+}
+
+// {{ $node.Name }}Fields holds the generated admin field implementations for {{ $node.Name }}.
+type {{ $node.Name }}Fields struct {
+	listColumns      []{{ $node.Name }}Field
+	createFormFields []{{ $node.Name }}Field
+	updateFormFields []{{ $node.Name }}Field
+	createBindFields []{{ $node.Name }}Field
+	updateBindFields []{{ $node.Name }}Field
+}
+
+func new{{ $node.Name }}Fields(client *ent.Client) {{ $node.Name }}Fields {
+	f := {{ $node.Name }}Fields{}
+	{{- range $member := $rc.AdminSurface }}
+	{{ $member.SlotName }} := {{ $node.Name }}{{ $member.SlotName }}{client: client}
+	{{- end }}
+	f.listColumns = []{{ $node.Name }}Field{
+		{{- range $col := $rc.TableColumns }}
+		{{ $col.SlotName }},
+		{{- end }}
+	}
+	f.createFormFields = []{{ $node.Name }}Field{
+		{{- range $member := $rc.AdminSurface }}
+		{{- if and $member.InForm (not (eq $member.Name "id")) (not (isCustomFieldPassword $member)) }}
+		{{ $member.SlotName }},
+		{{- end }}
+		{{- end }}
+	}
+	f.updateFormFields = []{{ $node.Name }}Field{
+		{{- range $member := $rc.AdminSurface }}
+		{{- if $member.InForm }}
+		{{ $member.SlotName }},
+		{{- end }}
+		{{- end }}
+	}
+	f.createBindFields = []{{ $node.Name }}Field{
+		{{- range $member := $rc.AdminSurface }}
+		{{- if $member.BindCreate }}
+		{{ $member.SlotName }},
+		{{- end }}
+		{{- end }}
+	}
+	f.updateBindFields = []{{ $node.Name }}Field{
+		{{- range $member := $rc.AdminSurface }}
+		{{- if $member.BindUpdate }}
+		{{ $member.SlotName }},
+		{{- end }}
+		{{- end }}
+	}
+	return f
+}
+
+func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query {
+	{{- range $member := $rc.AdminSurface }}
+	{{- if $member.EagerLoad }}
+	q = q.With{{ pascal $member.Name }}()
+	{{- end }}
+	{{- end }}
+	return q
+}
+
+{{ range $member := $rc.AdminSurface }}
+{{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
+{{ template "admin/handler/helper/schema_field_type" $ctx }}
+{{ end }}
+{{ end }}
+
+{{ define "admin/handler/helper/schema_field_type" }}
+{{ $node := get . "Node" }}
+{{ $rc := get . "RC" }}
+{{ $member := get . "Member" }}
+
+type {{ $node.Name }}{{ $member.SlotName }} struct {
+	client *ent.Client
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}) string {
+	{{- if eq $member.Name "id" }}
+	return fmt.Sprintf("%d", e.ID)
+	{{- else if isCustomFieldPassword $member }}
+	return ""
+	{{- else if isMemberKindEdge $member }}
+	{{- if $member.EdgeUnique }}
+	if e.Edges.{{ pascal $member.Name }} != nil {
+		return fmt.Sprintf("%v", e.Edges.{{ pascal $member.Name }}.{{ $member.EdgeDisplayField }})
+	}
+	return ""
+	{{- else }}
+	return fmt.Sprintf("%v", e.Edges.{{ pascal $member.Name }})
+	{{- end }}
+	{{- else }}
+	return vent.FormatFormValue(e.{{ pascal $member.Name }})
+	{{- end }}
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) (string, error) {
+	{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
+	return "", nil
+	{{- else if isMemberKindEdge $member }}
+	options, err := f.load{{ pascal $member.Name }}Options(context.Background())
+	if err != nil {
+		return "", err
+	}
+	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+		Name:     "{{ $member.Name }}",
+		Label:    "{{ $member.Label }}",
+		Editable: true,
+		Options:  options,
+	})
+	{{- else }}
+	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+		Name:     "{{ $member.Name }}",
+		Label:    "{{ $member.Label }}",
+		Editable: true,
+	})
+	{{- end }}
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, e *ent.{{ $node.Name }}) (string, error) {
+	{{- if eq $member.Name "id" }}
+	return gui.RenderIntFieldHTML(ctx, gui.SchemaEntityIntFieldProps{
+		Name:     "id",
+		Label:    "ID",
+		Value:    fmt.Sprintf("%d", e.ID),
+		Editable: false,
+	})
+	{{- else if isCustomFieldPassword $member }}
+	status := "Not set"
+	if vent.PasswordHashIsSet(e.PasswordHash) {
+		status = "Set"
+	}
+	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
+		Name:        "password",
+		Label:       "Password",
+		Value:       status,
+		Editable:    false,
+		ActionLabel: "Manage Password",
+		ActionURL:   fmt.Sprintf("%s{{ $rc.RouteName }}/%d/password/", requestctx.MustAdminPath(ctx), e.ID),
+	})
+	{{- else if isMemberKindEdge $member }}
+	options, err := f.load{{ pascal $member.Name }}OptionsWithSelection(ctx, e)
+	if err != nil {
+		return "", err
+	}
+	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+		Name:     "{{ $member.Name }}",
+		Label:    "{{ $member.Label }}",
+		Editable: {{ $member.BindUpdate }},
+		Options:  options,
+	})
+	{{- else }}
+	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+		Name:     "{{ $member.Name }}",
+		Label:    "{{ $member.Label }}",
+		{{- if not (isFieldKindPassword $member.FieldKind) }}
+		Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
+		{{- end }}
+		Editable: {{ $member.BindUpdate }},
+	})
+	{{- end }}
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, builder *ent.{{ $node.Name }}Create, input {{ $node.Name }}CreateInput) error {
+	{{- if not $member.BindCreate }}
+	return nil
+	{{- else }}
+	{{- if isMemberKindEdge $member }}
+	{{- if $member.EdgeUnique }}
+	if input.{{ pascal $member.Name }} != "" {
+		id, err := parseID(input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+		if err != nil {
+			return err
+		}
+		builder.Set{{ pascal $member.Name }}ID(id)
+	}
+	{{- else }}
+	if len(input.{{ pascal $member.Name }}) > 0 {
+		ids, err := parseIDList(input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+		if err != nil {
+			return err
+		}
+		builder.Add{{ $member.EdgeSingular }}IDs(ids...)
+	}
+	{{- end }}
+	{{- else if isFieldKindTime $member.FieldKind }}
+	{{- if $member.OptionalOnCreate }}
+	if input.{{ pascal $member.Name }} != nil {
+		if *input.{{ pascal $member.Name }} != "" {
+			value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+			if err != nil {
+				return err
+			}
+			{{- if $member.Nillable }}
+			builder.SetNillable{{ pascal $member.Name }}(&value)
+			{{- else }}
+			builder.Set{{ pascal $member.Name }}(value)
+			{{- end }}
+		}
+	}
+	{{- else }}
+	value, err := vent.ParseDateTimeLocalField(input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+	if err != nil {
+		return err
+	}
+	builder.Set{{ pascal $member.Name }}(value)
+	{{- end }}
+	{{- else if $member.OptionalOnCreate }}
+	if input.{{ pascal $member.Name }} != nil {
+		{{- if $member.Nillable }}
+		builder.SetNillable{{ pascal $member.Name }}(input.{{ pascal $member.Name }})
+		{{- else }}
+		builder.Set{{ pascal $member.Name }}(*input.{{ pascal $member.Name }})
+		{{- end }}
+	}
+	{{- else }}
+	builder.Set{{ pascal $member.Name }}(input.{{ pascal $member.Name }})
+	{{- end }}
+	return nil
+	{{- end }}
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, builder *ent.{{ $node.Name }}UpdateOne, input {{ $node.Name }}UpdateInput) error {
+	{{- if not $member.BindUpdate }}
+	return nil
+	{{- else }}
+	{{- if isMemberKindEdge $member }}
+	{{- if $member.EdgeUnique }}
+	if input.{{ pascal $member.Name }} != nil {
+		if *input.{{ pascal $member.Name }} != "" {
+			id, err := parseID(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+			if err != nil {
+				return err
+			}
+			builder.Set{{ pascal $member.Name }}ID(id)
+		} else {
+			builder.Clear{{ pascal $member.Name }}()
+		}
+	}
+	{{- else }}
+	if input.{{ pascal $member.Name }} != nil {
+		builder.Clear{{ pascal $member.Name }}()
+		if len(*input.{{ pascal $member.Name }}) > 0 {
+			ids, err := parseIDList(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+			if err != nil {
+				return err
+			}
+			builder.Add{{ $member.EdgeSingular }}IDs(ids...)
+		}
+	}
+	{{- end }}
+	{{- else if $member.Nillable }}
+	if input.{{ pascal $member.Name }}.Set {
+		if input.{{ pascal $member.Name }}.Value == nil {
+			builder.Clear{{ pascal $member.Name }}()
+		} else {
+			{{- if isFieldKindTime $member.FieldKind }}
+			value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}.Value, "{{ $member.Name }}")
+			if err != nil {
+				return err
+			}
+			builder.SetNillable{{ pascal $member.Name }}(&value)
+			{{- else }}
+			builder.SetNillable{{ pascal $member.Name }}(input.{{ pascal $member.Name }}.Value)
+			{{- end }}
+		}
+	}
+	{{- else }}
+	if input.{{ pascal $member.Name }} != nil {
+		{{- if isFieldKindTime $member.FieldKind }}
+		value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+		if err != nil {
+			return err
+		}
+		builder.Set{{ pascal $member.Name }}(value)
+		{{- else }}
+		builder.Set{{ pascal $member.Name }}(*input.{{ pascal $member.Name }})
+		{{- end }}
+	}
+	{{- end }}
+	return nil
+	{{- end }}
+}
+
+{{- if isMemberKindEdge $member }}
+func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Options(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.{{ $member.EdgeTypeName }}.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := make([]gui.SelectOption, len(entities))
+	for i, entity := range entities {
+		options[i] = gui.SelectOption{
+			Value: entity.ID,
+			Label: fmt.Sprintf("%v", entity.{{ $member.EdgeDisplayField }}),
+		}
+	}
+	return options, nil
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}OptionsWithSelection(ctx context.Context, e *ent.{{ $node.Name }}) ([]gui.SelectOption, error) {
+	options, err := f.load{{ pascal $member.Name }}Options(ctx)
+	if err != nil {
+		return nil, err
+	}
+	{{- if $member.EdgeUnique }}
+	for i := range options {
+		options[i].Selected = e.Edges.{{ pascal $member.Name }} != nil && e.Edges.{{ pascal $member.Name }}.ID == options[i].Value
+	}
+	{{- else }}
+	selected := make(map[int]struct{})
+	for _, related := range e.Edges.{{ pascal $member.Name }} {
+		selected[related.ID] = struct{}{}
+	}
+	for i := range options {
+		_, options[i].Selected = selected[options[i].Value]
+	}
+	{{- end }}
+	return options, nil
+}
+{{- end }}
+{{ end }}

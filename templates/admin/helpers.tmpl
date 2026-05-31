@@ -1,0 +1,211 @@
+{{ define "admin/helpers" }}
+
+{{ template "admin/handler/helper/header" $ }}
+
+{{ $authSchemas := $.Annotations.VentConfig.AuthSchemas }}
+{{ $userSchema := $authSchemas.User }}
+{{ $groupSchema := $authSchemas.Group }}
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
+	ent "{{ $.Config.Package }}"
+	"{{ $.Config.Package }}/{{ lower $userSchema }}"
+	"{{ $.Config.Package }}/{{ lower $groupSchema }}"
+	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/requestctx"
+)
+
+type OptionalInput[T any] struct {
+	Set   bool
+	Value *T
+}
+
+func (o *OptionalInput[T]) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var value T
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	o.Value = &value
+	return nil
+}
+
+func parseID(value string, label string) (int, error) {
+	id, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s id", label)
+	}
+	return id, nil
+}
+
+func parseIDList(values []string, label string) ([]int, error) {
+	ids := make([]int, 0, len(values))
+	for _, value := range values {
+		id, err := parseID(value, label)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func GetUser(ctx context.Context) (*ent.{{ $userSchema }}, error) {
+	user, ok := ctx.Value(userContextKey{}).(*ent.{{ $userSchema }})
+	if !ok {
+		return nil, errors.New("user not found in context")
+	}
+	return user, nil
+}
+
+func GetClaims(ctx context.Context) (*auth.VentClaims, error) {
+	claims, ok := ctx.Value(claimsContextKey{}).(*auth.VentClaims)
+	if !ok {
+		return nil, errors.New("claims not found in context")
+	}
+	return claims, nil
+}
+
+type claimsContextKey struct{}
+type userContextKey struct{}
+
+func NewAuthenticationMiddleware(authenticator auth.TokenAuthenticator) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenCookie, err := r.Cookie("vent-auth-token")
+			if err != nil {
+				http.Redirect(w, r, requestctx.MustAdminPath(r.Context())+"login/", http.StatusSeeOther)
+				return
+			}
+
+			claims, err := authenticator.Authenticate(tokenCookie.Value)
+			if err != nil {
+				http.Redirect(w, r, requestctx.MustAdminPath(r.Context())+"login/", http.StatusSeeOther)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), claimsContextKey{}, claims)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func clearAuthTokenCookie(w http.ResponseWriter, r *http.Request, secureCookies bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "vent-auth-token",
+		Value:    "",
+		Path:     requestctx.MustAdminPath(r.Context()),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func NewUserMiddleware(client *ent.Client, secureCookies bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, err := GetClaims(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			userID, err := strconv.Atoi(claims.Subject)
+			if err != nil {
+				http.Error(w, "claims ID is not an int", http.StatusInternalServerError)
+				return
+			}
+
+			user, err := client.{{ $userSchema }}.Query().
+				Where({{ lower $userSchema }}.IDEQ(userID)).
+				WithGroups(func(q *ent.{{ $groupSchema }}Query) {
+					q.WithPermissions()
+				}).
+				Only(r.Context())
+			if err != nil {
+				http.Redirect(w, r, requestctx.MustAdminPath(r.Context())+"login/", http.StatusSeeOther)
+				return
+			}
+			if !user.IsActive {
+				clearAuthTokenCookie(w, r, secureCookies)
+				http.Redirect(w, r, requestctx.MustAdminPath(r.Context())+"login/", http.StatusSeeOther)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), userContextKey{}, user)
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func NewStaffMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, err := GetUser(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if !user.IsStaff {
+				http.Error(w, "user is not staff", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, err := GetUser(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if !user.IsSuperuser {
+				userPermissions := make(map[string]struct{})
+				for _, group := range user.Edges.Groups {
+					for _, permission := range group.Edges.Permissions {
+						userPermissions[permission.Name] = struct{}{}
+					}
+				}
+
+				for _, permission := range permissions {
+					if _, ok := userPermissions[permission]; !ok {
+						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusForbidden)
+						return
+					}
+				}
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func newLoggerMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("%s %s\n", r.Method, r.RequestURI)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+{{ end }}

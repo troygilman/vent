@@ -1,0 +1,225 @@
+package gui
+
+import (
+	"fmt"
+	"strconv"
+)
+
+type SelectOption struct {
+	Value    int
+	Label    string
+	Selected bool
+}
+
+type SchemaEntityTextFieldProps struct {
+	Name        string
+	Label       string
+	Value       string
+	Editable    bool
+	Desc        string
+	ActionLabel string
+	ActionURL   string
+}
+
+type SchemaEntityPasswordFieldProps struct {
+	Name     string
+	Label    string
+	Editable bool
+	Desc     string
+}
+
+type SchemaEntityIntFieldProps struct {
+	Name     string
+	Label    string
+	Value    string
+	Editable bool
+	Desc     string
+}
+
+type SchemaEntityFloatFieldProps struct {
+	Name     string
+	Label    string
+	Value    string
+	Editable bool
+	Desc     string
+}
+
+type SchemaEntityBoolFieldProps struct {
+	Name     string
+	Label    string
+	Value    string
+	Editable bool
+	Desc     string
+}
+
+type SchemaEntityTimeFieldProps struct {
+	Name     string
+	Label    string
+	Value    string
+	Editable bool
+	Desc     string
+}
+
+type SchemaEntityForeignKeyUniqueFieldProps struct {
+	Name     string
+	Label    string
+	Editable bool
+	Desc     string
+	Options  []SelectOption
+}
+
+type SchemaEntityForeignKeyFieldProps struct {
+	Name     string
+	Label    string
+	Editable bool
+	Desc     string
+	Options  []SelectOption
+}
+
+templ SchemaEntityTextField(props SchemaEntityTextFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="input">
+				<input type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+				if props.ActionLabel != "" && props.ActionURL != "" {
+					<a class="btn btn-neutral btn-sm" href={ templ.SafeURL(props.ActionURL) }>{ props.ActionLabel }</a>
+				}
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityPasswordField(props SchemaEntityPasswordFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="input">
+				<input type="password" data-bind={ entitySignal(props.Name) } placeholder="Enter new password" readonly?={ !props.Editable }/>
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityIntField(props SchemaEntityIntFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="input">
+				<input type="number" step="1" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityFloatField(props SchemaEntityFloatFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="input">
+				<input type="number" step="any" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityBoolField(props SchemaEntityBoolFieldProps) {
+	<div class="field-group">
+		<label class="field field-checkbox">
+			<span class="field-label">{ props.Label }</span>
+			<input class="checkbox checkbox-sm" type="checkbox" data-bind={ entitySignal(props.Name) } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityTimeField(props SchemaEntityTimeFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="input">
+				<input type="datetime-local" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<select class="select" data-bind={ entitySignal(props.Name) } readonly?={ !props.Editable }>
+				<option value="">-- Select --</option>
+				for _, opt := range props.Options {
+					<option
+						value={ strconv.Itoa(opt.Value) }
+						selected?={ opt.Selected }
+					>
+						{ opt.Label }
+					</option>
+				}
+			</select>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}
+
+templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
+	<div class="field-group">
+		<label class="field">
+			<span class="field-label">{ props.Label }</span>
+			<div class="fk-select-group">
+				<select class="select multi-select" data-bind={ "entity." + props.Name } readonly?={ !props.Editable } multiple size="4">
+					for _, opt := range props.Options {
+						<option
+							data-on:mousedown="evt.preventDefault()"
+							data-on:click__prevent="el.selected = true; el.dispatchEvent(new Event('change', { bubbles: true }))"
+							value={ strconv.Itoa(opt.Value) }
+							selected?={ opt.Selected }
+							data-show={ fmt.Sprintf("!$entity.%s.includes('%d')", props.Name, opt.Value) }
+							style="display: none"
+						>
+							{ opt.Label }
+						</option>
+					}
+				</select>
+				<select class="select multi-select" data-bind={ "entity." + props.Name } readonly?={ !props.Editable } multiple size="4">
+					for _, opt := range props.Options {
+						<option
+							data-on:mousedown="evt.preventDefault()"
+							data-on:click__prevent="el.selected = false; el.dispatchEvent(new Event('change', { bubbles: true }))"
+							value={ strconv.Itoa(opt.Value) }
+							selected?={ opt.Selected }
+							data-show={ fmt.Sprintf("$entity.%s.includes('%d')", props.Name, opt.Value) }
+							style="display: none"
+						>
+							{ opt.Label }
+						</option>
+					}
+				</select>
+			</div>
+		</label>
+		if props.Desc != "" {
+			<p class="field-desc">{ props.Desc }</p>
+		}
+	</div>
+}

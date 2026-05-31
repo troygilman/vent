@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/troygilman/vent/auth"
+	"github.com/troygilman/vent/examples/basic/ent/admin"
 	"github.com/troygilman/vent/examples/basic/ent"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -34,7 +35,7 @@ func main() {
 		SetIsSuperuser(true).
 		Save(ctx)
 
-	adminHandler, err := ent.NewAdminHandler(ent.AdminConfig{
+	adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
 		Client: client,
 		SecretProvider: auth.SecretProviderFunc(func() []byte {
 			return []byte("secret")

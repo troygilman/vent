@@ -1,30 +1,33 @@
-{{ define "migrate/vent/migrate" }}
+{{ define "admin/migrate" }}
 
 {{ $authSchemas := $.Annotations.VentConfig.AuthSchemas }}
 {{ $permissionSchema := $authSchemas.Permission }}
 
-package vent
+{{ template "admin/handler/helper/header" $ }}
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"net/url"
+	"text/template"
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
+	ent "{{ $.Config.Package }}"
+	"github.com/troygilman/vent"
 )
 
 var metadata = map[string]vent.VentSchemaAnnotation{
     {{ range $item := renderConfigs $.Nodes }}
     {{ $node := $item.Node }}
-    {{ $annotation := $node.Annotations.VentSchema }}
+    {{ $rc := $item.RC }}
     "{{ resourceName $node.Name }}": {
         Permissions: []vent.Permission{
-            {{ range $permission := $annotation.Permissions }}
+            {{ range $permission := $rc.Permissions }}
             {
                 Name: "{{ $permission.Name }}",
             },
