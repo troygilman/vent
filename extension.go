@@ -3,6 +3,8 @@ package vent
 import (
 	"embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"text/template"
@@ -57,10 +59,7 @@ func (ext *AdminExtension) Hooks() []gen.Hook {
 				if err := next.Generate(graph); err != nil {
 					return err
 				}
-				if err := ext.writeAdminSchemaFiles(graph); err != nil {
-					return err
-				}
-				return cleanupLegacyAdminFiles(graph.Config.Target)
+				return cleanupAdminOutput(graph.Config.Target)
 			})
 		},
 	}
@@ -89,9 +88,9 @@ func (e *AdminExtension) Templates() []*gen.Template {
 			gen.NewTemplate("admin").
 				Funcs(funcs).
 				ParseFS(templates,
-					"templates/admin/header.tmpl",
 					"templates/admin/handler.tmpl",
-					"templates/admin/helpers.tmpl",
+					"templates/admin/schema_handlers.tmpl",
+					"templates/admin/fields.tmpl",
 					"templates/admin/migrate.tmpl",
 				),
 		),
@@ -635,4 +634,61 @@ func normalizeAdminPath(path string) string {
 		path += "/"
 	}
 	return path
+}
+
+func cleanupAdminOutput(target string) error {
+	if err := cleanupLegacyAdminFiles(target); err != nil {
+		return err
+	}
+	return cleanupStaleAdminFiles(target)
+}
+
+func cleanupLegacyAdminFiles(target string) error {
+	legacy := []string{
+		filepath.Join(target, "vent_admin.go"),
+		filepath.Join(target, "migrate", "vent", "migrate.go"),
+	}
+	for _, path := range legacy {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupStaleAdminFiles(target string) error {
+	adminDir := filepath.Join(target, "admin")
+	entries, err := os.ReadDir(adminDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	keep := map[string]struct{}{
+		"handler.go":          {},
+		"schema_handlers.go":  {},
+		"fields.go":           {},
+		"migrate.go":          {},
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if filepath.Ext(name) != ".go" {
+			continue
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(adminDir, name)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
