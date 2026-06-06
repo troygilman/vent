@@ -56,6 +56,14 @@ func (ext *AdminExtension) Hooks() []gen.Hook {
 				if err := validateVentGraph(graph, ext.config); err != nil {
 					return err
 				}
+				configs, err := buildRenderConfigs(graph.Nodes)
+				if err != nil {
+					return err
+				}
+				if err := validateRouteNames(configs); err != nil {
+					return err
+				}
+				setVentConfigAnnotation(graph, ext.config, configs)
 				if err := next.Generate(graph); err != nil {
 					return err
 				}
@@ -76,7 +84,6 @@ func adminTemplateFuncs() template.FuncMap {
 		"isMemberKindEntField":  isMemberKindEntField,
 		"isCustomFieldPassword": isCustomFieldPassword,
 		"fieldsVarName":         fieldsVarName,
-		"renderConfigs":         renderConfigs,
 		"resourceName":          resourceName,
 	}
 }
@@ -159,12 +166,14 @@ func fieldComponentPropsType(member SurfaceMember) string {
 	}
 }
 
-func renderConfigs(nodes []*gen.Type) []NodeRenderConfig {
-	configs, err := buildRenderConfigs(nodes)
-	if err != nil {
-		panic(fmt.Sprintf("vent: render config: %v", err))
+func setVentConfigAnnotation(graph *gen.Graph, config VentExtensionConfig, configs []NodeRenderConfig) {
+	if graph.Annotations == nil {
+		graph.Annotations = gen.Annotations{}
 	}
-	return configs
+	graph.Annotations[VentConfigAnnotation{}.Name()] = VentConfigAnnotation{
+		VentExtensionConfig: config,
+		Configs:               configs,
+	}
 }
 
 func formInputTypeForField(field *gen.Field) FieldKind {
@@ -429,7 +438,6 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	for _, node := range graph.Nodes {
 		errs = append(errs, validateVentSchemaAnnotation(node)...)
 	}
-	errs = append(errs, validateRouteNames(graph.Nodes)...)
 
 	if len(errs) > 0 {
 		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
@@ -457,18 +465,12 @@ func findNode(nodes []*gen.Type, name string) *gen.Type {
 	return nil
 }
 
-func validateRouteNames(nodes []*gen.Type) []string {
+func validateRouteNames(configs []NodeRenderConfig) error {
 	var errs []string
 	seen := make(map[string]string)
-	for _, node := range nodes {
-		rc, err := buildRenderConfig(node)
-		if err != nil {
-			errs = append(errs, err.Error())
-			continue
-		}
-		if !rc.AdminEnabled {
-			continue
-		}
+	for _, item := range configs {
+		rc := item.RC
+		node := item.Node
 		if rc.RouteName == "" {
 			errs = append(errs, fmt.Sprintf("schema %q route name cannot be empty", node.Name))
 			continue
@@ -482,7 +484,10 @@ func validateRouteNames(nodes []*gen.Type) []string {
 			seen[rc.RouteName] = node.Name
 		}
 	}
-	return errs
+	if len(errs) > 0 {
+		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
+	}
+	return nil
 }
 
 func validateVentSchemaAnnotation(node *gen.Type) []string {

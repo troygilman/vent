@@ -11,7 +11,7 @@ package admin
 {{ $permissionSchema := $authSchemas.Permission }}
 
 {{/* Build render configs once for all admin-enabled nodes */}}
-{{ $adminNodes := renderConfigs $.Nodes }}
+{{ $adminNodes := $.Annotations.VentConfig.Configs }}
 
 import (
 	"cmp"

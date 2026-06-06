@@ -3,7 +3,7 @@
 
 package admin
 
-{{ $adminNodes := renderConfigs $.Nodes }}
+{{ $adminNodes := $.Annotations.VentConfig.Configs }}
 
 import (
 	"context"

@@ -24,7 +24,7 @@ import (
 )
 
 var metadata = map[string]vent.VentSchemaAnnotation{
-    {{ range $item := renderConfigs $.Nodes }}
+    {{ range $item := $.Annotations.VentConfig.Configs }}
     {{ $node := $item.Node }}
     {{ $rc := $item.RC }}
     "{{ resourceName $node.Name }}": {
