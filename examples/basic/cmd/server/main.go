@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/troygilman/vent/auth"
-	"github.com/troygilman/vent/examples/basic/ent/admin"
 	"github.com/troygilman/vent/examples/basic/ent"
+	"github.com/troygilman/vent/examples/basic/ent/admin"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -28,12 +28,15 @@ func main() {
 		panic(err)
 	}
 
-	client.AuthUser.Create().
+	_, err = client.AuthUser.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		SetIsStaff(true).
 		SetIsSuperuser(true).
 		Save(ctx)
+	if err != nil {
+		log.Println(err.Error())
+	}
 
 	adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
 		Client: client,
