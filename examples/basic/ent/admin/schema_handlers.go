@@ -133,12 +133,12 @@ func (h *AdminHandler) getAuthGroupAddHandler() http.Handler {
 }
 
 // buildAuthGroupPageProps builds the edit page props for AuthGroup.
-func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityProps, error) {
+func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
 	e, err := h.authGroupFields.eagerLoadQuery(h.client.AuthGroup.Query().
 		Where(authgroup.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
-		return gui.SchemaEntityProps{}, err
+		return gui.SchemaEntityChangeProps{}, err
 	}
 
 	fields := []gui.SchemaEntityFieldProps{}
@@ -146,7 +146,7 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 	for _, field := range h.authGroupFields.updateFormFields {
 		html, err := field.UpdateHTML(ctx, e)
 		if err != nil {
-			return gui.SchemaEntityProps{}, err
+			return gui.SchemaEntityChangeProps{}, err
 		}
 		if html != "" {
 			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
@@ -154,7 +154,7 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 	}
 
 	entityDisplay := fmt.Sprintf("%v", e.Name)
-	props := gui.SchemaEntityProps{
+	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthGroup", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
 			"auth_groups",
@@ -178,7 +178,7 @@ func (h *AdminHandler) patchAuthGroupPageError(w http.ResponseWriter, r *http.Re
 		return
 	}
 	sse := datastar.NewSSE(w, r)
-	if patchErr := sse.PatchElementTempl(gui.SchemaEntityPage(props)); patchErr != nil {
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
 		handleError(w, r, patchErr, http.StatusInternalServerError)
 	}
 }
@@ -198,7 +198,7 @@ func (h *AdminHandler) getAuthGroupHandler() http.Handler {
 			return
 		}
 
-		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})
@@ -417,12 +417,12 @@ func (h *AdminHandler) getAuthUserAddHandler() http.Handler {
 }
 
 // buildAuthUserPageProps builds the edit page props for AuthUser.
-func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityProps, error) {
+func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
 	e, err := h.authUserFields.eagerLoadQuery(h.client.AuthUser.Query().
 		Where(authuser.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
-		return gui.SchemaEntityProps{}, err
+		return gui.SchemaEntityChangeProps{}, err
 	}
 
 	fields := []gui.SchemaEntityFieldProps{}
@@ -430,7 +430,7 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 	for _, field := range h.authUserFields.updateFormFields {
 		html, err := field.UpdateHTML(ctx, e)
 		if err != nil {
-			return gui.SchemaEntityProps{}, err
+			return gui.SchemaEntityChangeProps{}, err
 		}
 		if html != "" {
 			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
@@ -438,7 +438,7 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 	}
 
 	entityDisplay := fmt.Sprintf("%v", e.Email)
-	props := gui.SchemaEntityProps{
+	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
 			"auth_users",
@@ -462,7 +462,7 @@ func (h *AdminHandler) patchAuthUserPageError(w http.ResponseWriter, r *http.Req
 		return
 	}
 	sse := datastar.NewSSE(w, r)
-	if patchErr := sse.PatchElementTempl(gui.SchemaEntityPage(props)); patchErr != nil {
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
 		handleError(w, r, patchErr, http.StatusInternalServerError)
 	}
 }
@@ -482,7 +482,7 @@ func (h *AdminHandler) getAuthUserHandler() http.Handler {
 			return
 		}
 
-		if err := gui.SchemaEntityPage(props).Render(r.Context(), w); err != nil {
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
 		}
 	})

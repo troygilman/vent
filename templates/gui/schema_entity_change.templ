@@ -6,7 +6,7 @@ import (
 	"github.com/troygilman/vent/requestctx"
 )
 
-type SchemaEntityProps struct {
+type SchemaEntityChangeProps struct {
 	LayoutProps   LayoutProps
 	RouteName     string
 	EntityID      int
@@ -15,7 +15,7 @@ type SchemaEntityProps struct {
 	Fields        []SchemaEntityFieldProps
 }
 
-templ SchemaEntityPage(props SchemaEntityProps) {
+templ SchemaEntityChangePage(props SchemaEntityChangeProps) {
 	{{ schemaListPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID) }}
 	@Index() {
