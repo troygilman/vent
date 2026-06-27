@@ -124,8 +124,7 @@
     --shadow:
         0 3px 6px -1px rgb(0 0 0 / 0.28), 0 2px 4px -2px rgb(0 0 0 / 0.18);
     --shadow-lg:
-        0 20px 25px -5px rgb(0 0 0 / 0.35),
-        0 8px 10px -6px rgb(0 0 0 / 0.22);
+        0 20px 25px -5px rgb(0 0 0 / 0.35), 0 8px 10px -6px rgb(0 0 0 / 0.22);
 }
 
 [data-theme="system"] {
@@ -165,8 +164,7 @@
 
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
         --shadow:
-            0 3px 6px -1px rgb(0 0 0 / 0.28),
-            0 2px 4px -2px rgb(0 0 0 / 0.18);
+            0 3px 6px -1px rgb(0 0 0 / 0.28), 0 2px 4px -2px rgb(0 0 0 / 0.18);
         --shadow-lg:
             0 20px 25px -5px rgb(0 0 0 / 0.35),
             0 8px 10px -6px rgb(0 0 0 / 0.22);
@@ -224,7 +222,13 @@ a {
 .admin-layout {
     display: flex;
     height: 100%;
-    background: var(--color-bg);
+    background:
+        radial-gradient(
+            ellipse 80% 60% at 50% -10%,
+            var(--color-primary-glow),
+            transparent
+        ),
+        var(--color-bg);
 }
 .sidebar {
     width: var(--sidebar-width);
