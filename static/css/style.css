@@ -633,11 +633,6 @@ a {
     font-size: 0.75rem;
     color: var(--color-text-subtle);
 }
-.entity-form .form-actions {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-}
 .form-actions > .btn-error {
     margin-left: auto;
 }
