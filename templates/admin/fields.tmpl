@@ -35,7 +35,16 @@ type {{ $node.Name }}Field interface {
 	ApplyUpdate(ctx context.Context, builder *ent.{{ $node.Name }}UpdateOne, input {{ $node.Name }}UpdateInput) error
 }
 
-// {{ $node.Name }}Fields holds the generated admin field implementations for {{ $node.Name }}.
+// {{ $node.Name }}FieldsConfig lets the host app replace any admin field implementation.
+// A nil slot uses the generated default when one exists. Non-builtin custom fields
+// are required.
+type {{ $node.Name }}FieldsConfig struct {
+	{{- range $member := $rc.AdminSurface }}
+	{{ $member.Label }} {{ $node.Name }}Field
+	{{- end }}
+}
+
+// {{ $node.Name }}Fields holds the resolved admin field implementations for {{ $node.Name }}.
 type {{ $node.Name }}Fields struct {
 	listColumns      []{{ $node.Name }}Field
 	createFormFields []{{ $node.Name }}Field
@@ -44,10 +53,17 @@ type {{ $node.Name }}Fields struct {
 	updateBindFields []{{ $node.Name }}Field
 }
 
-func new{{ $node.Name }}Fields(client *ent.Client) {{ $node.Name }}Fields {
+func new{{ $node.Name }}Fields(client *ent.Client, cfg {{ $node.Name }}FieldsConfig) ({{ $node.Name }}Fields, error) {
 	f := {{ $node.Name }}Fields{}
 	{{- range $member := $rc.AdminSurface }}
-	{{ $member.SlotName }} := {{ $node.Name }}{{ $member.SlotName }}{client: client}
+	{{ $member.SlotName }} := cfg.{{ $member.Label }}
+	if {{ $member.SlotName }} == nil {
+		{{- if hasGeneratedFieldDefault $member }}
+		{{ $member.SlotName }} = New{{ $node.Name }}{{ $member.SlotName }}(client)
+		{{- else }}
+		return {{ $node.Name }}Fields{}, fmt.Errorf("Fields.{{ $node.Name }}.{{ $member.Label }} is required")
+		{{- end }}
+	}
 	{{- end }}
 	f.listColumns = []{{ $node.Name }}Field{
 		{{- range $col := $rc.TableColumns }}
@@ -82,7 +98,7 @@ func new{{ $node.Name }}Fields(client *ent.Client) {{ $node.Name }}Fields {
 		{{- end }}
 		{{- end }}
 	}
-	return f
+	return f, nil
 }
 
 func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query {
@@ -95,8 +111,10 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 }
 
 {{ range $member := $rc.AdminSurface }}
+{{- if hasGeneratedFieldDefault $member }}
 {{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
 {{ template "admin/handler/helper/schema_field_type" $ctx }}
+{{- end }}
 {{ end }}
 {{ end }}
 
@@ -107,6 +125,11 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 
 type {{ $node.Name }}{{ $member.SlotName }} struct {
 	client *ent.Client
+}
+
+// New{{ $node.Name }}{{ $member.SlotName }} returns the generated default implementation for {{ $member.Name }}.
+func New{{ $node.Name }}{{ $member.SlotName }}(client *ent.Client) {{ $node.Name }}{{ $member.SlotName }} {
+	return {{ $node.Name }}{{ $member.SlotName }}{client: client}
 }
 
 func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}) string {

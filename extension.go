@@ -79,12 +79,13 @@ func adminTemplateFuncs() template.FuncMap {
 		"fieldComponentPropsType":  fieldComponentPropsType,
 		"isFieldKindPassword":      isFieldKindPassword,
 		"isFieldKindTime":          isFieldKindTime,
-		"isMemberKindCustom":    isMemberKindCustom,
-		"isMemberKindEdge":      isMemberKindEdge,
-		"isMemberKindEntField":  isMemberKindEntField,
-		"isCustomFieldPassword": isCustomFieldPassword,
-		"fieldsVarName":         fieldsVarName,
-		"resourceName":          resourceName,
+		"isMemberKindCustom":       isMemberKindCustom,
+		"isMemberKindEdge":         isMemberKindEdge,
+		"isMemberKindEntField":     isMemberKindEntField,
+		"isCustomFieldPassword":    isCustomFieldPassword,
+		"hasGeneratedFieldDefault": hasGeneratedFieldDefault,
+		"fieldsVarName":            fieldsVarName,
+		"resourceName":             resourceName,
 	}
 }
 
@@ -117,7 +118,17 @@ func isMemberKindEntField(member SurfaceMember) bool {
 }
 
 func isCustomFieldPassword(member SurfaceMember) bool {
-	return member.MemberKind == MemberCustom && member.Name == "password"
+	return member.IsCustomField && member.Name == "password"
+}
+
+// hasGeneratedFieldDefault reports whether codegen emits a default impl for the member.
+// Ent/edge fields always do; custom fields only when they are builtins (e.g. password).
+func hasGeneratedFieldDefault(member SurfaceMember) bool {
+	if !member.IsCustomField {
+		return true
+	}
+	_, ok := builtinCustomFields[member.Name]
+	return ok
 }
 
 func fieldComponentRenderFunc(member SurfaceMember) string {
@@ -172,7 +183,7 @@ func setVentConfigAnnotation(graph *gen.Graph, config VentExtensionConfig, confi
 	}
 	graph.Annotations[VentConfigAnnotation{}.Name()] = VentConfigAnnotation{
 		VentExtensionConfig: config,
-		Configs:               configs,
+		Configs:             configs,
 	}
 }
 
@@ -672,10 +683,10 @@ func cleanupStaleAdminFiles(target string) error {
 	}
 
 	keep := map[string]struct{}{
-		"handler.go":          {},
-		"schema_handlers.go":  {},
-		"fields.go":           {},
-		"migrate.go":          {},
+		"handler.go":         {},
+		"schema_handlers.go": {},
+		"fields.go":          {},
+		"migrate.go":         {},
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {

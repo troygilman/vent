@@ -56,6 +56,10 @@ type SurfaceMember struct {
 
 	OptionalOnCreate bool
 	Nillable         bool
+
+	// IsCustomField is true for virtual admin members (MemberCustom), including
+	// builtins like password and user-declared CustomFields entries.
+	IsCustomField bool
 }
 
 // TableColumn describes one list-view column projected from a catalog member.
@@ -84,11 +88,12 @@ const (
 	MemberCustom
 )
 
-type customFieldDefinition struct {
+// builtinCustomField marks custom surface members that ship a generated default impl.
+type builtinCustomField struct {
 	authUserOnly bool
 }
 
-var customFieldRegistry = map[string]customFieldDefinition{
+var builtinCustomFields = map[string]builtinCustomField{
 	"password": {authUserOnly: true},
 }
 
@@ -102,14 +107,14 @@ type catalogMember struct {
 	entField *gen.Field
 	edge     *gen.Edge
 
-	fieldKind          FieldKind
-	edgeTypeName       string
-	edgeUnique         bool
-	edgeDisplayField   string
-	edgeSingular       string
-	optionalOnCreate   bool
-	nillable           bool
-	listType           string
+	fieldKind        FieldKind
+	edgeTypeName     string
+	edgeUnique       bool
+	edgeDisplayField string
+	edgeSingular     string
+	optionalOnCreate bool
+	nillable         bool
+	listType         string
 }
 
 type layoutSpec struct {
@@ -276,12 +281,10 @@ func buildMemberCatalog(node *gen.Type, meta SchemaMeta) (memberCatalog, error) 
 
 func catalogCustomMember(schemaName string, meta SchemaMeta, field Field) (*catalogMember, error) {
 	name := strings.ToLower(field.Name)
-	definition, ok := customFieldRegistry[name]
-	if !ok {
-		return nil, fmt.Errorf("schema %q custom field %q is not registered", schemaName, field.Name)
-	}
-	if definition.authUserOnly && !meta.IsAuthUserSchema {
-		return nil, fmt.Errorf("schema %q custom field %q is only supported on auth user schemas", schemaName, field.Name)
+	if definition, ok := builtinCustomFields[name]; ok {
+		if definition.authUserOnly && !meta.IsAuthUserSchema {
+			return nil, fmt.Errorf("schema %q custom field %q is only supported on auth user schemas", schemaName, field.Name)
+		}
 	}
 
 	return &catalogMember{
@@ -527,6 +530,7 @@ func projectSurfaceMember(member resolvedMember) SurfaceMember {
 		EagerLoad:        member.member.kind == MemberEdge,
 		OptionalOnCreate: member.member.optionalOnCreate,
 		Nillable:         member.member.nillable,
+		IsCustomField:    member.member.kind == MemberCustom,
 	}
 }
 

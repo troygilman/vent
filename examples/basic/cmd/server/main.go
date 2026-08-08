@@ -45,6 +45,14 @@ func main() {
 		}),
 		CredentialGenerator:     credentialGenerator,
 		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
+		// Field overrides use the same config slots as custom field implementations.
+		Fields: admin.FieldConfigs{
+			AuthUser: admin.AuthUserFieldsConfig{
+				IsSuperuser: SuperuserOnlyIsSuperuser{
+					AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(client),
+				},
+			},
+		},
 	})
 	if err != nil {
 		log.Fatalf("failed creating admin handler: %v", err)

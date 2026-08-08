@@ -27,13 +27,22 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent/authuser"
 )
 
-// AdminConfig contains configuration for the admin handler
+// FieldConfigs groups per-schema field implementation overrides.
+type FieldConfigs struct {
+	AuthGroup AuthGroupFieldsConfig
+
+	AuthUser AuthUserFieldsConfig
+}
+
+// AdminConfig contains configuration for the admin handler.
+// Optional Fields values replace generated field implementations.
 type AdminConfig struct {
 	Client                  *ent.Client
 	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
 	SecureCookies           bool
+	Fields                  FieldConfigs
 }
 
 // AdminHandler is the main HTTP handler for the admin panel
@@ -66,9 +75,21 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		secureCookies:           config.SecureCookies,
 	}
 
-	h.authGroupFields = newAuthGroupFields(config.Client)
+	{
+		fields, err := newAuthGroupFields(config.Client, config.Fields.AuthGroup)
+		if err != nil {
+			return nil, err
+		}
+		h.authGroupFields = fields
+	}
 
-	h.authUserFields = newAuthUserFields(config.Client)
+	{
+		fields, err := newAuthUserFields(config.Client, config.Fields.AuthUser)
+		if err != nil {
+			return nil, err
+		}
+		h.authUserFields = fields
+	}
 
 	routes, err := h.registerRoutes(config.SecretProvider)
 	if err != nil {

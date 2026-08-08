@@ -64,6 +64,35 @@ A lightweight, type-safe admin panel and CRUD framework for Go. Vent generates a
 
     Then visit `http://localhost:8080/admin/`.
 
+## Customizing fields
+
+Generated admin code exposes `AdminConfig.Fields` (`FieldConfigs`), with one `*FieldsConfig` per schema. Every default surface member and every custom field has a slot. Nil means “use the generated default” (when one exists).
+
+Override a default field and implement a custom field the same way:
+
+```go
+adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
+    Client: client,
+    // ...auth deps...
+    Fields: admin.FieldConfigs{
+        AuthUser: admin.AuthUserFieldsConfig{
+            // Replace a generated Ent field implementation
+            IsSuperuser: SuperuserOnlyIsSuperuser{
+                AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(client),
+            },
+            // A non-builtin CustomFields entry is required here
+            // Notes: myNotesField{},
+        },
+    },
+})
+```
+
+Declare virtual custom fields on the schema with `VentSchemaAnnotation.CustomFields`, then supply the implementation via the matching config slot. Built-ins like `password` ship a generated default and remain overridable.
+
+Keep app field types **outside** `ent/admin` — that package is regenerated and non-keep files are removed.
+
+See [`examples/basic/cmd/server/superuser_field.go`](examples/basic/cmd/server/superuser_field.go) for a superuser-only `is_superuser` policy.
+
 ## Example
 
 A complete working example with SQLite lives in [`examples/basic/`](examples/basic/). Run it with:

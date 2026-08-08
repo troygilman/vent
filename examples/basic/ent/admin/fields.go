@@ -21,7 +21,15 @@ type AuthGroupField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthGroupUpdateOne, input AuthGroupUpdateInput) error
 }
 
-// AuthGroupFields holds the generated admin field implementations for AuthGroup.
+// AuthGroupFieldsConfig lets the host app replace any admin field implementation.
+// A nil slot uses the generated default when one exists. Non-builtin custom fields
+// are required.
+type AuthGroupFieldsConfig struct {
+	Name        AuthGroupField
+	Permissions AuthGroupField
+}
+
+// AuthGroupFields holds the resolved admin field implementations for AuthGroup.
 type AuthGroupFields struct {
 	listColumns      []AuthGroupField
 	createFormFields []AuthGroupField
@@ -30,10 +38,16 @@ type AuthGroupFields struct {
 	updateBindFields []AuthGroupField
 }
 
-func newAuthGroupFields(client *ent.Client) AuthGroupFields {
+func newAuthGroupFields(client *ent.Client, cfg AuthGroupFieldsConfig) (AuthGroupFields, error) {
 	f := AuthGroupFields{}
-	NameField := AuthGroupNameField{client: client}
-	PermissionsField := AuthGroupPermissionsField{client: client}
+	NameField := cfg.Name
+	if NameField == nil {
+		NameField = NewAuthGroupNameField(client)
+	}
+	PermissionsField := cfg.Permissions
+	if PermissionsField == nil {
+		PermissionsField = NewAuthGroupPermissionsField(client)
+	}
 	f.listColumns = []AuthGroupField{
 		NameField,
 	}
@@ -53,7 +67,7 @@ func newAuthGroupFields(client *ent.Client) AuthGroupFields {
 		NameField,
 		PermissionsField,
 	}
-	return f
+	return f, nil
 }
 
 func (f AuthGroupFields) eagerLoadQuery(q *ent.AuthGroupQuery) *ent.AuthGroupQuery {
@@ -63,6 +77,11 @@ func (f AuthGroupFields) eagerLoadQuery(q *ent.AuthGroupQuery) *ent.AuthGroupQue
 
 type AuthGroupNameField struct {
 	client *ent.Client
+}
+
+// NewAuthGroupNameField returns the generated default implementation for name.
+func NewAuthGroupNameField(client *ent.Client) AuthGroupNameField {
+	return AuthGroupNameField{client: client}
 }
 
 func (f AuthGroupNameField) ListCell(e *ent.AuthGroup) string {
@@ -100,6 +119,11 @@ func (f AuthGroupNameField) ApplyUpdate(_ context.Context, builder *ent.AuthGrou
 
 type AuthGroupPermissionsField struct {
 	client *ent.Client
+}
+
+// NewAuthGroupPermissionsField returns the generated default implementation for permissions.
+func NewAuthGroupPermissionsField(client *ent.Client) AuthGroupPermissionsField {
+	return AuthGroupPermissionsField{client: client}
 }
 
 func (f AuthGroupPermissionsField) ListCell(e *ent.AuthGroup) string {
@@ -195,7 +219,21 @@ type AuthUserField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error
 }
 
-// AuthUserFields holds the generated admin field implementations for AuthUser.
+// AuthUserFieldsConfig lets the host app replace any admin field implementation.
+// A nil slot uses the generated default when one exists. Non-builtin custom fields
+// are required.
+type AuthUserFieldsConfig struct {
+	ID          AuthUserField
+	Email       AuthUserField
+	Password    AuthUserField
+	IsStaff     AuthUserField
+	IsSuperuser AuthUserField
+	IsActive    AuthUserField
+	Groups      AuthUserField
+	LastLogin   AuthUserField
+}
+
+// AuthUserFields holds the resolved admin field implementations for AuthUser.
 type AuthUserFields struct {
 	listColumns      []AuthUserField
 	createFormFields []AuthUserField
@@ -204,16 +242,40 @@ type AuthUserFields struct {
 	updateBindFields []AuthUserField
 }
 
-func newAuthUserFields(client *ent.Client) AuthUserFields {
+func newAuthUserFields(client *ent.Client, cfg AuthUserFieldsConfig) (AuthUserFields, error) {
 	f := AuthUserFields{}
-	IdField := AuthUserIdField{client: client}
-	EmailField := AuthUserEmailField{client: client}
-	PasswordField := AuthUserPasswordField{client: client}
-	IsStaffField := AuthUserIsStaffField{client: client}
-	IsSuperuserField := AuthUserIsSuperuserField{client: client}
-	IsActiveField := AuthUserIsActiveField{client: client}
-	GroupsField := AuthUserGroupsField{client: client}
-	LastLoginField := AuthUserLastLoginField{client: client}
+	IdField := cfg.ID
+	if IdField == nil {
+		IdField = NewAuthUserIdField(client)
+	}
+	EmailField := cfg.Email
+	if EmailField == nil {
+		EmailField = NewAuthUserEmailField(client)
+	}
+	PasswordField := cfg.Password
+	if PasswordField == nil {
+		PasswordField = NewAuthUserPasswordField(client)
+	}
+	IsStaffField := cfg.IsStaff
+	if IsStaffField == nil {
+		IsStaffField = NewAuthUserIsStaffField(client)
+	}
+	IsSuperuserField := cfg.IsSuperuser
+	if IsSuperuserField == nil {
+		IsSuperuserField = NewAuthUserIsSuperuserField(client)
+	}
+	IsActiveField := cfg.IsActive
+	if IsActiveField == nil {
+		IsActiveField = NewAuthUserIsActiveField(client)
+	}
+	GroupsField := cfg.Groups
+	if GroupsField == nil {
+		GroupsField = NewAuthUserGroupsField(client)
+	}
+	LastLoginField := cfg.LastLogin
+	if LastLoginField == nil {
+		LastLoginField = NewAuthUserLastLoginField(client)
+	}
 	f.listColumns = []AuthUserField{
 		EmailField,
 		IsStaffField,
@@ -255,7 +317,7 @@ func newAuthUserFields(client *ent.Client) AuthUserFields {
 		GroupsField,
 		LastLoginField,
 	}
-	return f
+	return f, nil
 }
 
 func (f AuthUserFields) eagerLoadQuery(q *ent.AuthUserQuery) *ent.AuthUserQuery {
@@ -265,6 +327,11 @@ func (f AuthUserFields) eagerLoadQuery(q *ent.AuthUserQuery) *ent.AuthUserQuery 
 
 type AuthUserIdField struct {
 	client *ent.Client
+}
+
+// NewAuthUserIdField returns the generated default implementation for id.
+func NewAuthUserIdField(client *ent.Client) AuthUserIdField {
+	return AuthUserIdField{client: client}
 }
 
 func (f AuthUserIdField) ListCell(e *ent.AuthUser) string {
@@ -294,6 +361,11 @@ func (f AuthUserIdField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpd
 
 type AuthUserEmailField struct {
 	client *ent.Client
+}
+
+// NewAuthUserEmailField returns the generated default implementation for email.
+func NewAuthUserEmailField(client *ent.Client) AuthUserEmailField {
+	return AuthUserEmailField{client: client}
 }
 
 func (f AuthUserEmailField) ListCell(e *ent.AuthUser) string {
@@ -333,6 +405,11 @@ type AuthUserPasswordField struct {
 	client *ent.Client
 }
 
+// NewAuthUserPasswordField returns the generated default implementation for password.
+func NewAuthUserPasswordField(client *ent.Client) AuthUserPasswordField {
+	return AuthUserPasswordField{client: client}
+}
+
 func (f AuthUserPasswordField) ListCell(e *ent.AuthUser) string {
 	return ""
 }
@@ -366,6 +443,11 @@ func (f AuthUserPasswordField) ApplyUpdate(_ context.Context, builder *ent.AuthU
 
 type AuthUserIsStaffField struct {
 	client *ent.Client
+}
+
+// NewAuthUserIsStaffField returns the generated default implementation for is_staff.
+func NewAuthUserIsStaffField(client *ent.Client) AuthUserIsStaffField {
+	return AuthUserIsStaffField{client: client}
 }
 
 func (f AuthUserIsStaffField) ListCell(e *ent.AuthUser) string {
@@ -407,6 +489,11 @@ type AuthUserIsSuperuserField struct {
 	client *ent.Client
 }
 
+// NewAuthUserIsSuperuserField returns the generated default implementation for is_superuser.
+func NewAuthUserIsSuperuserField(client *ent.Client) AuthUserIsSuperuserField {
+	return AuthUserIsSuperuserField{client: client}
+}
+
 func (f AuthUserIsSuperuserField) ListCell(e *ent.AuthUser) string {
 	return vent.FormatFormValue(e.IsSuperuser)
 }
@@ -446,6 +533,11 @@ type AuthUserIsActiveField struct {
 	client *ent.Client
 }
 
+// NewAuthUserIsActiveField returns the generated default implementation for is_active.
+func NewAuthUserIsActiveField(client *ent.Client) AuthUserIsActiveField {
+	return AuthUserIsActiveField{client: client}
+}
+
 func (f AuthUserIsActiveField) ListCell(e *ent.AuthUser) string {
 	return vent.FormatFormValue(e.IsActive)
 }
@@ -483,6 +575,11 @@ func (f AuthUserIsActiveField) ApplyUpdate(_ context.Context, builder *ent.AuthU
 
 type AuthUserGroupsField struct {
 	client *ent.Client
+}
+
+// NewAuthUserGroupsField returns the generated default implementation for groups.
+func NewAuthUserGroupsField(client *ent.Client) AuthUserGroupsField {
+	return AuthUserGroupsField{client: client}
 }
 
 func (f AuthUserGroupsField) ListCell(e *ent.AuthUser) string {
@@ -571,6 +668,11 @@ func (f AuthUserGroupsField) loadGroupsOptionsWithSelection(ctx context.Context,
 
 type AuthUserLastLoginField struct {
 	client *ent.Client
+}
+
+// NewAuthUserLastLoginField returns the generated default implementation for last_login.
+func NewAuthUserLastLoginField(client *ent.Client) AuthUserLastLoginField {
+	return AuthUserLastLoginField{client: client}
 }
 
 func (f AuthUserLastLoginField) ListCell(e *ent.AuthUser) string {

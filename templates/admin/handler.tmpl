@@ -39,13 +39,23 @@ import (
 	"{{ $.Config.Package }}/{{ lower $groupSchema }}"
 )
 
-// AdminConfig contains configuration for the admin handler
+// FieldConfigs groups per-schema field implementation overrides.
+type FieldConfigs struct {
+	{{ range $item := $adminNodes }}
+	{{ $node := $item.Node }}
+	{{ $node.Name }} {{ $node.Name }}FieldsConfig
+	{{ end }}
+}
+
+// AdminConfig contains configuration for the admin handler.
+// Optional Fields values replace generated field implementations.
 type AdminConfig struct {
 	Client                  *ent.Client
 	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
 	SecureCookies           bool
+	Fields                  FieldConfigs
 }
 
 // AdminHandler is the main HTTP handler for the admin panel
@@ -79,7 +89,13 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	}
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
-	h.{{ fieldsVarName $node.Name }} = new{{ $node.Name }}Fields(config.Client)
+	{
+		fields, err := new{{ $node.Name }}Fields(config.Client, config.Fields.{{ $node.Name }})
+		if err != nil {
+			return nil, err
+		}
+		h.{{ fieldsVarName $node.Name }} = fields
+	}
 	{{ end }}
 
 	routes, err := h.registerRoutes(config.SecretProvider)

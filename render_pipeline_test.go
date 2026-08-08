@@ -31,11 +31,35 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 	if password.SlotName != "PasswordField" {
 		t.Fatalf("password SlotName = %q, want PasswordField", password.SlotName)
 	}
+	if password.Label != "Password" {
+		t.Fatalf("password Label = %q, want Password", password.Label)
+	}
+	if !password.IsCustomField {
+		t.Fatal("password IsCustomField = false, want true")
+	}
+	if !hasGeneratedFieldDefault(password) {
+		t.Fatal("password hasGeneratedFieldDefault = false, want true")
+	}
 	if password.BindCreate || password.BindUpdate {
 		t.Fatalf("password bind flags = create %v update %v, want false/false", password.BindCreate, password.BindUpdate)
 	}
 	if password.MemberKind != MemberCustom {
 		t.Fatalf("password MemberKind = %v, want MemberCustom", password.MemberKind)
+	}
+
+	isSuperuser := findSurfaceMember(t, rc.AdminSurface, "is_superuser")
+	if isSuperuser.Label != "IsSuperuser" {
+		t.Fatalf("is_superuser Label = %q, want IsSuperuser", isSuperuser.Label)
+	}
+	if isSuperuser.IsCustomField {
+		t.Fatal("is_superuser IsCustomField = true, want false")
+	}
+	if !hasGeneratedFieldDefault(isSuperuser) {
+		t.Fatal("is_superuser hasGeneratedFieldDefault = false, want true")
+	}
+	id := findSurfaceMember(t, rc.AdminSurface, "id")
+	if id.Label != "ID" {
+		t.Fatalf("id Label = %q, want ID", id.Label)
 	}
 
 	assertTableColumnNames(t, rc.TableColumns, []string{"email", "is_staff", "is_superuser", "is_active"})
@@ -99,21 +123,52 @@ func TestBuildProjectedRenderConfigListOnlyColumn(t *testing.T) {
 	assertInputSpecNames(t, rc.CreateInputFields, []string{"title", "author"})
 }
 
-func TestBuildProjectedRenderConfigUnknownCustomFieldFails(t *testing.T) {
+func TestBuildProjectedRenderConfigUserCustomField(t *testing.T) {
+	node := testInputNode()
+	node.Annotations = gen.Annotations{
+		VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+			CustomFields: []Field{{Name: "notes", Type: "string"}},
+		},
+	}
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+
+	notes := findSurfaceMember(t, rc.AdminSurface, "notes")
+	if notes.MemberKind != MemberCustom {
+		t.Fatalf("notes MemberKind = %v, want MemberCustom", notes.MemberKind)
+	}
+	if notes.Label != "Notes" {
+		t.Fatalf("notes Label = %q, want Notes", notes.Label)
+	}
+	if !notes.IsCustomField {
+		t.Fatal("notes IsCustomField = false, want true")
+	}
+	if hasGeneratedFieldDefault(notes) {
+		t.Fatal("notes hasGeneratedFieldDefault = true, want false")
+	}
+	if !notes.BindCreate || !notes.BindUpdate {
+		t.Fatalf("notes bind flags = create %v update %v, want true/true", notes.BindCreate, notes.BindUpdate)
+	}
+}
+
+func TestBuildProjectedRenderConfigBuiltinCustomOnNonAuthUserFails(t *testing.T) {
 	node := &gen.Type{
 		Name: "Article",
 		Annotations: gen.Annotations{
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
-				CustomFields: []Field{{Name: "notes", Type: "string"}},
+				CustomFields: []Field{{Name: "password", Type: "string"}},
 			},
 		},
 	}
 
 	_, err := buildRenderConfig(node)
 	if err == nil {
-		t.Fatal("buildRenderConfig() error = nil, want unknown custom field")
+		t.Fatal("buildRenderConfig() error = nil, want auth-user-only custom field error")
 	}
-	if !strings.Contains(err.Error(), `custom field "notes" is not registered`) {
+	if !strings.Contains(err.Error(), `only supported on auth user schemas`) {
 		t.Fatalf("buildRenderConfig() error = %v", err)
 	}
 }
