@@ -597,9 +597,9 @@ func (f AuthUserLastLoginField) UpdateHTML(ctx context.Context, e *ent.AuthUser)
 func (f AuthUserLastLoginField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
 	if input.LastLogin != nil {
 		if *input.LastLogin != "" {
-			value, err := vent.ParseDateTimeLocalField(*input.LastLogin, "last_login")
+			value, err := vent.ParseDateTimeLocal(*input.LastLogin)
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid last_login: %w", err)
 			}
 			builder.SetLastLogin(value)
 		}
@@ -609,9 +609,9 @@ func (f AuthUserLastLoginField) ApplyCreate(_ context.Context, builder *ent.Auth
 
 func (f AuthUserLastLoginField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
 	if input.LastLogin != nil {
-		value, err := vent.ParseDateTimeLocalField(*input.LastLogin, "last_login")
+		value, err := vent.ParseDateTimeLocal(*input.LastLogin)
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid last_login: %w", err)
 		}
 		builder.SetLastLogin(value)
 	}

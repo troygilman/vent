@@ -1,7 +1,6 @@
 package vent
 
 import (
-	"errors"
 	"fmt"
 	"time"
 )
@@ -22,7 +21,7 @@ func FormatFormValue(value any) string {
 // ParseDateTimeLocal parses a datetime-local or RFC3339 string.
 func ParseDateTimeLocal(value string) (time.Time, error) {
 	if value == "" {
-		return time.Time{}, errors.New("value is required")
+		return time.Time{}, nil
 	}
 	for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02T15:04", time.RFC3339} {
 		parsed, err := time.Parse(layout, value)
@@ -31,15 +30,6 @@ func ParseDateTimeLocal(value string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("must use datetime-local or RFC3339 format")
-}
-
-// ParseDateTimeLocalField parses a datetime-local value with a field label.
-func ParseDateTimeLocalField(value string, label string) (time.Time, error) {
-	parsed, err := ParseDateTimeLocal(value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid %s: %w", label, err)
-	}
-	return parsed, nil
 }
 
 // PasswordHashIsSet reports whether a password hash pointer is populated.

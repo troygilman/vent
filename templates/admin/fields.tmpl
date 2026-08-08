@@ -221,9 +221,9 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, b
 	{{- if $member.OptionalOnCreate }}
 	if input.{{ pascal $member.Name }} != nil {
 		if *input.{{ pascal $member.Name }} != "" {
-			value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+			value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }})
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
 			}
 			{{- if $member.Nillable }}
 			builder.SetNillable{{ pascal $member.Name }}(&value)
@@ -233,9 +233,9 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, b
 		}
 	}
 	{{- else }}
-	value, err := vent.ParseDateTimeLocalField(input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+	value, err := vent.ParseDateTimeLocal(input.{{ pascal $member.Name }})
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
 	}
 	builder.Set{{ pascal $member.Name }}(value)
 	{{- end }}
@@ -289,9 +289,9 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 			builder.Clear{{ pascal $member.Name }}()
 		} else {
 			{{- if isFieldKindTime $member.FieldKind }}
-			value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}.Value, "{{ $member.Name }}")
+			value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }}.Value)
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
 			}
 			builder.SetNillable{{ pascal $member.Name }}(&value)
 			{{- else }}
@@ -302,9 +302,9 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 	{{- else }}
 	if input.{{ pascal $member.Name }} != nil {
 		{{- if isFieldKindTime $member.FieldKind }}
-		value, err := vent.ParseDateTimeLocalField(*input.{{ pascal $member.Name }}, "{{ $member.Name }}")
+		value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }})
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
 		}
 		builder.Set{{ pascal $member.Name }}(value)
 		{{- else }}
