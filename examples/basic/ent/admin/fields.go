@@ -8,8 +8,16 @@ import (
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
+	"github.com/troygilman/vent/examples/basic/ent/authgroup"
+	"github.com/troygilman/vent/examples/basic/ent/authuser"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
+)
+
+// Keep schema packages imported even when no field references a default var.
+var (
+	_ = authgroup.Label
+	_ = authuser.Label
 )
 
 // AuthGroupField is the typed admin field contract for AuthGroup.
@@ -458,6 +466,7 @@ func (f AuthUserIsStaffField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_staff",
 		Label:    "IsStaff",
+		Value:    vent.FormatFormValue(authuser.DefaultIsStaff),
 		Editable: true,
 	})
 }
@@ -502,6 +511,7 @@ func (f AuthUserIsSuperuserField) CreateHTML(ctx context.Context) (string, error
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
+		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
 		Editable: true,
 	})
 }
@@ -546,6 +556,7 @@ func (f AuthUserIsActiveField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_active",
 		Label:    "IsActive",
+		Value:    vent.FormatFormValue(authuser.DefaultIsActive),
 		Editable: true,
 	})
 }

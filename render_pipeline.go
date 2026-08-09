@@ -33,6 +33,8 @@ type SchemaMeta struct {
 	Permissions         []Permission
 	IsAuthUserSchema    bool
 	HasPasswordRoutes   bool
+	// PackageDir is the Ent-generated schema package directory (e.g. "authuser").
+	PackageDir string
 }
 
 // SurfaceMember describes one member of the admin surface (form + bindable mutations).
@@ -56,6 +58,13 @@ type SurfaceMember struct {
 
 	OptionalOnCreate bool
 	Nillable         bool
+
+	// HasDefaultValue is true when the field has a constant Ent create default
+	// (not a DefaultFunc) that can be shown on add forms.
+	HasDefaultValue bool
+	// DefaultValueName is the generated default var name (e.g. "DefaultIsActive").
+	// Meaningful only when HasDefaultValue is true.
+	DefaultValueName string
 
 	// IsCustomField is true for virtual admin members (MemberCustom), including
 	// builtins like password and user-declared CustomFields entries.
@@ -115,6 +124,8 @@ type catalogMember struct {
 	optionalOnCreate bool
 	nillable         bool
 	listType         string
+	hasDefaultValue  bool
+	defaultValueName string
 }
 
 type layoutSpec struct {
@@ -189,6 +200,7 @@ func resolveSchemaMeta(node *gen.Type) SchemaMeta {
 		DisplayField:        "ID",
 		IsAuthUserSchema:    isAuthUserNode(node),
 		HasPasswordRoutes:   isAuthUserNode(node),
+		PackageDir:          node.PackageDir(),
 	}
 
 	if hasAnnotation && annotation.DisableAdmin {
@@ -226,6 +238,7 @@ func buildMemberCatalog(node *gen.Type, meta SchemaMeta) (memberCatalog, error) 
 		if !ok {
 			continue
 		}
+		hasDefault, defaultName := constantCreateDefault(field)
 		catalog[field.Name] = &catalogMember{
 			name:             field.Name,
 			label:            pascalCase(field.Name),
@@ -235,6 +248,8 @@ func buildMemberCatalog(node *gen.Type, meta SchemaMeta) (memberCatalog, error) 
 			optionalOnCreate: optionalOnCreate(field),
 			nillable:         field.Nillable,
 			listType:         field.Type.Type.String(),
+			hasDefaultValue:  hasDefault,
+			defaultValueName: defaultName,
 		}
 	}
 
@@ -530,8 +545,20 @@ func projectSurfaceMember(member resolvedMember) SurfaceMember {
 		EagerLoad:        member.member.kind == MemberEdge,
 		OptionalOnCreate: member.member.optionalOnCreate,
 		Nillable:         member.member.nillable,
+		HasDefaultValue:  member.member.hasDefaultValue,
+		DefaultValueName: member.member.defaultValueName,
 		IsCustomField:    member.member.kind == MemberCustom,
 	}
+}
+
+// constantCreateDefault reports whether a field has a constant Ent create default
+// and returns the generated default var name. Functional defaults (DefaultFunc)
+// are omitted — they are not safe to format into form controls.
+func constantCreateDefault(field *gen.Field) (hasDefault bool, name string) {
+	if field == nil || !field.Default || field.DefaultFunc() {
+		return false, ""
+	}
+	return true, field.DefaultName()
 }
 
 func projectTableColumn(member resolvedMember) TableColumn {

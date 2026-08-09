@@ -11,9 +11,19 @@ import (
 	"fmt"
 
 	ent "{{ $.Config.Package }}"
+	{{- range $item := $adminNodes }}
+	"{{ $.Config.Package }}/{{ $item.RC.PackageDir }}"
+	{{- end }}
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
+)
+
+// Keep schema packages imported even when no field references a default var.
+var (
+	{{- range $item := $adminNodes }}
+	_ = {{ $item.RC.PackageDir }}.Label
+	{{- end }}
 )
 
 {{ range $item := $adminNodes }}
@@ -169,6 +179,9 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) 
 	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
 		Name:     "{{ $member.Name }}",
 		Label:    "{{ $member.Label }}",
+		{{- if $member.HasDefaultValue }}
+		Value:    vent.FormatFormValue({{ $rc.PackageDir }}.{{ $member.DefaultValueName }}),
+		{{- end }}
 		Editable: true,
 	})
 	{{- end }}

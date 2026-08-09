@@ -1,10 +1,13 @@
 package vent
 
 import (
+	"reflect"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"entgo.io/ent/entc/gen"
+	"entgo.io/ent/entc/load"
 	schemafield "entgo.io/ent/schema/field"
 )
 
@@ -57,6 +60,16 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 	if !hasGeneratedFieldDefault(isSuperuser) {
 		t.Fatal("is_superuser hasGeneratedFieldDefault = false, want true")
 	}
+	if rc.PackageDir != "authuser" {
+		t.Fatalf("PackageDir = %q, want authuser", rc.PackageDir)
+	}
+	if !isSuperuser.HasDefaultValue || isSuperuser.DefaultValueName != "DefaultIsSuperuser" {
+		t.Fatalf("is_superuser default = has %v name %q, want true/DefaultIsSuperuser", isSuperuser.HasDefaultValue, isSuperuser.DefaultValueName)
+	}
+	isActive := findSurfaceMember(t, rc.AdminSurface, "is_active")
+	if !isActive.HasDefaultValue || isActive.DefaultValueName != "DefaultIsActive" {
+		t.Fatalf("is_active default = has %v name %q, want true/DefaultIsActive", isActive.HasDefaultValue, isActive.DefaultValueName)
+	}
 	id := findSurfaceMember(t, rc.AdminSurface, "id")
 	if id.Label != "ID" {
 		t.Fatalf("id Label = %q, want ID", id.Label)
@@ -92,6 +105,35 @@ func TestBuildProjectedRenderConfigDefaultSurface(t *testing.T) {
 	title := findSurfaceMember(t, rc.AdminSurface, "title")
 	if title.SlotName != "TitleField" {
 		t.Fatalf("title SlotName = %q, want TitleField", title.SlotName)
+	}
+	if title.HasDefaultValue || title.DefaultValueName != "" {
+		t.Fatalf("title default = has %v name %q, want false/empty", title.HasDefaultValue, title.DefaultValueName)
+	}
+	if rc.PackageDir != "article" {
+		t.Fatalf("PackageDir = %q, want article", rc.PackageDir)
+	}
+	published := findSurfaceMember(t, rc.AdminSurface, "published")
+	if !published.HasDefaultValue || published.DefaultValueName != "DefaultPublished" {
+		t.Fatalf("published default = has %v name %q, want true/DefaultPublished", published.HasDefaultValue, published.DefaultValueName)
+	}
+}
+
+func TestConstantCreateDefault(t *testing.T) {
+	hasDefault, name := constantCreateDefault(fieldWithConstantDefault("published", schemafield.TypeBool))
+	if !hasDefault || name != "DefaultPublished" {
+		t.Fatalf("constantCreateDefault(constant) = %v/%q, want true/DefaultPublished", hasDefault, name)
+	}
+	hasDefault, name = constantCreateDefault(fieldWithDefaultFunc("created_at", schemafield.TypeTime))
+	if hasDefault || name != "" {
+		t.Fatalf("constantCreateDefault(DefaultFunc) = %v/%q, want false/empty", hasDefault, name)
+	}
+	hasDefault, name = constantCreateDefault(&gen.Field{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}})
+	if hasDefault || name != "" {
+		t.Fatalf("constantCreateDefault(no default) = %v/%q, want false/empty", hasDefault, name)
+	}
+	hasDefault, name = constantCreateDefault(nil)
+	if hasDefault || name != "" {
+		t.Fatalf("constantCreateDefault(nil) = %v/%q, want false/empty", hasDefault, name)
 	}
 }
 
@@ -212,14 +254,49 @@ func authUserLikeNode() *gen.Type {
 		},
 		Fields: []*gen.Field{
 			{Name: "email", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
-			{Name: "is_staff", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
-			{Name: "is_superuser", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
-			{Name: "is_active", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
+			fieldWithConstantDefault("is_staff", schemafield.TypeBool),
+			fieldWithConstantDefault("is_superuser", schemafield.TypeBool),
+			fieldWithConstantDefault("is_active", schemafield.TypeBool),
 		},
 		Edges: []*gen.Edge{
 			{Name: "groups", Type: &gen.Type{Name: "AuthGroup"}},
 		},
 	}
+}
+
+// fieldWithConstantDefault builds a gen.Field with a non-func default and a load descriptor
+// so Field.DefaultFunc() is safe to call (as it is during real ent codegen).
+func fieldWithConstantDefault(name string, typ schemafield.Type) *gen.Field {
+	f := &gen.Field{
+		Name:    name,
+		Type:    &schemafield.TypeInfo{Type: typ},
+		Default: true,
+	}
+	attachFieldDef(f, &load.Field{
+		Name:        name,
+		Default:     true,
+		DefaultKind: reflect.Bool,
+	})
+	return f
+}
+
+func fieldWithDefaultFunc(name string, typ schemafield.Type) *gen.Field {
+	f := &gen.Field{
+		Name:    name,
+		Type:    &schemafield.TypeInfo{Type: typ},
+		Default: true,
+	}
+	attachFieldDef(f, &load.Field{
+		Name:        name,
+		Default:     true,
+		DefaultKind: reflect.Func,
+	})
+	return f
+}
+
+func attachFieldDef(f *gen.Field, def *load.Field) {
+	v := reflect.ValueOf(f).Elem().FieldByName("def")
+	reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem().Set(reflect.ValueOf(def))
 }
 
 func assertSurfaceMemberNames(t *testing.T, members []SurfaceMember, want []string) {

@@ -154,7 +154,7 @@ func testInputNode() *gen.Type {
 		Name: "Article",
 		Fields: []*gen.Field{
 			{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
-			{Name: "published", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
+			fieldWithConstantDefault("published", schemafield.TypeBool),
 			{Name: "nickname", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}, Optional: true, Nillable: true},
 			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
 			{Name: "ends_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}, Optional: true, Nillable: true},

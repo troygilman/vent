@@ -7,6 +7,7 @@ import (
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/examples/basic/ent"
 	"github.com/troygilman/vent/examples/basic/ent/admin"
+	"github.com/troygilman/vent/examples/basic/ent/authuser"
 	"github.com/troygilman/vent/templates/gui"
 )
 
@@ -24,6 +25,7 @@ func (f SuperuserOnlyIsSuperuser) CreateHTML(ctx context.Context) (string, error
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
+		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
 		Editable: editable,
 	})
 }
