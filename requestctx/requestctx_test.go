@@ -97,13 +97,12 @@ func TestCSRFMiddlewareIssuesTokenWhenNoCookie(t *testing.T) {
 	}
 }
 
-func TestCSRFMiddlewareRotatesTokenOnGET(t *testing.T) {
+func TestCSRFMiddlewareReusesExistingCookieOnGET(t *testing.T) {
+	var got string
 	handler := AdminPathMiddleware("/admin/")(
 		CSRFMiddleware(false)(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if MustCSRFToken(r.Context()) == "existing-token" {
-					t.Fatal("GET should rotate csrf token, not reuse cookie value")
-				}
+				got = MustCSRFToken(r.Context())
 				w.WriteHeader(http.StatusNoContent)
 			}),
 		),
@@ -117,9 +116,29 @@ func TestCSRFMiddlewareRotatesTokenOnGET(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
 	}
+	if got != "existing-token" {
+		t.Fatalf("csrf token = %q, want existing-token", got)
+	}
+	if findCSRFCookie(rec) != nil {
+		t.Fatal("expected existing csrf cookie to be left unchanged on GET")
+	}
+}
+
+func TestRotateCSRFToken(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/admin/login/", nil)
+	req = req.WithContext(WithAdminPath(req.Context(), "/admin/"))
+
+	token, err := RotateCSRFToken(rec, req, false)
+	if err != nil {
+		t.Fatalf("RotateCSRFToken() error = %v", err)
+	}
+	if len(token) != 64 {
+		t.Fatalf("token length = %d, want 64", len(token))
+	}
 	cookie := findCSRFCookie(rec)
-	if cookie == nil || cookie.Value == "existing-token" {
-		t.Fatal("expected rotated csrf cookie on GET")
+	if cookie == nil || cookie.Value != token {
+		t.Fatal("expected rotated csrf cookie to match returned token")
 	}
 }
 

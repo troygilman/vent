@@ -258,6 +258,10 @@ func (h *AdminHandler) postThemeHandler() http.Handler {
 func (h *AdminHandler) postLogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clearAuthTokenCookie(w, r, h.secureCookies)
+		if _, err := requestctx.RotateCSRFToken(w, r, h.secureCookies); err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
 		sse := datastar.NewSSE(w, r)
 		if err := sse.Redirect(requestctx.MustAdminPath(r.Context()) + "login/"); err != nil {
 			handleError(w, r, err, http.StatusInternalServerError)
@@ -314,6 +318,9 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			}
 
 			setAuthTokenCookie(w, r, token, claims, h.secureCookies)
+			if _, err := requestctx.RotateCSRFToken(w, r, h.secureCookies); err != nil {
+				return err
+			}
 
 			return nil
 		}()
