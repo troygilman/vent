@@ -141,6 +141,12 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
+	renderCtx, err := buildRenderContext(ctx, "auth_group")
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.authGroupFields.updateFormFields {
@@ -166,6 +172,7 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
 		Fields:        fields,
+		RenderContext: renderCtx,
 	}
 	return props, nil
 }
@@ -425,6 +432,12 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
+	renderCtx, err := buildRenderContext(ctx, "auth_user")
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.authUserFields.updateFormFields {
@@ -450,6 +463,7 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
 		Fields:        fields,
+		RenderContext: renderCtx,
 	}
 	return props, nil
 }

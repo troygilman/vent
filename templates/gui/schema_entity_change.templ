@@ -13,24 +13,29 @@ type SchemaEntityChangeProps struct {
 	EntityDisplay string
 	ErrorMessage  string
 	Fields        []SchemaEntityFieldProps
+	RenderContext RenderContext
 }
 
 templ SchemaEntityChangePage(props SchemaEntityChangeProps) {
 	{{ schemaListPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	{{ schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID) }}
+	{{ actionButtons := make([]templ.Component, 0, 1) }}
+	{{ trailingButtons := make([]templ.Component, 0, 1) }}
+	if props.RenderContext.CanUpdate {
+		{{ actionButtons = append(actionButtons, SchemaEntitySaveButton(schemaEntityPath)) }}
+	}
+	if props.RenderContext.CanDelete {
+		{{ trailingButtons = append(trailingButtons, SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay)) }}
+	}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			@SchemaEntityForm(SchemaEntityFormProps{
-				TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
-				ErrorMessage: props.ErrorMessage,
-				Fields:       props.Fields,
-				BackURL:      schemaListPath,
-				ActionButtons: []templ.Component{
-					SchemaEntitySaveButton(schemaEntityPath),
-				},
-				TrailingButtons: []templ.Component{
-					SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay),
-				},
+				TitleText:       fmt.Sprintf("Change %s", props.EntityDisplay),
+				ErrorMessage:    props.ErrorMessage,
+				Fields:          props.Fields,
+				BackURL:         schemaListPath,
+				ActionButtons:   actionButtons,
+				TrailingButtons: trailingButtons,
 			})
 			@Indicator()
 		}

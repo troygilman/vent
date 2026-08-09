@@ -153,6 +153,12 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
+	renderCtx, err := buildRenderContext(ctx, "{{ resourceName $node.Name }}")
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.{{ fieldsVarName $node.Name }}.updateFormFields {
@@ -178,6 +184,7 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
 		Fields:        fields,
+		RenderContext: renderCtx,
 	}
 	return props, nil
 }

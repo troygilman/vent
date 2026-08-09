@@ -528,6 +528,25 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
+// buildRenderContext resolves update/delete access for an entity change page.
+// Missing user context fails closed (no update/delete) without returning an error.
+func buildRenderContext(ctx context.Context, resource string) (gui.RenderContext, error) {
+	rc := gui.RenderContext{}
+	if user, err := GetUser(ctx); err == nil {
+		canUpdate, err := UserHasPermission(ctx, user, "update_"+resource)
+		if err != nil {
+			return gui.RenderContext{}, err
+		}
+		canDelete, err := UserHasPermission(ctx, user, "delete_"+resource)
+		if err != nil {
+			return gui.RenderContext{}, err
+		}
+		rc.CanUpdate = canUpdate
+		rc.CanDelete = canDelete
+	}
+	return rc, nil
+}
+
 // UserHasPermission reports whether user has the named permission.
 // Superusers always return true. If groups or nested permissions are not
 // already eager-loaded on user, they are queried and cached on user.Edges.Groups.
