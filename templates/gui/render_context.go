@@ -5,6 +5,7 @@ import "context"
 // RenderContext carries request-scoped flags that influence admin UI rendering.
 // It is intentionally extendable — add fields here as new render concerns appear.
 type RenderContext struct {
+	CanCreate bool
 	CanUpdate bool
 	CanDelete bool
 }

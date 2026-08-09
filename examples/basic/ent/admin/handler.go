@@ -530,11 +530,15 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// buildRenderContext resolves update/delete access for an entity change page.
-// Missing user context fails closed (no update/delete) without returning an error.
+// buildRenderContext resolves create/update/delete access for schema UI rendering.
+// Missing user context fails closed without returning an error.
 func buildRenderContext(ctx context.Context, resource string) (gui.RenderContext, error) {
 	rc := gui.RenderContext{}
 	if user, err := GetUser(ctx); err == nil {
+		canCreate, err := UserHasPermission(ctx, user, "create_"+resource)
+		if err != nil {
+			return gui.RenderContext{}, err
+		}
 		canUpdate, err := UserHasPermission(ctx, user, "update_"+resource)
 		if err != nil {
 			return gui.RenderContext{}, err
@@ -543,6 +547,7 @@ func buildRenderContext(ctx context.Context, resource string) (gui.RenderContext
 		if err != nil {
 			return gui.RenderContext{}, err
 		}
+		rc.CanCreate = canCreate
 		rc.CanUpdate = canUpdate
 		rc.CanDelete = canDelete
 	}

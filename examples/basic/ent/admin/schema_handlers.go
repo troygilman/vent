@@ -59,6 +59,12 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
+		renderCtx, err := buildRenderContext(r.Context(), "auth_group")
+		if err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
 		props := gui.SchemaTableProps{
 			LayoutProps:         h.buildLayoutProps(r.Context(), "AuthGroup", gui.SchemaListBreadcrumbs("AuthGroups")),
 			RouteName:           "auth_groups",
@@ -67,7 +73,8 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			Rows: rows,
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -346,6 +353,12 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
+		renderCtx, err := buildRenderContext(r.Context(), "auth_user")
+		if err != nil {
+			handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+
 		props := gui.SchemaTableProps{
 			LayoutProps:         h.buildLayoutProps(r.Context(), "AuthUser", gui.SchemaListBreadcrumbs("AuthUsers")),
 			RouteName:           "auth_users",
@@ -358,7 +371,8 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 				{Name: "is_active", Label: "IsActive", Type: "bool"},
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
 			},
-			Rows: rows,
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
