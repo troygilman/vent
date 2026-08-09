@@ -182,13 +182,27 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.routes.ServeHTTP(w, r)
 }
 
-// buildLayoutProps creates LayoutProps with schema metadata
+// buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
 func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
-	schemas := []gui.SchemaMetadata{
+	schemas := make([]gui.SchemaMetadata, 0)
+	if user, err := GetUser(ctx); err == nil {
 
-		{Name: "AuthGroup", DisplayName: "AuthGroups", Path: requestctx.MustAdminPath(ctx) + "auth_groups/"},
+		if ok, err := UserHasPermission(ctx, user, "read_auth_group"); err == nil && ok {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "AuthGroup",
+				DisplayName: "AuthGroups",
+				Path:        requestctx.MustAdminPath(ctx) + "auth_groups/",
+			})
+		}
 
-		{Name: "AuthUser", DisplayName: "AuthUsers", Path: requestctx.MustAdminPath(ctx) + "auth_users/"},
+		if ok, err := UserHasPermission(ctx, user, "read_auth_user"); err == nil && ok {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "AuthUser",
+				DisplayName: "AuthUsers",
+				Path:        requestctx.MustAdminPath(ctx) + "auth_users/",
+			})
+		}
+
 	}
 	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
 		return cmp.Compare(a.DisplayName, b.DisplayName)
@@ -516,6 +530,55 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
+// UserHasPermission reports whether user has the named permission.
+// Superusers always return true. If groups or nested permissions are not
+// already eager-loaded on user, they are queried and cached on user.Edges.Groups.
+func UserHasPermission(ctx context.Context, user *ent.AuthUser, permission string) (bool, error) {
+	if user.IsSuperuser {
+		return true, nil
+	}
+	groups, err := userGroupsWithPermissions(ctx, user)
+	if err != nil {
+		return false, err
+	}
+	for _, group := range groups {
+		for _, p := range group.Edges.Permissions {
+			if p.Name == permission {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+// userGroupsWithPermissions returns the user's groups with permissions loaded.
+// It reuses edges already present on the user when possible; otherwise it
+// queries and caches the result on user.Edges.Groups.
+//
+// Ent represents an unloaded edge as nil and a loaded-empty edge as a non-nil
+// empty slice, so a nil check is enough to detect whether edges are available.
+func userGroupsWithPermissions(ctx context.Context, user *ent.AuthUser) ([]*ent.AuthGroup, error) {
+	if user.Edges.Groups != nil {
+		allPermsLoaded := true
+		for _, g := range user.Edges.Groups {
+			if g.Edges.Permissions == nil {
+				allPermsLoaded = false
+				break
+			}
+		}
+		if allPermsLoaded {
+			return user.Edges.Groups, nil
+		}
+	}
+
+	groups, err := user.QueryGroups().WithPermissions().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user.Edges.Groups = groups
+	return groups, nil
+}
+
 func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -525,19 +588,15 @@ func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.H
 				return
 			}
 
-			if !user.IsSuperuser {
-				userPermissions := make(map[string]struct{})
-				for _, group := range user.Edges.Groups {
-					for _, permission := range group.Edges.Permissions {
-						userPermissions[permission.Name] = struct{}{}
-					}
+			for _, permission := range permissions {
+				ok, err := UserHasPermission(r.Context(), user, permission)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
 				}
-
-				for _, permission := range permissions {
-					if _, ok := userPermissions[permission]; !ok {
-						http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusForbidden)
-						return
-					}
+				if !ok {
+					http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusForbidden)
+					return
 				}
 			}
 
