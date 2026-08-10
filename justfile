@@ -11,3 +11,6 @@ migrations:
 
 migrate:
     atlas migrate apply --dir "file://examples/basic/ent/migrate/migrations" --url "sqlite://tmp/test.db?_fk=1"
+
+tail:
+    sudo tailscale serve --bg http://localhost:8080

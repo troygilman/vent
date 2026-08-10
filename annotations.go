@@ -10,6 +10,7 @@ import (
 
 type VentConfigAnnotation struct {
 	VentExtensionConfig
+	Configs []NodeRenderConfig
 }
 
 func (VentConfigAnnotation) Name() string {

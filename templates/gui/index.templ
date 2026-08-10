@@ -12,6 +12,8 @@ templ Index() {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ theme := requestctx.MustTheme(ctx) }}
 	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
+	{{ fontPath := templ.SafeURL(adminPath + "static/fonts/inter-latin.woff2") }}
+	{{ stylePath := templ.SafeURL(adminPath + "static/css/style.css") }}
 	<!DOCTYPE html>
 	<html lang="en" data-theme={ theme }>
 		<head>
@@ -20,10 +22,9 @@ templ Index() {
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<meta name="csrf-token" content={ requestctx.MustCSRFToken(ctx) }/>
 			<title>Vent Admin</title>
-			<link rel="preconnect" href="https://fonts.googleapis.com"/>
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
-			<link rel="stylesheet" href={ templ.SafeURL(adminPath + "static/css/style.css") }/>
+			<link rel="preload" href={ fontPath } as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href={ stylePath } as="style"/>
+			<link rel="stylesheet" href={ stylePath } media="all"/>
 			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{

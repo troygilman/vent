@@ -14,16 +14,17 @@ import (
 	"github.com/troygilman/vent/requestctx"
 )
 
-type SchemaEntityProps struct {
+type SchemaEntityChangeProps struct {
 	LayoutProps   LayoutProps
 	RouteName     string
 	EntityID      int
 	EntityDisplay string
 	ErrorMessage  string
 	Fields        []SchemaEntityFieldProps
+	RenderContext RenderContext
 }
 
-func SchemaEntityPage(props SchemaEntityProps) templ.Component {
+func SchemaEntityChangePage(props SchemaEntityChangeProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -46,6 +47,14 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		schemaListPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName)
 		schemaEntityPath := fmt.Sprintf("%s%s/%d/", requestctx.MustAdminPath(ctx), props.RouteName, props.EntityID)
+		actionButtons := make([]templ.Component, 0, 1)
+		trailingButtons := make([]templ.Component, 0, 1)
+		if props.RenderContext.CanUpdate {
+			actionButtons = append(actionButtons, SchemaEntitySaveButton(schemaEntityPath))
+		}
+		if props.RenderContext.CanDelete {
+			trailingButtons = append(trailingButtons, SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay))
+		}
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -71,16 +80,12 @@ func SchemaEntityPage(props SchemaEntityProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = SchemaEntityForm(SchemaEntityFormProps{
-					TitleText:    fmt.Sprintf("Change %s", props.EntityDisplay),
-					ErrorMessage: props.ErrorMessage,
-					Fields:       props.Fields,
-					BackURL:      schemaListPath,
-					ActionButtons: []templ.Component{
-						SchemaEntitySaveButton(schemaEntityPath),
-					},
-					TrailingButtons: []templ.Component{
-						SchemaEntityDeleteButton(schemaEntityPath, props.EntityDisplay),
-					},
+					TitleText:       fmt.Sprintf("Change %s", props.EntityDisplay),
+					ErrorMessage:    props.ErrorMessage,
+					Fields:          props.Fields,
+					BackURL:         schemaListPath,
+					ActionButtons:   actionButtons,
+					TrailingButtons: trailingButtons,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

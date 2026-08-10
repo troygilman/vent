@@ -1,19 +1,6 @@
 package gui
 
-import (
-	"fmt"
-	"strconv"
-
-	"github.com/troygilman/vent"
-)
-
-func entitySignal(name string) string {
-	return "entity." + name
-}
-
-func entitySignalExpression(name string) string {
-	return "$entity." + name
-}
+import "fmt"
 
 type SchemaEntityFormProps struct {
 	TitleText       string
@@ -25,21 +12,7 @@ type SchemaEntityFormProps struct {
 }
 
 type SchemaEntityFieldProps struct {
-	Name        string
-	Label       string
-	Desc        string
-	Type        vent.FieldKind
-	Value       string
-	Editable    bool
-	Options     []SelectOption // For foreign key dropdowns
-	ActionLabel string
-	ActionURL   string
-}
-
-type SelectOption struct {
-	Value    int
-	Label    string
-	Selected bool
+	HTML string
 }
 
 templ SchemaEntityForm(props SchemaEntityFormProps) {
@@ -52,34 +25,36 @@ templ SchemaEntityForm(props SchemaEntityFormProps) {
 				<span>{ props.ErrorMessage }</span>
 			</div>
 		}
-		<div class="entity-form-panel">
-			<fieldset class="fieldset">
-				for _, field := range props.Fields {
-					@SchemaEntityField(field)
-				}
-			</fieldset>
-		</div>
-		<div class="form-actions">
-			<div class="btn-group">
-				for _, button := range props.ActionButtons {
+		<form>
+			<div class="entity-form-panel">
+				<fieldset class="fieldset">
+					for _, field := range props.Fields {
+						@SchemaEntityField(field)
+					}
+				</fieldset>
+			</div>
+			<div class="form-actions">
+				<div class="btn-group">
+					for _, button := range props.ActionButtons {
+						@button
+					}
+					if props.BackURL != "" {
+						<a class="btn btn-neutral" href={ templ.SafeURL(props.BackURL) }>Back</a>
+					}
+				</div>
+				for _, button := range props.TrailingButtons {
 					@button
 				}
-				if props.BackURL != "" {
-					<a class="btn btn-neutral" href={ templ.SafeURL(props.BackURL) }>Back</a>
-				}
 			</div>
-			for _, button := range props.TrailingButtons {
-				@button
-			}
-		</div>
+		</form>
 	</div>
 }
 
 templ SchemaEntitySaveButton(path string) {
 	<button
 		class="btn btn-primary"
-		type="none"
-		data-on:click={ fmt.Sprintf("@patch('%s')", path) }
+		type="submit"
+		data-on:click__prevent={ fmt.Sprintf("@patch('%s')", path) }
 		data-indicator="_indicator"
 	>
 		Save
@@ -89,8 +64,8 @@ templ SchemaEntitySaveButton(path string) {
 templ SchemaEntityDeleteButton(path string, entityDisplay string) {
 	<button
 		class="btn btn-error"
-		type="none"
-		data-on:click={ fmt.Sprintf("@delete('%s')", path) }
+		type="button"
+		data-on:click__prevent={ fmt.Sprintf("@delete('%s')", path) }
 		data-indicator="_indicator"
 		data-confirm={ templ.JSONString("Are you sure you want to delete " + entityDisplay + "?") }
 	>
@@ -101,8 +76,8 @@ templ SchemaEntityDeleteButton(path string, entityDisplay string) {
 templ SchemaEntityAddButton(path string) {
 	<button
 		class="btn btn-primary"
-		type="none"
-		data-on:click={ fmt.Sprintf("@post('%s')", path) }
+		type="submit"
+		data-on:click__prevent={ fmt.Sprintf("@post('%s')", path) }
 		data-indicator="_indicator"
 	>
 		Add
@@ -110,113 +85,5 @@ templ SchemaEntityAddButton(path string) {
 }
 
 templ SchemaEntityField(props SchemaEntityFieldProps) {
-	<div class="field-group">
-		switch props.Type {
-			case vent.FieldKindString:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
-						if props.ActionLabel != "" && props.ActionURL != "" {
-							<a class="btn btn-neutral btn-sm" href={ templ.SafeURL(props.ActionURL) }>{ props.ActionLabel }</a>
-						}
-					</div>
-				</label>
-			case vent.FieldKindPassword:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="password" data-bind={ entitySignal(props.Name) } placeholder="Enter new password" readonly?={ !props.Editable }/>
-					</div>
-				</label>
-			case vent.FieldKindInt:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="number" step="1" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
-					</div>
-				</label>
-			case vent.FieldKindFloat:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="number" step="any" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
-					</div>
-				</label>
-			case vent.FieldKindBool:
-				<label class="field field-checkbox">
-					<span class="field-label">{ props.Label }</span>
-					<input class="checkbox checkbox-sm" type="checkbox" data-bind={ entitySignal(props.Name) } checked?={ props.Value == "true" } readonly?={ !props.Editable }/>
-				</label>
-			case vent.FieldKindForeignKeyUnique:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<select class="select" data-bind={ entitySignal(props.Name) } readonly?={ !props.Editable }>
-						<option value="">-- Select --</option>
-						for _, opt := range props.Options {
-							<option
-								value={ strconv.Itoa(opt.Value) }
-								selected?={ opt.Selected }
-							>
-								{ opt.Label }
-							</option>
-						}
-					</select>
-				</label>
-			case vent.FieldKindForeignKey:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="fk-select-group">
-						<select class="select multi-select" data-bind={ "entity." + props.Name } readonly?={ !props.Editable } multiple size="4">
-							for _, opt := range props.Options {
-								<option
-									data-on:mousedown="evt.preventDefault()"
-									data-on:click__prevent="el.selected = true; el.dispatchEvent(new Event('change', { bubbles: true }))"
-									value={ strconv.Itoa(opt.Value) }
-									selected?={ opt.Selected }
-									data-show={ fmt.Sprintf("!$entity.%s.includes('%d')", props.Name, opt.Value) }
-									style="display: none"
-								>
-									{ opt.Label }
-								</option>
-							}
-						</select>
-						<select class="select multi-select" data-bind={ "entity." + props.Name } readonly?={ !props.Editable } multiple size="4">
-							for _, opt := range props.Options {
-								<option
-									data-on:mousedown="evt.preventDefault()"
-									data-on:click__prevent="el.selected = false; el.dispatchEvent(new Event('change', { bubbles: true }))"
-									value={ strconv.Itoa(opt.Value) }
-									selected?={ opt.Selected }
-									data-show={ fmt.Sprintf("$entity.%s.includes('%d')", props.Name, opt.Value) }
-									style="display: none"
-								>
-									{ opt.Label }
-								</option>
-							}
-						</select>
-					</div>
-				</label>
-			case vent.FieldKindTime:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="datetime-local" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
-					</div>
-				</label>
-			default:
-				<label class="field">
-					<span class="field-label">{ props.Label }</span>
-					<div class="input">
-						<input type="text" data-bind={ entitySignal(props.Name) } value={ props.Value } readonly?={ !props.Editable }/>
-						if props.ActionLabel != "" && props.ActionURL != "" {
-							<a class="btn btn-neutral btn-sm" href={ templ.SafeURL(props.ActionURL) }>{ props.ActionLabel }</a>
-						}
-					</div>
-				</label>
-		}
-		if props.Desc != "" {
-			<p class="field-desc">{ props.Desc }</p>
-		}
-	</div>
+	@templ.Raw(props.HTML)
 }

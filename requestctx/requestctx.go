@@ -83,20 +83,37 @@ func AdminPathMiddleware(path string) func(http.Handler) http.Handler {
 	}
 }
 
+// RotateCSRFToken issues a new CSRF cookie. Call on auth-boundary events
+// (successful login/logout) where a redirect follows so the next page embeds
+// the new token. Do not rotate on ordinary CRUD mutations that re-render the
+// same page — the response body would still carry the previous token.
+func RotateCSRFToken(w http.ResponseWriter, r *http.Request, secureCookies bool) (string, error) {
+	token, err := auth.NewCSRFToken()
+	if err != nil {
+		return "", err
+	}
+	auth.SetCSRFTokenCookie(w, token, MustAdminPath(r.Context()), secureCookies)
+	return token, nil
+}
+
 // CSRFMiddleware manages CSRF tokens for admin requests.
-// Safe methods rotate the token on each request. Mutating methods require a valid
-// cookie and matching X-CSRF-Token header, then load the token into context for
-// templates and error re-renders.
+// Safe methods issue a token when missing and reuse an existing cookie.
+// Mutating methods require a valid cookie and matching X-CSRF-Token header,
+// then load the token into context for templates and error re-renders.
 func CSRFMiddleware(secureCookies bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if isSafeMethod(r.Method) {
-				token, err := auth.NewCSRFToken()
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
+				token := csrfTokenFromCookie(r)
+				if token == "" {
+					var err error
+					token, err = auth.NewCSRFToken()
+					if err != nil {
+						http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+						return
+					}
+					auth.SetCSRFTokenCookie(w, token, MustAdminPath(r.Context()), secureCookies)
 				}
-				auth.SetCSRFTokenCookie(w, token, MustAdminPath(r.Context()), secureCookies)
 				next.ServeHTTP(w, r.WithContext(WithCSRFToken(r.Context(), token)))
 				return
 			}
@@ -127,4 +144,3 @@ func isSafeMethod(method string) bool {
 		return false
 	}
 }
-

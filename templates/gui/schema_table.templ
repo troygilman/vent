@@ -13,6 +13,7 @@ type SchemaTableProps struct {
 	PluralDisplayName   string
 	Columns             []SchemaTableColumn
 	Rows                []SchemaTableRow
+	RenderContext       RenderContext
 }
 
 type SchemaTableColumn struct {
@@ -36,7 +37,9 @@ templ SchemaTablePage(props SchemaTableProps) {
 		@Layout(props.LayoutProps) {
 			<div class="page-header">
 				<div class="page-title">{ props.PluralDisplayName }</div>
-				<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+				if props.RenderContext.CanCreate {
+					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+				}
 			</div>
 			<div class="table-container">
 				<table class="data-table">

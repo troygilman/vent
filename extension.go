@@ -3,6 +3,8 @@ package vent
 import (
 	"embed"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"text/template"
@@ -54,418 +56,135 @@ func (ext *AdminExtension) Hooks() []gen.Hook {
 				if err := validateVentGraph(graph, ext.config); err != nil {
 					return err
 				}
-				return next.Generate(graph)
+				configs, err := buildRenderConfigs(graph.Nodes)
+				if err != nil {
+					return err
+				}
+				if err := validateRouteNames(configs); err != nil {
+					return err
+				}
+				setVentConfigAnnotation(graph, ext.config, configs)
+				if err := next.Generate(graph); err != nil {
+					return err
+				}
+				return cleanupAdminOutput(graph.Config.Target)
 			})
 		},
 	}
 }
 
+func adminTemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"fieldComponentRenderFunc": fieldComponentRenderFunc,
+		"fieldComponentPropsType":  fieldComponentPropsType,
+		"isFieldKindPassword":      isFieldKindPassword,
+		"isFieldKindTime":          isFieldKindTime,
+		"isMemberKindCustom":       isMemberKindCustom,
+		"isMemberKindEdge":         isMemberKindEdge,
+		"isMemberKindEntField":     isMemberKindEntField,
+		"isCustomFieldPassword":    isCustomFieldPassword,
+		"hasGeneratedFieldDefault": hasGeneratedFieldDefault,
+		"fieldsVarName":            fieldsVarName,
+		"resourceName":             resourceName,
+	}
+}
+
 func (e *AdminExtension) Templates() []*gen.Template {
+	funcs := adminTemplateFuncs()
 	return []*gen.Template{
 		gen.MustParse(
 			gen.NewTemplate("admin").
-				Funcs(template.FuncMap{
-					"fieldKindGoIdent":    fieldKindGoIdent,
-					"isFieldKindPassword": isFieldKindPassword,
-					"isFieldKindTime":     isFieldKindTime,
-					"renderConfigs":       renderConfigs,
-					"resourceName":        resourceName,
-				}).
-				ParseFS(templates, "templates/admin.tmpl"),
-		),
-		gen.MustParse(
-			gen.NewTemplate("migrate").
-				Funcs(template.FuncMap{
-					"renderConfigs": renderConfigs,
-					"resourceName":  resourceName,
-				}).
-				ParseFS(templates, "templates/migrate.tmpl"),
+				Funcs(funcs).
+				ParseFS(templates,
+					"templates/admin/handler.tmpl",
+					"templates/admin/schema_handlers.tmpl",
+					"templates/admin/fields.tmpl",
+					"templates/admin/migrate.tmpl",
+				),
 		),
 	}
 }
 
-// RenderConfig contains all the information needed to render a schema in the admin UI.
-// This abstracts away the annotation parsing logic from the template.
-type RenderConfig struct {
-	// AdminEnabled indicates whether this schema should be shown in the admin panel
-	AdminEnabled bool
-
-	// RouteName is the normalized plural URL segment for this schema.
-	RouteName string
-
-	// SingularDisplayName is the human-readable singular name for this schema.
-	SingularDisplayName string
-
-	// PluralDisplayName is the human-readable plural name for this schema.
-	PluralDisplayName string
-
-	// DisplayField is the field used to display the entity (e.g., "Email" for users)
-	DisplayField string
-
-	// TableColumns defines which columns to show in the list view
-	TableColumns []RenderColumn
-
-	// FormFields defines which fields to show in add/edit forms (in order)
-	FormFields []RenderField
-
-	// CreateInputFields defines fields for the CreateInput structs.
-	CreateInputFields []RenderInputField
-
-	// UpdateInputFields defines fields for the UpdateInput structs.
-	UpdateInputFields []RenderInputField
-
-	// Edges defines the edges for this schema
-	Edges []RenderEdge
-
-	// CreateDirectFields defines fields that can be set directly in create handlers.
-	CreateDirectFields []RenderCreateDirectField
-
-	// UpdateDirectFields defines fields that can be set directly in update handlers.
-	UpdateDirectFields []RenderUpdateDirectField
+func isMemberKindCustom(member SurfaceMember) bool {
+	return member.MemberKind == MemberCustom
 }
 
-// RenderColumn represents a column in the list view
-type RenderColumn struct {
-	Name  string // Field name (e.g., "email")
-	Label string // Display label (e.g., "Email")
-	Type  string // Field type for display purposes
+func isMemberKindEdge(member SurfaceMember) bool {
+	return member.MemberKind == MemberEdge
 }
 
-// RenderField represents a field in the add/edit form
-type RenderField struct {
-	Name             string    // Field name
-	Label            string    // Display label
-	Type             FieldKind // Input render kind
-	Editable         bool      // Whether the field can be edited
-	IsEdge           bool      // Whether this is an edge (relation)
-	EdgeType         string    // For edges: the target schema name
-	EdgeUnique       bool      // For edges: whether it's a unique (belongs-to) relation
-	EdgeDisplayField string    // For edges: the field to display (e.g., "Name", "Email")
-	IsPasswordStatus bool      // Whether this field renders auth user password status/action
+func isMemberKindEntField(member SurfaceMember) bool {
+	return member.MemberKind == MemberEntField
 }
 
-// RenderInputField represents a field in the CreateInput/UpdateInput struct
-type RenderInputField struct {
-	Name             string // Field name in the struct (PascalCase)
-	JSONName         string // JSON tag name (snake_case)
-	Type             string // Go type (string, bool, int, []string for edges)
-	OptionalOnCreate bool   // Whether create handlers should skip setting this field when omitted
-	Nillable         bool   // Whether update handlers can distinguish set/null/omitted values
+func isCustomFieldPassword(member SurfaceMember) bool {
+	return member.IsCustomField && member.Name == "password"
 }
 
-// RenderEdge represents an edge for query building
-type RenderEdge struct {
-	Name         string // Edge name
-	TypeName     string // Target schema name
-	Unique       bool   // Whether it's a unique edge
-	DisplayField string // Field to display for related entities (e.g., "Name", "Email")
-	Singular     string // Singular form for builder methods (e.g., "Group" from "groups")
+// hasGeneratedFieldDefault reports whether codegen emits a default impl for the member.
+// Ent/edge fields always do; custom fields only when they are builtins (e.g. password).
+func hasGeneratedFieldDefault(member SurfaceMember) bool {
+	if !member.IsCustomField {
+		return true
+	}
+	_, ok := builtinCustomFields[member.Name]
+	return ok
 }
 
-// NodeRenderConfig pairs a node with its render config for iteration in templates
-type NodeRenderConfig struct {
-	Node *gen.Type
-	RC   RenderConfig
+func fieldComponentRenderFunc(member SurfaceMember) string {
+	if member.MemberKind == MemberEdge {
+		if member.EdgeUnique {
+			return "RenderForeignKeyUniqueFieldHTML"
+		}
+		return "RenderForeignKeyFieldHTML"
+	}
+	switch member.FieldKind {
+	case FieldKindBool:
+		return "RenderBoolFieldHTML"
+	case FieldKindInt:
+		return "RenderIntFieldHTML"
+	case FieldKindFloat:
+		return "RenderFloatFieldHTML"
+	case FieldKindTime:
+		return "RenderTimeFieldHTML"
+	case FieldKindPassword:
+		return "RenderPasswordFieldHTML"
+	default:
+		return "RenderTextFieldHTML"
+	}
 }
 
-// RenderCreateDirectField represents a field that can be set directly in create handlers.
-type RenderCreateDirectField struct {
-	Name             string
-	Kind             FieldKind
-	OptionalOnCreate bool
-	Nillable         bool
+func fieldComponentPropsType(member SurfaceMember) string {
+	if member.MemberKind == MemberEdge {
+		if member.EdgeUnique {
+			return "SchemaEntityForeignKeyUniqueFieldProps"
+		}
+		return "SchemaEntityForeignKeyFieldProps"
+	}
+	switch member.FieldKind {
+	case FieldKindBool:
+		return "SchemaEntityBoolFieldProps"
+	case FieldKindInt:
+		return "SchemaEntityIntFieldProps"
+	case FieldKindFloat:
+		return "SchemaEntityFloatFieldProps"
+	case FieldKindTime:
+		return "SchemaEntityTimeFieldProps"
+	case FieldKindPassword:
+		return "SchemaEntityPasswordFieldProps"
+	default:
+		return "SchemaEntityTextFieldProps"
+	}
 }
 
-// RenderUpdateDirectField represents a field that can be set directly in update handlers.
-type RenderUpdateDirectField struct {
-	Name     string
-	Kind     FieldKind
-	Nillable bool
-}
-
-// renderConfigs builds RenderConfigs for all admin-enabled nodes
-func renderConfigs(nodes []*gen.Type) []NodeRenderConfig {
-	var configs []NodeRenderConfig
-	for _, node := range nodes {
-		rc := renderConfig(node)
-		if rc.AdminEnabled {
-			configs = append(configs, NodeRenderConfig{
-				Node: node,
-				RC:   rc,
-			})
-		}
+func setVentConfigAnnotation(graph *gen.Graph, config VentExtensionConfig, configs []NodeRenderConfig) {
+	if graph.Annotations == nil {
+		graph.Annotations = gen.Annotations{}
 	}
-	return configs
-}
-
-// renderConfig builds a RenderConfig for a given node, handling all annotation logic
-func renderConfig(node *gen.Type) RenderConfig {
-	var annotation VentSchemaAnnotation
-	hasAnnotation := annotation.parse(node) == nil
-
-	config := RenderConfig{
-		AdminEnabled:        true,
-		RouteName:           pluralResourceName(node.Name),
-		SingularDisplayName: node.Name,
-		PluralDisplayName:   pluralDisplayName(node.Name),
-		DisplayField:        "ID",
+	graph.Annotations[VentConfigAnnotation{}.Name()] = VentConfigAnnotation{
+		VentExtensionConfig: config,
+		Configs:             configs,
 	}
-
-	// Check if admin is disabled via annotation
-	if hasAnnotation && annotation.DisableAdmin {
-		config.AdminEnabled = false
-		return config
-	}
-
-	if hasAnnotation {
-		if annotation.RouteName != "" {
-			config.RouteName = annotation.RouteName
-		}
-		if annotation.SingularDisplayName != "" {
-			config.SingularDisplayName = annotation.SingularDisplayName
-		}
-		if annotation.PluralDisplayName != "" {
-			config.PluralDisplayName = annotation.PluralDisplayName
-		}
-		if annotation.DisplayField != "" {
-			config.DisplayField = pascalCase(annotation.DisplayField)
-		}
-	}
-
-	// Build edges list
-	for _, edge := range node.Edges {
-		config.Edges = append(config.Edges, RenderEdge{
-			Name:         edge.Name,
-			TypeName:     edge.Type.Name,
-			Unique:       edge.Unique,
-			DisplayField: getEdgeDisplayField(edge.Type),
-			Singular:     singularize(pascalCase(edge.Name)),
-		})
-	}
-
-	// Build table columns
-	config.TableColumns = buildTableColumns(node, annotation, hasAnnotation)
-
-	// Build form fields
-	config.FormFields = buildFormFields(node, annotation, hasAnnotation)
-
-	// Build input fields for structs
-	config.CreateInputFields = buildCreateInputFields(node, annotation, hasAnnotation)
-	config.UpdateInputFields = buildUpdateInputFields(node, annotation, hasAnnotation)
-
-	// Build direct fields
-	config.CreateDirectFields, config.UpdateDirectFields = buildDirectFields(node)
-
-	return config
-}
-
-// buildTableColumns determines which columns to show in the list view
-func buildTableColumns(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderColumn {
-	var columns []RenderColumn
-
-	if hasAnnotation && len(annotation.TableColumns) > 0 {
-		// Use annotated columns exactly as specified
-		for _, colName := range annotation.TableColumns {
-			col := RenderColumn{
-				Name:  colName,
-				Label: pascalCase(colName),
-				Type:  getFieldType(node, colName),
-			}
-			columns = append(columns, col)
-		}
-	} else {
-		// Default: id + all non-sensitive fields
-		columns = append(columns, RenderColumn{
-			Name:  "id",
-			Label: "ID",
-			Type:  "int",
-		})
-		for _, f := range node.Fields {
-			if !f.Sensitive() {
-				columns = append(columns, RenderColumn{
-					Name:  f.Name,
-					Label: pascalCase(f.Name),
-					Type:  f.Type.Type.String(),
-				})
-			}
-		}
-	}
-
-	return columns
-}
-
-// buildFormFields determines which fields to show in add/edit forms
-func buildFormFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderField {
-	var fields []RenderField
-
-	if hasAnnotation && len(annotation.FieldSets) > 0 && len(annotation.FieldSets[0].Fields) > 0 {
-		// Use annotated fieldset ordering
-		for _, fieldName := range annotation.FieldSets[0].Fields {
-			field := buildRenderField(node, annotation, fieldName)
-			if field != nil {
-				fields = append(fields, *field)
-			}
-		}
-	} else {
-		// Default: id + all non-sensitive fields + custom fields + edges
-		fields = append(fields, RenderField{
-			Name:     "id",
-			Label:    "ID",
-			Type:     FieldKindInt,
-			Editable: false,
-			IsEdge:   false,
-		})
-
-		for _, f := range node.Fields {
-			if f.Sensitive() || !isSupportedInputField(f) {
-				continue
-			}
-			fields = append(fields, RenderField{
-				Name:     f.Name,
-				Label:    pascalCase(f.Name),
-				Type:     formInputTypeForField(f),
-				Editable: true,
-				IsEdge:   false,
-			})
-		}
-
-		// Add custom fields from annotation
-		if hasAnnotation {
-			for _, cf := range annotation.CustomFields {
-				fieldType := customFieldKind(cf)
-				fields = append(fields, RenderField{
-					Name:     cf.Name,
-					Label:    pascalCase(cf.Name),
-					Type:     fieldType,
-					Editable: true,
-					IsEdge:   false,
-				})
-			}
-		}
-
-		// Add edges
-		for _, edge := range node.Edges {
-			edgeType := FieldKindForeignKey
-			if edge.Unique {
-				edgeType = FieldKindForeignKeyUnique
-			}
-			fields = append(fields, RenderField{
-				Name:             edge.Name,
-				Label:            pascalCase(edge.Name),
-				Type:             edgeType,
-				Editable:         true,
-				IsEdge:           true,
-				EdgeType:         edge.Type.Name,
-				EdgeUnique:       edge.Unique,
-				EdgeDisplayField: getEdgeDisplayField(edge.Type),
-			})
-		}
-	}
-
-	return fields
-}
-
-// buildRenderField creates a RenderField for a given field name
-func buildRenderField(node *gen.Type, annotation VentSchemaAnnotation, fieldName string) *RenderField {
-	// Check for reserved auth password status field.
-	if fieldName == "password" && isAuthUserNode(node) {
-		return &RenderField{
-			Name:             "password",
-			Label:            "Password",
-			Type:             FieldKindString,
-			Editable:         false,
-			IsEdge:           false,
-			IsPasswordStatus: true,
-		}
-	}
-
-	// Check for "id"
-	if fieldName == "id" {
-		return &RenderField{
-			Name:     "id",
-			Label:    "ID",
-			Type:     FieldKindInt,
-			Editable: false,
-			IsEdge:   false,
-		}
-	}
-
-	// Check edges
-	for _, edge := range node.Edges {
-		if edge.Name == fieldName {
-			edgeType := FieldKindForeignKey
-			if edge.Unique {
-				edgeType = FieldKindForeignKeyUnique
-			}
-			return &RenderField{
-				Name:             edge.Name,
-				Label:            pascalCase(edge.Name),
-				Type:             edgeType,
-				Editable:         true,
-				IsEdge:           true,
-				EdgeType:         edge.Type.Name,
-				EdgeUnique:       edge.Unique,
-				EdgeDisplayField: getEdgeDisplayField(edge.Type),
-			}
-		}
-	}
-
-	// Check custom fields from annotation
-	for _, cf := range annotation.CustomFields {
-		if cf.Name == fieldName {
-			fieldType := customFieldKind(cf)
-			return &RenderField{
-				Name:     cf.Name,
-				Label:    pascalCase(cf.Name),
-				Type:     fieldType,
-				Editable: true,
-				IsEdge:   false,
-			}
-		}
-	}
-
-	// Check real fields
-	for _, f := range node.Fields {
-		if f.Name == fieldName {
-			if f.Sensitive() || !isSupportedInputField(f) {
-				return nil // Don't include sensitive or unsupported fields directly
-			}
-			return &RenderField{
-				Name:     f.Name,
-				Label:    pascalCase(f.Name),
-				Type:     formInputTypeForField(f),
-				Editable: true,
-				IsEdge:   false,
-			}
-		}
-	}
-
-	return nil
-}
-
-// buildCreateInputFields determines which fields go in CreateInput structs.
-func buildCreateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
-	var fields []RenderInputField
-
-	// Add all non-sensitive supported fields
-	for _, f := range node.Fields {
-		if f.Sensitive() || !isSupportedInputField(f) {
-			continue
-		}
-		fields = append(fields, createInputFieldForEntField(f))
-	}
-
-	// Add custom fields from annotation
-	if hasAnnotation {
-		fields = appendCustomInputFields(fields, annotation.CustomFields, createInputFieldForCustomField)
-	}
-
-	// Add edges (as []string for IDs)
-	for _, edge := range node.Edges {
-		fields = append(fields, createInputFieldForEdge(edge))
-	}
-
-	return fields
 }
 
 func formInputTypeForField(field *gen.Field) FieldKind {
@@ -517,29 +236,6 @@ func isFieldKindTime(kind FieldKind) bool {
 	return kind == FieldKindTime
 }
 
-func fieldKindGoIdent(kind FieldKind) string {
-	switch kind {
-	case FieldKindString:
-		return "vent.FieldKindString"
-	case FieldKindPassword:
-		return "vent.FieldKindPassword"
-	case FieldKindInt:
-		return "vent.FieldKindInt"
-	case FieldKindFloat:
-		return "vent.FieldKindFloat"
-	case FieldKindBool:
-		return "vent.FieldKindBool"
-	case FieldKindForeignKey:
-		return "vent.FieldKindForeignKey"
-	case FieldKindForeignKeyUnique:
-		return "vent.FieldKindForeignKeyUnique"
-	case FieldKindTime:
-		return "vent.FieldKindTime"
-	default:
-		return fmt.Sprintf("vent.FieldKind(%q)", string(kind))
-	}
-}
-
 func isSupportedInputField(field *gen.Field) bool {
 	_, ok := fieldKindForEntField(field)
 	return ok
@@ -549,50 +245,14 @@ func optionalOnCreate(field *gen.Field) bool {
 	return field.Optional || field.Nillable || field.Default
 }
 
-func appendCustomInputFields(fields []RenderInputField, customFields []Field, buildField func(Field) RenderInputField) []RenderInputField {
-	existingFields := inputFieldNames(fields)
-	for _, field := range customFields {
-		name := strings.ToLower(field.Name)
-		if !existingFields[name] {
-			fields = append(fields, buildField(field))
-			existingFields[name] = true
-		}
-	}
-	return fields
-}
-
-func inputFieldNames(fields []RenderInputField) map[string]bool {
-	names := make(map[string]bool, len(fields))
-	for _, field := range fields {
-		names[strings.ToLower(field.JSONName)] = true
-	}
-	return names
-}
-
-func createInputFieldForEntField(field *gen.Field) RenderInputField {
+func createInputFieldForEntField(field *gen.Field) InputFieldSpec {
 	optional := optionalOnCreate(field)
-	return RenderInputField{
+	return InputFieldSpec{
 		Name:             field.Name,
 		JSONName:         field.Name,
 		Type:             createInputTypeForEntField(field),
 		OptionalOnCreate: optional,
 		Nillable:         field.Nillable,
-	}
-}
-
-func createInputFieldForCustomField(field Field) RenderInputField {
-	return RenderInputField{
-		Name:     field.Name,
-		JSONName: field.Name,
-		Type:     field.Type,
-	}
-}
-
-func createInputFieldForEdge(edge *gen.Edge) RenderInputField {
-	return RenderInputField{
-		Name:     edge.Name,
-		JSONName: edge.Name,
-		Type:     createInputTypeForEdge(edge),
 	}
 }
 
@@ -618,29 +278,13 @@ func createInputTypeForEdge(edge *gen.Edge) string {
 	return "[]string"
 }
 
-func updateInputFieldForEntField(field *gen.Field) RenderInputField {
-	return RenderInputField{
+func updateInputFieldForEntField(field *gen.Field) InputFieldSpec {
+	return InputFieldSpec{
 		Name:             field.Name,
 		JSONName:         field.Name,
 		Type:             updateInputTypeForEntField(field),
 		OptionalOnCreate: optionalOnCreate(field),
 		Nillable:         field.Nillable,
-	}
-}
-
-func updateInputFieldForCustomField(field Field) RenderInputField {
-	return RenderInputField{
-		Name:     field.Name,
-		JSONName: field.Name,
-		Type:     pointerInputType(field.Type),
-	}
-}
-
-func updateInputFieldForEdge(edge *gen.Edge) RenderInputField {
-	return RenderInputField{
-		Name:     edge.Name,
-		JSONName: edge.Name,
-		Type:     pointerInputType(createInputTypeForEdge(edge)),
 	}
 }
 
@@ -652,31 +296,6 @@ func updateInputTypeForEntField(field *gen.Field) string {
 	return pointerInputType(fieldType)
 }
 
-// buildUpdateInputFields determines which fields go in UpdateInput structs.
-func buildUpdateInputFields(node *gen.Type, annotation VentSchemaAnnotation, hasAnnotation bool) []RenderInputField {
-	var fields []RenderInputField
-
-	// Add all non-sensitive supported fields
-	for _, f := range node.Fields {
-		if f.Sensitive() || !isSupportedInputField(f) {
-			continue
-		}
-		fields = append(fields, updateInputFieldForEntField(f))
-	}
-
-	// Add custom fields from annotation
-	if hasAnnotation {
-		fields = appendCustomInputFields(fields, annotation.CustomFields, updateInputFieldForCustomField)
-	}
-
-	// Add edges (as IDs)
-	for _, edge := range node.Edges {
-		fields = append(fields, updateInputFieldForEdge(edge))
-	}
-
-	return fields
-}
-
 func optionalInputType(t string) string {
 	return "OptionalInput[" + strings.TrimPrefix(t, "*") + "]"
 }
@@ -686,49 +305,6 @@ func pointerInputType(t string) string {
 		return t
 	}
 	return "*" + t
-}
-
-// buildDirectFields builds direct create/update fields from non-sensitive supported node fields.
-func buildDirectFields(node *gen.Type) ([]RenderCreateDirectField, []RenderUpdateDirectField) {
-	var createDirectFields []RenderCreateDirectField
-	var updateDirectFields []RenderUpdateDirectField
-
-	for _, f := range node.Fields {
-		if f.Sensitive() || !isSupportedInputField(f) {
-			continue
-		}
-		createDirectFields = append(createDirectFields, renderCreateDirectFieldForEntField(f))
-		updateDirectFields = append(updateDirectFields, renderUpdateDirectFieldForEntField(f))
-	}
-
-	return createDirectFields, updateDirectFields
-}
-
-func renderCreateDirectFieldForEntField(field *gen.Field) RenderCreateDirectField {
-	return RenderCreateDirectField{
-		Name:             field.Name,
-		Kind:             formInputTypeForField(field),
-		OptionalOnCreate: optionalOnCreate(field),
-		Nillable:         field.Nillable,
-	}
-}
-
-func renderUpdateDirectFieldForEntField(field *gen.Field) RenderUpdateDirectField {
-	return RenderUpdateDirectField{
-		Name:     field.Name,
-		Kind:     formInputTypeForField(field),
-		Nillable: field.Nillable,
-	}
-}
-
-// getFieldType returns the type of a field by name
-func getFieldType(node *gen.Type, fieldName string) string {
-	for _, f := range node.Fields {
-		if f.Name == fieldName {
-			return f.Type.Type.String()
-		}
-	}
-	return "string"
 }
 
 // getEdgeDisplayField returns the display field for an edge's target type
@@ -750,6 +326,15 @@ func pascalCase(s string) string {
 		}
 	}
 	return strings.Join(parts, "")
+}
+
+func fieldsVarName(typeName string) string {
+	if typeName == "" {
+		return "fields"
+	}
+	runes := []rune(typeName)
+	runes[0] = unicode.ToLower(runes[0])
+	return string(runes) + "Fields"
 }
 
 // singularize removes trailing "s" from a string (simple singularization)
@@ -864,7 +449,6 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	for _, node := range graph.Nodes {
 		errs = append(errs, validateVentSchemaAnnotation(node)...)
 	}
-	errs = append(errs, validateRouteNames(graph.Nodes)...)
 
 	if len(errs) > 0 {
 		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
@@ -892,14 +476,12 @@ func findNode(nodes []*gen.Type, name string) *gen.Type {
 	return nil
 }
 
-func validateRouteNames(nodes []*gen.Type) []string {
+func validateRouteNames(configs []NodeRenderConfig) error {
 	var errs []string
 	seen := make(map[string]string)
-	for _, node := range nodes {
-		rc := renderConfig(node)
-		if !rc.AdminEnabled {
-			continue
-		}
+	for _, item := range configs {
+		rc := item.RC
+		node := item.Node
 		if rc.RouteName == "" {
 			errs = append(errs, fmt.Sprintf("schema %q route name cannot be empty", node.Name))
 			continue
@@ -913,7 +495,10 @@ func validateRouteNames(nodes []*gen.Type) []string {
 			seen[rc.RouteName] = node.Name
 		}
 	}
-	return errs
+	if len(errs) > 0 {
+		return fmt.Errorf("vent codegen validation failed:\n- %s", strings.Join(errs, "\n- "))
+	}
+	return nil
 }
 
 func validateVentSchemaAnnotation(node *gen.Type) []string {
@@ -1065,4 +650,61 @@ func normalizeAdminPath(path string) string {
 		path += "/"
 	}
 	return path
+}
+
+func cleanupAdminOutput(target string) error {
+	if err := cleanupLegacyAdminFiles(target); err != nil {
+		return err
+	}
+	return cleanupStaleAdminFiles(target)
+}
+
+func cleanupLegacyAdminFiles(target string) error {
+	legacy := []string{
+		filepath.Join(target, "vent_admin.go"),
+		filepath.Join(target, "migrate", "vent", "migrate.go"),
+	}
+	for _, path := range legacy {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupStaleAdminFiles(target string) error {
+	adminDir := filepath.Join(target, "admin")
+	entries, err := os.ReadDir(adminDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	keep := map[string]struct{}{
+		"handler.go":         {},
+		"schema_handlers.go": {},
+		"fields.go":          {},
+		"migrate.go":         {},
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if filepath.Ext(name) != ".go" {
+			continue
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(adminDir, name)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }

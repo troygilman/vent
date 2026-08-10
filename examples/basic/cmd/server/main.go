@@ -7,6 +7,7 @@ import (
 
 	"github.com/troygilman/vent/auth"
 	"github.com/troygilman/vent/examples/basic/ent"
+	"github.com/troygilman/vent/examples/basic/ent/admin"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -27,20 +28,31 @@ func main() {
 		panic(err)
 	}
 
-	client.AuthUser.Create().
+	_, err = client.AuthUser.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		SetIsStaff(true).
 		SetIsSuperuser(true).
 		Save(ctx)
+	if err != nil {
+		log.Println(err.Error())
+	}
 
-	adminHandler, err := ent.NewAdminHandler(ent.AdminConfig{
+	adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
 		Client: client,
 		SecretProvider: auth.SecretProviderFunc(func() []byte {
 			return []byte("secret")
 		}),
 		CredentialGenerator:     credentialGenerator,
 		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
+		// Field overrides use the same config slots as custom field implementations.
+		Fields: admin.FieldConfigs{
+			AuthUser: admin.AuthUserFieldsConfig{
+				IsSuperuser: SuperuserOnlyIsSuperuser{
+					AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(client),
+				},
+			},
+		},
 	})
 	if err != nil {
 		log.Fatalf("failed creating admin handler: %v", err)

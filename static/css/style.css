@@ -1,5 +1,13 @@
 /* Vent Admin UI — native CSS. Edit here; regenerate templ only when .templ files change. */
 
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("../fonts/inter-latin.woff2") format("woff2");
+}
+
 @view-transition {
     navigation: auto;
 }
@@ -116,8 +124,7 @@
     --shadow:
         0 3px 6px -1px rgb(0 0 0 / 0.28), 0 2px 4px -2px rgb(0 0 0 / 0.18);
     --shadow-lg:
-        0 20px 25px -5px rgb(0 0 0 / 0.35),
-        0 8px 10px -6px rgb(0 0 0 / 0.22);
+        0 20px 25px -5px rgb(0 0 0 / 0.35), 0 8px 10px -6px rgb(0 0 0 / 0.22);
 }
 
 [data-theme="system"] {
@@ -157,8 +164,7 @@
 
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
         --shadow:
-            0 3px 6px -1px rgb(0 0 0 / 0.28),
-            0 2px 4px -2px rgb(0 0 0 / 0.18);
+            0 3px 6px -1px rgb(0 0 0 / 0.28), 0 2px 4px -2px rgb(0 0 0 / 0.18);
         --shadow-lg:
             0 20px 25px -5px rgb(0 0 0 / 0.35),
             0 8px 10px -6px rgb(0 0 0 / 0.22);
@@ -216,7 +222,13 @@ a {
 .admin-layout {
     display: flex;
     height: 100%;
-    background: var(--color-bg);
+    background:
+        radial-gradient(
+            ellipse 80% 60% at 50% -10%,
+            var(--color-primary-glow),
+            transparent
+        ),
+        var(--color-bg);
 }
 .sidebar {
     width: var(--sidebar-width);
@@ -553,6 +565,7 @@ a {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    padding-bottom: var(--space-6);
 }
 .entity-form-header {
     padding-bottom: var(--space-4);
@@ -619,11 +632,6 @@ a {
     margin: 0;
     font-size: 0.75rem;
     color: var(--color-text-subtle);
-}
-.entity-form .form-actions {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
 }
 .form-actions > .btn-error {
     margin-left: auto;

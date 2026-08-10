@@ -96,7 +96,36 @@ func TestFieldKindForEntField(t *testing.T) {
 	}
 }
 
-func TestBuildDirectFieldsSetsDirectFieldKind(t *testing.T) {
+func TestBuildRenderConfigDefaultInputSemantics(t *testing.T) {
+	node := testInputNode()
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+
+	assertInputField(t, rc.CreateInputFields, "title", "title", "string", false, false)
+	assertInputField(t, rc.CreateInputFields, "published", "published", "*bool", true, false)
+	assertInputField(t, rc.CreateInputFields, "nickname", "nickname", "*string", true, true)
+	assertInputField(t, rc.CreateInputFields, "starts_at", "starts_at", "string", false, false)
+	assertInputField(t, rc.CreateInputFields, "ends_at", "ends_at", "*string", true, true)
+	assertInputField(t, rc.CreateInputFields, "author", "author", "string", false, false)
+	assertInputField(t, rc.CreateInputFields, "tags", "tags", "[]string", false, false)
+
+	assertInputField(t, rc.UpdateInputFields, "title", "title", "*string", false, false)
+	assertInputField(t, rc.UpdateInputFields, "published", "published", "*bool", true, false)
+	assertInputField(t, rc.UpdateInputFields, "nickname", "nickname", "OptionalInput[string]", true, true)
+	assertInputField(t, rc.UpdateInputFields, "starts_at", "starts_at", "*string", false, false)
+	assertInputField(t, rc.UpdateInputFields, "ends_at", "ends_at", "OptionalInput[string]", true, true)
+	assertInputField(t, rc.UpdateInputFields, "author", "author", "*string", false, false)
+	assertInputField(t, rc.UpdateInputFields, "tags", "tags", "*[]string", false, false)
+
+	if field := findInputField(rc.CreateInputFields, "settings"); field != nil {
+		t.Fatalf("unsupported JSON field was included: %+v", *field)
+	}
+}
+
+func TestBuildRenderConfigSurfaceMemberKinds(t *testing.T) {
 	node := &gen.Type{
 		Name: "Event",
 		Fields: []*gen.Field{
@@ -105,88 +134,19 @@ func TestBuildDirectFieldsSetsDirectFieldKind(t *testing.T) {
 		},
 	}
 
-	createDirectFields, updateDirectFields := buildDirectFields(node)
-	if len(createDirectFields) != 2 {
-		t.Fatalf("createDirectFields length = %d, want 2", len(createDirectFields))
-	}
-	if len(updateDirectFields) != 2 {
-		t.Fatalf("updateDirectFields length = %d, want 2", len(updateDirectFields))
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
 	}
 
-	assertCreateDirectFieldKinds(t, createDirectFields)
-	assertUpdateDirectFieldKinds(t, updateDirectFields)
-}
-
-func assertCreateDirectFieldKinds(t *testing.T, fields []RenderCreateDirectField) {
-	t.Helper()
-	for _, field := range fields {
-		switch field.Name {
-		case "name":
-			if field.Kind != FieldKindString {
-				t.Fatalf("name Kind = %q, want %q", field.Kind, FieldKindString)
-			}
-		case "starts_at":
-			if field.Kind != FieldKindTime {
-				t.Fatalf("starts_at Kind = %q, want %q", field.Kind, FieldKindTime)
-			}
-		default:
-			t.Fatalf("unexpected create direct field %q", field.Name)
+	for _, member := range rc.AdminSurface {
+		if member.Name == "name" && member.FieldKind != FieldKindString {
+			t.Fatalf("name FieldKind = %q, want %q", member.FieldKind, FieldKindString)
+		}
+		if member.Name == "starts_at" && member.FieldKind != FieldKindTime {
+			t.Fatalf("starts_at FieldKind = %q, want %q", member.FieldKind, FieldKindTime)
 		}
 	}
-}
-
-func assertUpdateDirectFieldKinds(t *testing.T, fields []RenderUpdateDirectField) {
-	t.Helper()
-	for _, field := range fields {
-		switch field.Name {
-		case "name":
-			if field.Kind != FieldKindString {
-				t.Fatalf("name Kind = %q, want %q", field.Kind, FieldKindString)
-			}
-		case "starts_at":
-			if field.Kind != FieldKindTime {
-				t.Fatalf("starts_at Kind = %q, want %q", field.Kind, FieldKindTime)
-			}
-		default:
-			t.Fatalf("unexpected update direct field %q", field.Name)
-		}
-	}
-}
-
-func TestBuildCreateInputFieldsUsesCreateSemantics(t *testing.T) {
-	node := testInputNode()
-	annotation := VentSchemaAnnotation{CustomFields: []Field{{Name: "password", Type: "string", InputType: "password"}}}
-
-	fields := buildCreateInputFields(node, annotation, true)
-
-	assertInputField(t, fields, "title", "title", "string", false, false)
-	assertInputField(t, fields, "published", "published", "*bool", true, false)
-	assertInputField(t, fields, "nickname", "nickname", "*string", true, true)
-	assertInputField(t, fields, "starts_at", "starts_at", "string", false, false)
-	assertInputField(t, fields, "ends_at", "ends_at", "*string", true, true)
-	assertInputField(t, fields, "password", "password", "string", false, false)
-	assertInputField(t, fields, "author", "author", "string", false, false)
-	assertInputField(t, fields, "tags", "tags", "[]string", false, false)
-
-	if field := findInputField(fields, "settings"); field != nil {
-		t.Fatalf("unsupported JSON field was included: %+v", *field)
-	}
-}
-
-func TestBuildUpdateInputFieldsUsesPatchSemantics(t *testing.T) {
-	node := testInputNode()
-	annotation := VentSchemaAnnotation{CustomFields: []Field{{Name: "password", Type: "string", InputType: "password"}}}
-
-	fields := buildUpdateInputFields(node, annotation, true)
-
-	assertInputField(t, fields, "title", "title", "*string", false, false)
-	assertInputField(t, fields, "published", "published", "*bool", true, false)
-	assertInputField(t, fields, "nickname", "nickname", "OptionalInput[string]", true, true)
-	assertInputField(t, fields, "starts_at", "starts_at", "*string", false, false)
-	assertInputField(t, fields, "ends_at", "ends_at", "OptionalInput[string]", true, true)
-	assertInputField(t, fields, "password", "password", "*string", false, false)
-	assertInputField(t, fields, "author", "author", "*string", false, false)
-	assertInputField(t, fields, "tags", "tags", "*[]string", false, false)
 }
 
 func testInputNode() *gen.Type {
@@ -194,7 +154,7 @@ func testInputNode() *gen.Type {
 		Name: "Article",
 		Fields: []*gen.Field{
 			{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
-			{Name: "published", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}, Default: true},
+			fieldWithConstantDefault("published", schemafield.TypeBool),
 			{Name: "nickname", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}, Optional: true, Nillable: true},
 			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
 			{Name: "ends_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}, Optional: true, Nillable: true},
@@ -207,7 +167,7 @@ func testInputNode() *gen.Type {
 	}
 }
 
-func assertInputField(t *testing.T, fields []RenderInputField, name string, jsonName string, fieldType string, optionalOnCreate bool, nillable bool) {
+func assertInputField(t *testing.T, fields []InputFieldSpec, name string, jsonName string, fieldType string, optionalOnCreate bool, nillable bool) {
 	t.Helper()
 	field := findInputField(fields, name)
 	if field == nil {
@@ -227,29 +187,13 @@ func assertInputField(t *testing.T, fields []RenderInputField, name string, json
 	}
 }
 
-func findInputField(fields []RenderInputField, name string) *RenderInputField {
+func findInputField(fields []InputFieldSpec, name string) *InputFieldSpec {
 	for i := range fields {
 		if fields[i].Name == name {
 			return &fields[i]
 		}
 	}
 	return nil
-}
-
-func TestAppendCustomInputFieldsSkipsExistingAndDuplicateNames(t *testing.T) {
-	fields := []RenderInputField{{Name: "title", JSONName: "title", Type: "string"}}
-	fields = appendCustomInputFields(fields, []Field{
-		{Name: "Title", Type: "string"},
-		{Name: "password", Type: "string"},
-		{Name: "Password", Type: "string"},
-	}, createInputFieldForCustomField)
-
-	if len(fields) != 2 {
-		t.Fatalf("fields length = %d, want 2: %+v", len(fields), fields)
-	}
-	if fields[1].Name != "password" {
-		t.Fatalf("second field = %q, want password", fields[1].Name)
-	}
 }
 
 func TestDuplicateCustomFieldValidation(t *testing.T) {
