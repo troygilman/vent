@@ -216,6 +216,8 @@ func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName st
 
 // normalizeError maps domain/ent errors to client-safe HttpErrors.
 // Call only at boundaries where ent client errors can surface.
+// Validation, constraint, and not-found messages from ent are treated as safe
+// to show in the admin UI; everything else becomes Internal.
 func normalizeError(err error) *vent.HttpError {
 	if err == nil {
 		return vent.Internal(errors.New("nil error"))
@@ -225,11 +227,11 @@ func normalizeError(err error) *vent.HttpError {
 	}
 	switch {
 	case ent.IsValidationError(err):
-		return vent.BadRequest("invalid input").WithCause(err)
+		return vent.BadRequest(err.Error()).WithCause(err)
 	case ent.IsConstraintError(err):
-		return vent.Conflict("conflict").WithCause(err)
+		return vent.Conflict(err.Error()).WithCause(err)
 	case ent.IsNotFound(err):
-		return vent.NotFound("not found").WithCause(err)
+		return vent.NotFound(err.Error()).WithCause(err)
 	default:
 		return vent.Internal(err)
 	}
