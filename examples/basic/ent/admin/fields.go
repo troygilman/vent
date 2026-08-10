@@ -712,7 +712,7 @@ func (f AuthUserLastLoginField) ApplyCreate(_ context.Context, builder *ent.Auth
 		if *input.LastLogin != "" {
 			value, err := vent.ParseDateTimeLocal(*input.LastLogin)
 			if err != nil {
-				return fmt.Errorf("invalid last_login: %w", err)
+				return vent.BadRequest("invalid last_login").WithCause(err)
 			}
 			builder.SetLastLogin(value)
 		}
@@ -724,7 +724,7 @@ func (f AuthUserLastLoginField) ApplyUpdate(_ context.Context, builder *ent.Auth
 	if input.LastLogin != nil {
 		value, err := vent.ParseDateTimeLocal(*input.LastLogin)
 		if err != nil {
-			return fmt.Errorf("invalid last_login: %w", err)
+			return vent.BadRequest("invalid last_login").WithCause(err)
 		}
 		builder.SetLastLogin(value)
 	}

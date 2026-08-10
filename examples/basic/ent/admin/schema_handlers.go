@@ -4,9 +4,7 @@ package admin
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -42,7 +40,7 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 			Order(authgroup.ByID()).
 			All(r.Context())
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
@@ -61,7 +59,7 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 
 		renderCtx, err := buildRenderContext(r.Context(), "auth_group")
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 			return
 		}
 
@@ -78,7 +76,7 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -112,15 +110,14 @@ func (h *AdminHandler) buildAuthGroupAddPageProps(ctx context.Context, errorMess
 }
 
 func (h *AdminHandler) patchAuthGroupAddPageError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	props, buildErr := h.buildAuthGroupAddPageProps(r.Context(), mutationErrorMessage(err))
+	props, buildErr := h.buildAuthGroupAddPageProps(r.Context(), normalizeError(err).PublicMessage())
 	if buildErr != nil {
-		handleError(w, r, buildErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, normalizeError(buildErr))
 		return
 	}
 	sse := datastar.NewSSE(w, r)
 	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
-		handleError(w, r, patchErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, patchErr)
 	}
 }
 
@@ -129,12 +126,12 @@ func (h *AdminHandler) getAuthGroupAddHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props, err := h.buildAuthGroupAddPageProps(r.Context(), "")
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -185,15 +182,14 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 }
 
 func (h *AdminHandler) patchAuthGroupPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	props, buildErr := h.buildAuthGroupPageProps(r.Context(), id, mutationErrorMessage(err))
+	props, buildErr := h.buildAuthGroupPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
-		handleError(w, r, buildErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, normalizeError(buildErr))
 		return
 	}
 	sse := datastar.NewSSE(w, r)
 	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
-		handleError(w, r, patchErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, patchErr)
 	}
 }
 
@@ -202,18 +198,18 @@ func (h *AdminHandler) getAuthGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
 		props, err := h.buildAuthGroupPageProps(r.Context(), id, "")
 		if err != nil {
-			handleError(w, r, err, http.StatusNotFound)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -225,7 +221,7 @@ func (h *AdminHandler) postAuthGroupHandler() http.Handler {
 			Entity AuthGroupCreateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthGroupAddPageError(w, r, fmt.Errorf("invalid form data: %w", err))
+			h.patchAuthGroupAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
@@ -254,7 +250,7 @@ func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
@@ -262,7 +258,7 @@ func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
 			Entity AuthGroupUpdateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthGroupPageError(w, r, id, fmt.Errorf("invalid form data: %w", err))
+			h.patchAuthGroupPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
@@ -291,7 +287,7 @@ func (h *AdminHandler) deleteAuthGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
@@ -336,7 +332,7 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 			Order(authuser.ByID()).
 			All(r.Context())
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
@@ -355,7 +351,7 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 
 		renderCtx, err := buildRenderContext(r.Context(), "auth_user")
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 			return
 		}
 
@@ -376,7 +372,7 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -410,15 +406,14 @@ func (h *AdminHandler) buildAuthUserAddPageProps(ctx context.Context, errorMessa
 }
 
 func (h *AdminHandler) patchAuthUserAddPageError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	props, buildErr := h.buildAuthUserAddPageProps(r.Context(), mutationErrorMessage(err))
+	props, buildErr := h.buildAuthUserAddPageProps(r.Context(), normalizeError(err).PublicMessage())
 	if buildErr != nil {
-		handleError(w, r, buildErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, normalizeError(buildErr))
 		return
 	}
 	sse := datastar.NewSSE(w, r)
 	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
-		handleError(w, r, patchErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, patchErr)
 	}
 }
 
@@ -427,12 +422,12 @@ func (h *AdminHandler) getAuthUserAddHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props, err := h.buildAuthUserAddPageProps(r.Context(), "")
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -483,15 +478,14 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 }
 
 func (h *AdminHandler) patchAuthUserPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	props, buildErr := h.buildAuthUserPageProps(r.Context(), id, mutationErrorMessage(err))
+	props, buildErr := h.buildAuthUserPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
-		handleError(w, r, buildErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, normalizeError(buildErr))
 		return
 	}
 	sse := datastar.NewSSE(w, r)
 	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
-		handleError(w, r, patchErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, patchErr)
 	}
 }
 
@@ -500,18 +494,18 @@ func (h *AdminHandler) getAuthUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
 		props, err := h.buildAuthUserPageProps(r.Context(), id, "")
 		if err != nil {
-			handleError(w, r, err, http.StatusNotFound)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -523,7 +517,7 @@ func (h *AdminHandler) postAuthUserHandler() http.Handler {
 			Entity AuthUserCreateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserAddPageError(w, r, fmt.Errorf("invalid form data: %w", err))
+			h.patchAuthUserAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
@@ -552,7 +546,7 @@ func (h *AdminHandler) patchAuthUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
@@ -560,7 +554,7 @@ func (h *AdminHandler) patchAuthUserHandler() http.Handler {
 			Entity AuthUserUpdateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserPageError(w, r, id, fmt.Errorf("invalid form data: %w", err))
+			h.patchAuthUserPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
@@ -616,15 +610,14 @@ func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id in
 }
 
 func (h *AdminHandler) patchAuthUserPasswordPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	props, buildErr := h.buildAuthUserPasswordPageProps(r.Context(), id, mutationErrorMessage(err))
+	props, buildErr := h.buildAuthUserPasswordPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
-		handleError(w, r, buildErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, normalizeError(buildErr))
 		return
 	}
 	sse := datastar.NewSSE(w, r)
 	if patchErr := sse.PatchElementTempl(gui.SchemaEntityPasswordPage(props)); patchErr != nil {
-		handleError(w, r, patchErr, http.StatusInternalServerError)
+		vent.HandleError(w, r, patchErr)
 	}
 }
 
@@ -633,18 +626,18 @@ func (h *AdminHandler) getAuthUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
 		props, err := h.buildAuthUserPasswordPageProps(r.Context(), id, "")
 		if err != nil {
-			handleError(w, r, err, http.StatusNotFound)
+			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		if err := gui.SchemaEntityPasswordPage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -654,7 +647,7 @@ func (h *AdminHandler) putAuthUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
@@ -662,12 +655,12 @@ func (h *AdminHandler) putAuthUserPasswordHandler() http.Handler {
 			Password AuthUserPasswordInput `json:"password"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserPasswordPageError(w, r, id, fmt.Errorf("invalid form data: %w", err))
+			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Password
 		if input.Password == "" {
-			h.patchAuthUserPasswordPageError(w, r, id, errors.New("password is required"))
+			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("password is required"))
 			return
 		}
 		if input.Password != input.ConfirmPassword {
@@ -695,17 +688,17 @@ func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 
 		currentUser, err := GetUser(r.Context())
 		if err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 			return
 		}
 		if currentUser.ID == id {
-			h.patchAuthUserPasswordPageError(w, r, id, errors.New("cannot remove your own password"))
+			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("cannot remove your own password"))
 			return
 		}
 
@@ -724,7 +717,7 @@ func (h *AdminHandler) deleteAuthUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
-			handleError(w, r, fmt.Errorf("invalid id"), http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
 			return
 		}
 

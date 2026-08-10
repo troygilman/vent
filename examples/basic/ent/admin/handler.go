@@ -214,31 +214,25 @@ func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName st
 	}
 }
 
-// handleError logs the error and sends an appropriate HTTP response
-func handleError(w http.ResponseWriter, r *http.Request, err error, status int) {
-	log.Printf("Error [%s %s]: %v", r.Method, r.URL.Path, err)
-	http.Error(w, err.Error(), status)
-}
-
-func mutationErrorStatus(err error) int {
+// normalizeError maps domain/ent errors to client-safe HttpErrors.
+// Call only at boundaries where ent client errors can surface.
+func normalizeError(err error) *vent.HttpError {
+	if err == nil {
+		return vent.Internal(errors.New("nil error"))
+	}
+	if he, ok := vent.AsHttpError(err); ok {
+		return he
+	}
 	switch {
 	case ent.IsValidationError(err):
-		return http.StatusBadRequest
+		return vent.BadRequest("invalid input").WithCause(err)
 	case ent.IsConstraintError(err):
-		return http.StatusConflict
+		return vent.Conflict("conflict").WithCause(err)
 	case ent.IsNotFound(err):
-		return http.StatusNotFound
+		return vent.NotFound("not found").WithCause(err)
 	default:
-		return http.StatusInternalServerError
+		return vent.Internal(err)
 	}
-}
-
-func mutationErrorMessage(err error) string {
-	return err.Error()
-}
-
-func handleMutationError(w http.ResponseWriter, r *http.Request, err error) {
-	handleError(w, r, err, mutationErrorStatus(err))
 }
 
 // getLoginHandler returns the handler for GET /admin/login/
@@ -246,7 +240,7 @@ func (h *AdminHandler) getLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		props := gui.LoginProps{}
 		if err := gui.LoginPage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -259,11 +253,11 @@ func (h *AdminHandler) postThemeHandler() http.Handler {
 
 		sse := datastar.NewSSE(w, r)
 		if err := sse.ExecuteScript(fmt.Sprintf(`document.documentElement.setAttribute("data-theme", %q)`, newTheme)); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 			return
 		}
 		if err := sse.PatchElementTempl(gui.ThemeToggle(newTheme)); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -273,12 +267,12 @@ func (h *AdminHandler) postLogoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clearAuthTokenCookie(w, r, h.secureCookies)
 		if _, err := requestctx.RotateCSRFToken(w, r, h.secureCookies); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 			return
 		}
 		sse := datastar.NewSSE(w, r)
 		if err := sse.Redirect(requestctx.MustAdminPath(r.Context()) + "login/"); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -293,7 +287,7 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			} `json:"login"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			handleError(w, r, err, http.StatusBadRequest)
+			vent.HandleError(w, r, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 
@@ -343,11 +337,11 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 		if err != nil {
 			log.Println(err)
 			if err := sse.PatchElementTempl(gui.LoginPage(loginProps)); err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
+				vent.HandleError(w, r, err)
 			}
 		} else {
 			if err := sse.Redirect(requestctx.MustAdminPath(r.Context())); err != nil {
-				handleError(w, r, err, http.StatusInternalServerError)
+				vent.HandleError(w, r, err)
 			}
 		}
 	})
@@ -378,7 +372,7 @@ func (h *AdminHandler) getAdminHandler() http.Handler {
 		}
 
 		if err := gui.AdminPage(props).Render(r.Context(), w); err != nil {
-			handleError(w, r, err, http.StatusInternalServerError)
+			vent.HandleError(w, r, err)
 		}
 	})
 }
@@ -405,7 +399,7 @@ func (o *OptionalInput[T]) UnmarshalJSON(data []byte) error {
 func parseID(value string, label string) (int, error) {
 	id, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("invalid %s id", label)
+		return 0, vent.BadRequest(fmt.Sprintf("invalid %s id", label)).WithCause(err)
 	}
 	return id, nil
 }
@@ -425,7 +419,7 @@ func parseIDList(values []string, label string) ([]int, error) {
 func GetUser(ctx context.Context) (*ent.AuthUser, error) {
 	user, ok := ctx.Value(userContextKey{}).(*ent.AuthUser)
 	if !ok {
-		return nil, errors.New("user not found in context")
+		return nil, vent.Internal(errors.New("user not found in context"))
 	}
 	return user, nil
 }
@@ -433,7 +427,7 @@ func GetUser(ctx context.Context) (*ent.AuthUser, error) {
 func GetClaims(ctx context.Context) (*auth.VentClaims, error) {
 	claims, ok := ctx.Value(claimsContextKey{}).(*auth.VentClaims)
 	if !ok {
-		return nil, errors.New("claims not found in context")
+		return nil, vent.Internal(errors.New("claims not found in context"))
 	}
 	return claims, nil
 }
@@ -480,13 +474,13 @@ func NewUserMiddleware(client *ent.Client, secureCookies bool) func(http.Handler
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := GetClaims(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				vent.HandleError(w, r, err)
 				return
 			}
 
 			userID, err := strconv.Atoi(claims.Subject)
 			if err != nil {
-				http.Error(w, "claims ID is not an int", http.StatusInternalServerError)
+				vent.HandleError(w, r, vent.Internal(fmt.Errorf("claims ID is not an int: %w", err)))
 				return
 			}
 
@@ -518,11 +512,11 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, err := GetUser(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				vent.HandleError(w, r, err)
 				return
 			}
 			if !user.IsStaff {
-				http.Error(w, "user is not staff", http.StatusForbidden)
+				vent.HandleError(w, r, vent.Forbidden("forbidden"))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -608,18 +602,18 @@ func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.H
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, err := GetUser(r.Context())
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				vent.HandleError(w, r, err)
 				return
 			}
 
 			for _, permission := range permissions {
 				ok, err := UserHasPermission(r.Context(), user, permission)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					vent.HandleError(w, r, err)
 					return
 				}
 				if !ok {
-					http.Error(w, fmt.Sprintf("user does not have permission: %s", permission), http.StatusForbidden)
+					vent.HandleError(w, r, vent.Forbidden("forbidden"))
 					return
 				}
 			}

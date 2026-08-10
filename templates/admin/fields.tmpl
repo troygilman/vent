@@ -259,7 +259,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, b
 		if *input.{{ pascal $member.Name }} != "" {
 			value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }})
 			if err != nil {
-				return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
+				return vent.BadRequest("invalid {{ $member.Name }}").WithCause(err)
 			}
 			{{- if $member.Nillable }}
 			builder.SetNillable{{ pascal $member.Name }}(&value)
@@ -271,7 +271,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, b
 	{{- else }}
 	value, err := vent.ParseDateTimeLocal(input.{{ pascal $member.Name }})
 	if err != nil {
-		return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
+		return vent.BadRequest("invalid {{ $member.Name }}").WithCause(err)
 	}
 	builder.Set{{ pascal $member.Name }}(value)
 	{{- end }}
@@ -327,7 +327,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 			{{- if isFieldKindTime $member.FieldKind }}
 			value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }}.Value)
 			if err != nil {
-				return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
+				return vent.BadRequest("invalid {{ $member.Name }}").WithCause(err)
 			}
 			builder.SetNillable{{ pascal $member.Name }}(&value)
 			{{- else }}
@@ -340,7 +340,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 		{{- if isFieldKindTime $member.FieldKind }}
 		value, err := vent.ParseDateTimeLocal(*input.{{ pascal $member.Name }})
 		if err != nil {
-			return fmt.Errorf("invalid {{ $member.Name }}: %w", err)
+			return vent.BadRequest("invalid {{ $member.Name }}").WithCause(err)
 		}
 		builder.Set{{ pascal $member.Name }}(value)
 		{{- else }}

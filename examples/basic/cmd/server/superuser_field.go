@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/examples/basic/ent"
@@ -74,7 +73,7 @@ func requireSuperuserForSuperuserFlag(ctx context.Context, changing bool) error 
 		return err
 	}
 	if !ok {
-		return errors.New("only superusers can change is_superuser")
+		return vent.Forbidden("only superusers can change is_superuser")
 	}
 	return nil
 }
