@@ -222,13 +222,7 @@ a {
 .admin-layout {
     display: flex;
     height: 100%;
-    background:
-        radial-gradient(
-            ellipse 80% 60% at 50% -10%,
-            var(--color-primary-glow),
-            transparent
-        ),
-        var(--color-bg);
+    background: var(--color-bg);
 }
 .sidebar {
     width: var(--sidebar-width);
