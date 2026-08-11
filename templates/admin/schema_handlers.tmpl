@@ -67,10 +67,25 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
-		renderCtx, err := buildRenderContext(r.Context(), "{{ resourceName $node.Name }}")
+		canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
 			return
+		}
+		canUpdate, err := h.schemas.{{ $node.Name }}.CanUpdate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canDelete, err := h.schemas.{{ $node.Name }}.CanDelete(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate,
+			CanDelete: canDelete,
 		}
 
 		props := gui.SchemaTableProps{
@@ -157,9 +172,22 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
-	renderCtx, err := buildRenderContext(ctx, "{{ resourceName $node.Name }}")
+	canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.{{ $node.Name }}.CanUpdate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.{{ $node.Name }}.CanDelete(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
 	}
 	ctx = gui.WithRenderContext(ctx, renderCtx)
 
@@ -238,6 +266,11 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		}
 		input := signals.Entity
 
+		if err := h.schemas.{{ $node.Name }}.ValidateCreate(r.Context(), input); err != nil {
+			h.patch{{ $node.Name }}AddPageError(w, r, err)
+			return
+		}
+
 		builder := h.client.{{ $node.Name }}.Create()
 
 		for _, field := range h.{{ fieldsVarName $node.Name }}.createBindFields {
@@ -274,6 +307,11 @@ func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 			return
 		}
 		input := signals.Entity
+
+		if err := h.schemas.{{ $node.Name }}.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patch{{ $node.Name }}PageError(w, r, id, err)
+			return
+		}
 
 		builder := h.client.{{ $node.Name }}.UpdateOneID(id)
 
@@ -415,7 +453,7 @@ func (h *AdminHandler) delete{{ $node.Name }}PasswordHandler() http.Handler {
 			return
 		}
 		if currentUser.ID == id {
-			h.patch{{ $node.Name }}PasswordPageError(w, r, id, vent.BadRequest("cannot remove your own password"))
+			h.patch{{ $node.Name }}PasswordPageError(w, r, id, vent.ErrCannotRemoveOwnPassword)
 			return
 		}
 
@@ -431,22 +469,27 @@ func (h *AdminHandler) delete{{ $node.Name }}PasswordHandler() http.Handler {
 {{- end }}
 
 // delete{{ $node.Name }}Handler returns the handler for DELETE /admin/{{ lower $node.Name }}s/{id}/
-func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(r.PathValue("id"))
-		if err != nil {
-			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
-			return
-		}
+	func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, err := strconv.Atoi(r.PathValue("id"))
+			if err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+				return
+			}
 
-		if err := h.client.{{ $node.Name }}.DeleteOneID(id).Exec(r.Context()); err != nil {
-			h.patch{{ $node.Name }}PageError(w, r, id, err)
-			return
-		}
+			if err := h.schemas.{{ $node.Name }}.ValidateDelete(r.Context(), id); err != nil {
+				h.patch{{ $node.Name }}PageError(w, r, id, err)
+				return
+			}
 
-		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "{{ $rc.RouteName }}/")
-	})
-}
+			if err := h.client.{{ $node.Name }}.DeleteOneID(id).Exec(r.Context()); err != nil {
+				h.patch{{ $node.Name }}PageError(w, r, id, err)
+				return
+			}
+
+			sse := datastar.NewSSE(w, r)
+			sse.Redirect(requestctx.MustAdminPath(r.Context()) + "{{ $rc.RouteName }}/")
+		})
+	}
 {{ end }}
 {{ end }}

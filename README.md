@@ -64,34 +64,59 @@ A lightweight, type-safe admin panel and CRUD framework for Go. Vent generates a
 
     Then visit `http://localhost:8080/admin/`.
 
-## Customizing fields
+## Customizing schemas
 
-Generated admin code exposes `AdminConfig.Fields` (`FieldConfigs`), with one `*FieldsConfig` per schema. Every default surface member and every custom field has a slot. Nil means “use the generated default” (when one exists).
+Generated admin code exposes `AdminConfig.Schemas` (`SchemaAdmins`), with one `*Admin` interface slot per schema. Nil means “use the generated `Default*Admin`.”
 
-Override a default field and implement a custom field the same way:
+Each schema admin owns:
+
+- **`FieldX()`** — one method per surface member (e.g. `FieldEmail()`, `FieldIsSuperuser()`)
+- **`ValidateCreate` / `ValidateUpdate` / `ValidateDelete`** — mutation policy
+- **`CanRead` / `CanCreate` / `CanUpdate` / `CanDelete`** — permission checks for routes, nav, and UI controls
+
+Embed the default and override only what you need:
 
 ```go
+type AuthUserAdmin struct {
+    admin.DefaultAuthUserAdmin
+}
+
+func (a AuthUserAdmin) FieldIsSuperuser() admin.AuthUserField {
+    return SuperuserOnlyIsSuperuser{
+        AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(a.Client),
+    }
+}
+
+// other Field* + Validate* inherited from DefaultAuthUserAdmin
+
 adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
     Client: client,
     // ...auth deps...
-    Fields: admin.FieldConfigs{
-        AuthUser: admin.AuthUserFieldsConfig{
-            // Replace a generated Ent field implementation
-            IsSuperuser: SuperuserOnlyIsSuperuser{
-                AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(client),
-            },
-            // A non-builtin CustomFields entry is required here
-            // Notes: myNotesField{},
+    Schemas: admin.SchemaAdmins{
+        AuthUser: AuthUserAdmin{
+            DefaultAuthUserAdmin: admin.NewDefaultAuthUserAdmin(client),
         },
     },
 })
 ```
 
-Declare virtual custom fields on the schema with `VentSchemaAnnotation.CustomFields`, then supply the implementation via the matching config slot. Built-ins like `password` ship a generated default and remain overridable.
+To layer validation on the default policy:
 
-Keep app field types **outside** `ent/admin` — that package is regenerated and non-keep files are removed.
+```go
+func (a AuthUserAdmin) ValidateUpdate(ctx context.Context, id int, in admin.AuthUserUpdateInput) error {
+    if err := a.DefaultAuthUserAdmin.ValidateUpdate(ctx, id, in); err != nil {
+        return err
+    }
+    // additional checks...
+    return nil
+}
+```
 
-See [`examples/basic/cmd/server/superuser_field.go`](examples/basic/cmd/server/superuser_field.go) for a superuser-only `is_superuser` policy.
+Declare virtual custom fields on the schema with `VentSchemaAnnotation.CustomFields`, then implement the matching `FieldX()` method (required when there is no generated default).
+
+Keep app types **outside** `ent/admin` — that package is regenerated and non-keep files are removed.
+
+See [`examples/basic/cmd/server/auth_user_admin.go`](examples/basic/cmd/server/auth_user_admin.go) and [`superuser_field.go`](examples/basic/cmd/server/superuser_field.go).
 
 ## Example
 

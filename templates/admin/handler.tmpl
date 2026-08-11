@@ -39,23 +39,15 @@ import (
 	"{{ $.Config.Package }}/{{ lower $groupSchema }}"
 )
 
-// FieldConfigs groups per-schema field implementation overrides.
-type FieldConfigs struct {
-	{{ range $item := $adminNodes }}
-	{{ $node := $item.Node }}
-	{{ $node.Name }} {{ $node.Name }}FieldsConfig
-	{{ end }}
-}
-
 // AdminConfig contains configuration for the admin handler.
-// Optional Fields values replace generated field implementations.
+// Schemas customizes per-schema fields and validation; nil slots use defaults.
 type AdminConfig struct {
 	Client                  *ent.Client
 	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
 	SecureCookies           bool
-	Fields                  FieldConfigs
+	Schemas                 SchemaAdmins
 }
 
 // AdminHandler is the main HTTP handler for the admin panel
@@ -66,6 +58,7 @@ type AdminHandler struct {
 	credentialGenerator     auth.CredentialGenerator
 	tokenGenerator          auth.TokenGenerator
 	secureCookies           bool
+	schemas                 SchemaAdmins
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
 	{{ fieldsVarName $node.Name }} {{ $node.Name }}Fields
@@ -80,17 +73,26 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		return nil, err
 	}
 
+	schemas := config.Schemas
+	{{ range $item := $adminNodes }}
+	{{ $node := $item.Node }}
+	if schemas.{{ $node.Name }} == nil {
+		schemas.{{ $node.Name }} = NewDefault{{ $node.Name }}Admin(config.Client)
+	}
+	{{ end }}
+
 	h := &AdminHandler{
 		client:                  config.Client,
 		credentialAuthenticator: config.CredentialAuthenticator,
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
+		schemas:                 schemas,
 	}
 	{{ range $item := $adminNodes }}
 	{{ $node := $item.Node }}
 	{
-		fields, err := new{{ $node.Name }}Fields(config.Client, config.Fields.{{ $node.Name }})
+		fields, err := new{{ $node.Name }}Fields(schemas.{{ $node.Name }})
 		if err != nil {
 			return nil, err
 		}
@@ -139,18 +141,17 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			{{ range $item := $adminNodes }}
 			{{ $node := $item.Node }}
 			{{ $rc := $item.RC }}
-			{{ $permSuffix := resourceName $node.Name }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
-				schema.GET("/", h.get{{ $node.Name }}ListHandler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.POST("/", h.post{{ $node.Name }}Handler(), NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), NewAuthorizationMiddleware("create_{{ $permSuffix }}"))
-				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), NewAuthorizationMiddleware("delete_{{ $permSuffix }}"))
+				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
+				schema.POST("/", h.post{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
+				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
+				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
+				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
+				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanDelete))
 				{{- if $rc.HasPasswordRoutes }}
-				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("read_{{ $permSuffix }}"))
-				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
-				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), NewAuthorizationMiddleware("update_{{ $permSuffix }}"))
+				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
+				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
+				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
 				{{- end }}
 			})
 			{{ end }}
@@ -186,14 +187,13 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.routes.ServeHTTP(w, r)
 }
 
-// buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
-func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
-	schemas := make([]gui.SchemaMetadata, 0)
-	if user, err := GetUser(ctx); err == nil {
+	// buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
+	func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
+		schemas := make([]gui.SchemaMetadata, 0)
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
 		{{ $rc := $item.RC }}
-		if ok, err := UserHasPermission(ctx, user, "read_{{ resourceName $node.Name }}"); err == nil && ok {
+		if ok, err := h.schemas.{{ $node.Name }}.CanRead(ctx); err == nil && ok {
 			schemas = append(schemas, gui.SchemaMetadata{
 				Name:        "{{ $node.Name }}",
 				DisplayName: "{{ $rc.PluralDisplayName }}",
@@ -201,16 +201,15 @@ func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName st
 			})
 		}
 		{{ end }}
+		slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
+			return cmp.Compare(a.DisplayName, b.DisplayName)
+		})
+		return gui.LayoutProps{
+			Schemas:          schemas,
+			ActiveSchemaName: activeSchemaName,
+			Breadcrumbs:      breadcrumbs,
+		}
 	}
-	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
-		return cmp.Compare(a.DisplayName, b.DisplayName)
-	})
-	return gui.LayoutProps{
-		Schemas:          schemas,
-		ActiveSchemaName: activeSchemaName,
-		Breadcrumbs:      breadcrumbs,
-	}
-}
 
 // normalizeError maps domain/ent errors to client-safe HttpErrors.
 // Call only at boundaries where ent client errors can surface.
@@ -524,28 +523,22 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// buildRenderContext resolves create/update/delete access for schema UI rendering.
-// Missing user context fails closed without returning an error.
-func buildRenderContext(ctx context.Context, resource string) (gui.RenderContext, error) {
-	rc := gui.RenderContext{}
-	if user, err := GetUser(ctx); err == nil {
-		canCreate, err := UserHasPermission(ctx, user, "create_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		canUpdate, err := UserHasPermission(ctx, user, "update_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		canDelete, err := UserHasPermission(ctx, user, "delete_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		rc.CanCreate = canCreate
-		rc.CanUpdate = canUpdate
-		rc.CanDelete = canDelete
+// authorize runs a schema admin Can* check before the next handler.
+func (h *AdminHandler) authorize(check func(context.Context) (bool, error)) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ok, err := check(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, err)
+				return
+			}
+			if !ok {
+				vent.HandleError(w, r, vent.Forbidden("forbidden"))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
-	return rc, nil
 }
 
 // UserHasPermission reports whether user has the named permission.
@@ -597,31 +590,7 @@ func userGroupsWithPermissions(ctx context.Context, user *ent.{{ $userSchema }})
 	return groups, nil
 }
 
-func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := GetUser(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, err)
-				return
-			}
 
-			for _, permission := range permissions {
-				ok, err := UserHasPermission(r.Context(), user, permission)
-				if err != nil {
-					vent.HandleError(w, r, err)
-					return
-				}
-				if !ok {
-					vent.HandleError(w, r, vent.Forbidden("forbidden"))
-					return
-				}
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
 
 func newLoggerMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

@@ -126,4 +126,10 @@ func logError(r *http.Request, err error) {
 var (
 	// ErrPasswordMismatch is returned when password confirmation does not match.
 	ErrPasswordMismatch = BadRequest("passwords do not match")
+	// ErrCannotRemoveOwnPassword is returned when a user tries to clear their own password.
+	ErrCannotRemoveOwnPassword = BadRequest("cannot remove your own password")
+	// ErrCannotDeleteSelf is returned when a user tries to delete their own account.
+	ErrCannotDeleteSelf = BadRequest("cannot delete your own account")
+	// ErrCannotDeactivateSelf is returned when a user tries to deactivate their own account.
+	ErrCannotDeactivateSelf = BadRequest("cannot deactivate your own account")
 )

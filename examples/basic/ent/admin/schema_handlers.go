@@ -57,10 +57,25 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
-		renderCtx, err := buildRenderContext(r.Context(), "auth_group")
+		canCreate, err := h.schemas.AuthGroup.CanCreate(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
 			return
+		}
+		canUpdate, err := h.schemas.AuthGroup.CanUpdate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canDelete, err := h.schemas.AuthGroup.CanDelete(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate,
+			CanDelete: canDelete,
 		}
 
 		props := gui.SchemaTableProps{
@@ -145,9 +160,22 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
-	renderCtx, err := buildRenderContext(ctx, "auth_group")
+	canCreate, err := h.schemas.AuthGroup.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.AuthGroup.CanUpdate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.AuthGroup.CanDelete(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
 	}
 	ctx = gui.WithRenderContext(ctx, renderCtx)
 
@@ -226,6 +254,11 @@ func (h *AdminHandler) postAuthGroupHandler() http.Handler {
 		}
 		input := signals.Entity
 
+		if err := h.schemas.AuthGroup.ValidateCreate(r.Context(), input); err != nil {
+			h.patchAuthGroupAddPageError(w, r, err)
+			return
+		}
+
 		builder := h.client.AuthGroup.Create()
 
 		for _, field := range h.authGroupFields.createBindFields {
@@ -263,6 +296,11 @@ func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
 		}
 		input := signals.Entity
 
+		if err := h.schemas.AuthGroup.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchAuthGroupPageError(w, r, id, err)
+			return
+		}
+
 		builder := h.client.AuthGroup.UpdateOneID(id)
 
 		for _, field := range h.authGroupFields.updateBindFields {
@@ -288,6 +326,11 @@ func (h *AdminHandler) deleteAuthGroupHandler() http.Handler {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		if err := h.schemas.AuthGroup.ValidateDelete(r.Context(), id); err != nil {
+			h.patchAuthGroupPageError(w, r, id, err)
 			return
 		}
 
@@ -349,10 +392,25 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
-		renderCtx, err := buildRenderContext(r.Context(), "auth_user")
+		canCreate, err := h.schemas.AuthUser.CanCreate(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
 			return
+		}
+		canUpdate, err := h.schemas.AuthUser.CanUpdate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canDelete, err := h.schemas.AuthUser.CanDelete(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate,
+			CanDelete: canDelete,
 		}
 
 		props := gui.SchemaTableProps{
@@ -441,9 +499,22 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
-	renderCtx, err := buildRenderContext(ctx, "auth_user")
+	canCreate, err := h.schemas.AuthUser.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.AuthUser.CanDelete(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
 	}
 	ctx = gui.WithRenderContext(ctx, renderCtx)
 
@@ -522,6 +593,11 @@ func (h *AdminHandler) postAuthUserHandler() http.Handler {
 		}
 		input := signals.Entity
 
+		if err := h.schemas.AuthUser.ValidateCreate(r.Context(), input); err != nil {
+			h.patchAuthUserAddPageError(w, r, err)
+			return
+		}
+
 		builder := h.client.AuthUser.Create()
 
 		for _, field := range h.authUserFields.createBindFields {
@@ -558,6 +634,11 @@ func (h *AdminHandler) patchAuthUserHandler() http.Handler {
 			return
 		}
 		input := signals.Entity
+
+		if err := h.schemas.AuthUser.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchAuthUserPageError(w, r, id, err)
+			return
+		}
 
 		builder := h.client.AuthUser.UpdateOneID(id)
 
@@ -698,7 +779,7 @@ func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
 			return
 		}
 		if currentUser.ID == id {
-			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("cannot remove your own password"))
+			h.patchAuthUserPasswordPageError(w, r, id, vent.ErrCannotRemoveOwnPassword)
 			return
 		}
 
@@ -718,6 +799,11 @@ func (h *AdminHandler) deleteAuthUserHandler() http.Handler {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		if err := h.schemas.AuthUser.ValidateDelete(r.Context(), id); err != nil {
+			h.patchAuthUserPageError(w, r, id, err)
 			return
 		}
 

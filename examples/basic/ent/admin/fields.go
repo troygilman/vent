@@ -29,14 +29,6 @@ type AuthGroupField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthGroupUpdateOne, input AuthGroupUpdateInput) error
 }
 
-// AuthGroupFieldsConfig lets the host app replace any admin field implementation.
-// A nil slot uses the generated default when one exists. Non-builtin custom fields
-// are required.
-type AuthGroupFieldsConfig struct {
-	Name        AuthGroupField
-	Permissions AuthGroupField
-}
-
 // AuthGroupFields holds the resolved admin field implementations for AuthGroup.
 type AuthGroupFields struct {
 	listColumns      []AuthGroupField
@@ -46,15 +38,15 @@ type AuthGroupFields struct {
 	updateBindFields []AuthGroupField
 }
 
-func newAuthGroupFields(client *ent.Client, cfg AuthGroupFieldsConfig) (AuthGroupFields, error) {
+func newAuthGroupFields(schemaAdmin AuthGroupAdmin) (AuthGroupFields, error) {
 	f := AuthGroupFields{}
-	NameField := cfg.Name
+	NameField := schemaAdmin.FieldName()
 	if NameField == nil {
-		NameField = NewAuthGroupNameField(client)
+		return AuthGroupFields{}, fmt.Errorf("AuthGroupAdmin.FieldName() returned nil")
 	}
-	PermissionsField := cfg.Permissions
+	PermissionsField := schemaAdmin.FieldPermissions()
 	if PermissionsField == nil {
-		PermissionsField = NewAuthGroupPermissionsField(client)
+		return AuthGroupFields{}, fmt.Errorf("AuthGroupAdmin.FieldPermissions() returned nil")
 	}
 	f.listColumns = []AuthGroupField{
 		NameField,
@@ -227,20 +219,6 @@ type AuthUserField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error
 }
 
-// AuthUserFieldsConfig lets the host app replace any admin field implementation.
-// A nil slot uses the generated default when one exists. Non-builtin custom fields
-// are required.
-type AuthUserFieldsConfig struct {
-	ID          AuthUserField
-	Email       AuthUserField
-	Password    AuthUserField
-	IsStaff     AuthUserField
-	IsSuperuser AuthUserField
-	IsActive    AuthUserField
-	Groups      AuthUserField
-	LastLogin   AuthUserField
-}
-
 // AuthUserFields holds the resolved admin field implementations for AuthUser.
 type AuthUserFields struct {
 	listColumns      []AuthUserField
@@ -250,39 +228,39 @@ type AuthUserFields struct {
 	updateBindFields []AuthUserField
 }
 
-func newAuthUserFields(client *ent.Client, cfg AuthUserFieldsConfig) (AuthUserFields, error) {
+func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
 	f := AuthUserFields{}
-	IdField := cfg.ID
+	IdField := schemaAdmin.FieldID()
 	if IdField == nil {
-		IdField = NewAuthUserIdField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldID() returned nil")
 	}
-	EmailField := cfg.Email
+	EmailField := schemaAdmin.FieldEmail()
 	if EmailField == nil {
-		EmailField = NewAuthUserEmailField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldEmail() returned nil")
 	}
-	PasswordField := cfg.Password
+	PasswordField := schemaAdmin.FieldPassword()
 	if PasswordField == nil {
-		PasswordField = NewAuthUserPasswordField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldPassword() returned nil")
 	}
-	IsStaffField := cfg.IsStaff
+	IsStaffField := schemaAdmin.FieldIsStaff()
 	if IsStaffField == nil {
-		IsStaffField = NewAuthUserIsStaffField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsStaff() returned nil")
 	}
-	IsSuperuserField := cfg.IsSuperuser
+	IsSuperuserField := schemaAdmin.FieldIsSuperuser()
 	if IsSuperuserField == nil {
-		IsSuperuserField = NewAuthUserIsSuperuserField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsSuperuser() returned nil")
 	}
-	IsActiveField := cfg.IsActive
+	IsActiveField := schemaAdmin.FieldIsActive()
 	if IsActiveField == nil {
-		IsActiveField = NewAuthUserIsActiveField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsActive() returned nil")
 	}
-	GroupsField := cfg.Groups
+	GroupsField := schemaAdmin.FieldGroups()
 	if GroupsField == nil {
-		GroupsField = NewAuthUserGroupsField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldGroups() returned nil")
 	}
-	LastLoginField := cfg.LastLogin
+	LastLoginField := schemaAdmin.FieldLastLogin()
 	if LastLoginField == nil {
-		LastLoginField = NewAuthUserLastLoginField(client)
+		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldLastLogin() returned nil")
 	}
 	f.listColumns = []AuthUserField{
 		EmailField,
@@ -562,11 +540,15 @@ func (f AuthUserIsActiveField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f AuthUserIsActiveField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+	editable := true
+	if currentUser, err := GetUser(ctx); err == nil && currentUser.ID == e.ID {
+		editable = false
+	}
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_active",
 		Label:    "IsActive",
 		Value:    vent.FormatFormValue(e.IsActive),
-		Editable: true,
+		Editable: editable,
 	})
 }
 

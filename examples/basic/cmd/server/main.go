@@ -45,12 +45,9 @@ func main() {
 		}),
 		CredentialGenerator:     credentialGenerator,
 		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
-		// Field overrides use the same config slots as custom field implementations.
-		Fields: admin.FieldConfigs{
-			AuthUser: admin.AuthUserFieldsConfig{
-				IsSuperuser: SuperuserOnlyIsSuperuser{
-					AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(client),
-				},
+		Schemas: admin.SchemaAdmins{
+			AuthUser: AuthUserAdmin{
+				DefaultAuthUserAdmin: admin.NewDefaultAuthUserAdmin(client),
 			},
 		},
 	})

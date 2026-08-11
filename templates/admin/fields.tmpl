@@ -45,15 +45,6 @@ type {{ $node.Name }}Field interface {
 	ApplyUpdate(ctx context.Context, builder *ent.{{ $node.Name }}UpdateOne, input {{ $node.Name }}UpdateInput) error
 }
 
-// {{ $node.Name }}FieldsConfig lets the host app replace any admin field implementation.
-// A nil slot uses the generated default when one exists. Non-builtin custom fields
-// are required.
-type {{ $node.Name }}FieldsConfig struct {
-	{{- range $member := $rc.AdminSurface }}
-	{{ $member.Label }} {{ $node.Name }}Field
-	{{- end }}
-}
-
 // {{ $node.Name }}Fields holds the resolved admin field implementations for {{ $node.Name }}.
 type {{ $node.Name }}Fields struct {
 	listColumns      []{{ $node.Name }}Field
@@ -63,15 +54,15 @@ type {{ $node.Name }}Fields struct {
 	updateBindFields []{{ $node.Name }}Field
 }
 
-func new{{ $node.Name }}Fields(client *ent.Client, cfg {{ $node.Name }}FieldsConfig) ({{ $node.Name }}Fields, error) {
+func new{{ $node.Name }}Fields(schemaAdmin {{ $node.Name }}Admin) ({{ $node.Name }}Fields, error) {
 	f := {{ $node.Name }}Fields{}
 	{{- range $member := $rc.AdminSurface }}
-	{{ $member.SlotName }} := cfg.{{ $member.Label }}
+	{{ $member.SlotName }} := schemaAdmin.Field{{ $member.Label }}()
 	if {{ $member.SlotName }} == nil {
 		{{- if hasGeneratedFieldDefault $member }}
-		{{ $member.SlotName }} = New{{ $node.Name }}{{ $member.SlotName }}(client)
+		return {{ $node.Name }}Fields{}, fmt.Errorf("{{ $node.Name }}Admin.Field{{ $member.Label }}() returned nil")
 		{{- else }}
-		return {{ $node.Name }}Fields{}, fmt.Errorf("Fields.{{ $node.Name }}.{{ $member.Label }} is required")
+		return {{ $node.Name }}Fields{}, fmt.Errorf("{{ $node.Name }}Admin.Field{{ $member.Label }}() is required")
 		{{- end }}
 	}
 	{{- end }}
@@ -220,16 +211,29 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 		Options:  options,
 	})
 	{{- else }}
-	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-		Name:     "{{ $member.Name }}",
-		Label:    "{{ $member.Label }}",
-		{{- if not (isFieldKindPassword $member.FieldKind) }}
-		Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
+		{{- if and $rc.IsAuthUserSchema (eq $member.Name "is_active") }}
+		editable := {{ $member.BindUpdate }}
+		if currentUser, err := GetUser(ctx); err == nil && currentUser.ID == e.ID {
+			editable = false
+		}
+		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+			Name:     "{{ $member.Name }}",
+			Label:    "{{ $member.Label }}",
+			Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
+			Editable: editable,
+		})
+		{{- else }}
+		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+			Name:     "{{ $member.Name }}",
+			Label:    "{{ $member.Label }}",
+			{{- if not (isFieldKindPassword $member.FieldKind) }}
+			Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
+			{{- end }}
+			Editable: {{ $member.BindUpdate }},
+		})
 		{{- end }}
-		Editable: {{ $member.BindUpdate }},
-	})
-	{{- end }}
-}
+		{{- end }}
+	}
 
 func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyCreate(_ context.Context, builder *ent.{{ $node.Name }}Create, input {{ $node.Name }}CreateInput) error {
 	{{- if not $member.BindCreate }}

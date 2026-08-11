@@ -27,22 +27,15 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent/authuser"
 )
 
-// FieldConfigs groups per-schema field implementation overrides.
-type FieldConfigs struct {
-	AuthGroup AuthGroupFieldsConfig
-
-	AuthUser AuthUserFieldsConfig
-}
-
 // AdminConfig contains configuration for the admin handler.
-// Optional Fields values replace generated field implementations.
+// Schemas customizes per-schema fields and validation; nil slots use defaults.
 type AdminConfig struct {
 	Client                  *ent.Client
 	SecretProvider          auth.SecretProvider
 	CredentialAuthenticator auth.CredentialAuthenticator
 	CredentialGenerator     auth.CredentialGenerator
 	SecureCookies           bool
-	Fields                  FieldConfigs
+	Schemas                 SchemaAdmins
 }
 
 // AdminHandler is the main HTTP handler for the admin panel
@@ -53,6 +46,7 @@ type AdminHandler struct {
 	credentialGenerator     auth.CredentialGenerator
 	tokenGenerator          auth.TokenGenerator
 	secureCookies           bool
+	schemas                 SchemaAdmins
 
 	authGroupFields AuthGroupFields
 
@@ -67,16 +61,27 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		return nil, err
 	}
 
+	schemas := config.Schemas
+
+	if schemas.AuthGroup == nil {
+		schemas.AuthGroup = NewDefaultAuthGroupAdmin(config.Client)
+	}
+
+	if schemas.AuthUser == nil {
+		schemas.AuthUser = NewDefaultAuthUserAdmin(config.Client)
+	}
+
 	h := &AdminHandler{
 		client:                  config.Client,
 		credentialAuthenticator: config.CredentialAuthenticator,
 		credentialGenerator:     config.CredentialGenerator,
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
+		schemas:                 schemas,
 	}
 
 	{
-		fields, err := newAuthGroupFields(config.Client, config.Fields.AuthGroup)
+		fields, err := newAuthGroupFields(schemas.AuthGroup)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +89,7 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	}
 
 	{
-		fields, err := newAuthUserFields(config.Client, config.Fields.AuthUser)
+		fields, err := newAuthUserFields(schemas.AuthUser)
 		if err != nil {
 			return nil, err
 		}
@@ -130,24 +135,24 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/{$}", h.getAdminHandler())
 
 			authed.Group("auth_groups", func(schema *route.Router) {
-				schema.GET("/", h.getAuthGroupListHandler(), NewAuthorizationMiddleware("read_auth_group"))
-				schema.POST("/", h.postAuthGroupHandler(), NewAuthorizationMiddleware("create_auth_group"))
-				schema.GET("/add/{$}", h.getAuthGroupAddHandler(), NewAuthorizationMiddleware("create_auth_group"))
-				schema.GET("/{id}/", h.getAuthGroupHandler(), NewAuthorizationMiddleware("read_auth_group"))
-				schema.PATCH("/{id}/", h.patchAuthGroupHandler(), NewAuthorizationMiddleware("update_auth_group"))
-				schema.DELETE("/{id}/", h.deleteAuthGroupHandler(), NewAuthorizationMiddleware("delete_auth_group"))
+				schema.GET("/", h.getAuthGroupListHandler(), h.authorize(h.schemas.AuthGroup.CanRead))
+				schema.POST("/", h.postAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
+				schema.GET("/add/{$}", h.getAuthGroupAddHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
+				schema.GET("/{id}/", h.getAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanRead))
+				schema.PATCH("/{id}/", h.patchAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanUpdate))
+				schema.DELETE("/{id}/", h.deleteAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanDelete))
 			})
 
 			authed.Group("auth_users", func(schema *route.Router) {
-				schema.GET("/", h.getAuthUserListHandler(), NewAuthorizationMiddleware("read_auth_user"))
-				schema.POST("/", h.postAuthUserHandler(), NewAuthorizationMiddleware("create_auth_user"))
-				schema.GET("/add/{$}", h.getAuthUserAddHandler(), NewAuthorizationMiddleware("create_auth_user"))
-				schema.GET("/{id}/", h.getAuthUserHandler(), NewAuthorizationMiddleware("read_auth_user"))
-				schema.PATCH("/{id}/", h.patchAuthUserHandler(), NewAuthorizationMiddleware("update_auth_user"))
-				schema.DELETE("/{id}/", h.deleteAuthUserHandler(), NewAuthorizationMiddleware("delete_auth_user"))
-				schema.GET("/{id}/password/", h.getAuthUserPasswordHandler(), NewAuthorizationMiddleware("read_auth_user"))
-				schema.PUT("/{id}/password/", h.putAuthUserPasswordHandler(), NewAuthorizationMiddleware("update_auth_user"))
-				schema.DELETE("/{id}/password/", h.deleteAuthUserPasswordHandler(), NewAuthorizationMiddleware("update_auth_user"))
+				schema.GET("/", h.getAuthUserListHandler(), h.authorize(h.schemas.AuthUser.CanRead))
+				schema.POST("/", h.postAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
+				schema.GET("/add/{$}", h.getAuthUserAddHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
+				schema.GET("/{id}/", h.getAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanRead))
+				schema.PATCH("/{id}/", h.patchAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
+				schema.DELETE("/{id}/", h.deleteAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanDelete))
+				schema.GET("/{id}/password/", h.getAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanRead))
+				schema.PUT("/{id}/password/", h.putAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
+				schema.DELETE("/{id}/password/", h.deleteAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
 			})
 
 		})
@@ -185,25 +190,23 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
 func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
 	schemas := make([]gui.SchemaMetadata, 0)
-	if user, err := GetUser(ctx); err == nil {
 
-		if ok, err := UserHasPermission(ctx, user, "read_auth_group"); err == nil && ok {
-			schemas = append(schemas, gui.SchemaMetadata{
-				Name:        "AuthGroup",
-				DisplayName: "AuthGroups",
-				Path:        requestctx.MustAdminPath(ctx) + "auth_groups/",
-			})
-		}
-
-		if ok, err := UserHasPermission(ctx, user, "read_auth_user"); err == nil && ok {
-			schemas = append(schemas, gui.SchemaMetadata{
-				Name:        "AuthUser",
-				DisplayName: "AuthUsers",
-				Path:        requestctx.MustAdminPath(ctx) + "auth_users/",
-			})
-		}
-
+	if ok, err := h.schemas.AuthGroup.CanRead(ctx); err == nil && ok {
+		schemas = append(schemas, gui.SchemaMetadata{
+			Name:        "AuthGroup",
+			DisplayName: "AuthGroups",
+			Path:        requestctx.MustAdminPath(ctx) + "auth_groups/",
+		})
 	}
+
+	if ok, err := h.schemas.AuthUser.CanRead(ctx); err == nil && ok {
+		schemas = append(schemas, gui.SchemaMetadata{
+			Name:        "AuthUser",
+			DisplayName: "AuthUsers",
+			Path:        requestctx.MustAdminPath(ctx) + "auth_users/",
+		})
+	}
+
 	slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
 		return cmp.Compare(a.DisplayName, b.DisplayName)
 	})
@@ -526,28 +529,22 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// buildRenderContext resolves create/update/delete access for schema UI rendering.
-// Missing user context fails closed without returning an error.
-func buildRenderContext(ctx context.Context, resource string) (gui.RenderContext, error) {
-	rc := gui.RenderContext{}
-	if user, err := GetUser(ctx); err == nil {
-		canCreate, err := UserHasPermission(ctx, user, "create_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		canUpdate, err := UserHasPermission(ctx, user, "update_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		canDelete, err := UserHasPermission(ctx, user, "delete_"+resource)
-		if err != nil {
-			return gui.RenderContext{}, err
-		}
-		rc.CanCreate = canCreate
-		rc.CanUpdate = canUpdate
-		rc.CanDelete = canDelete
+// authorize runs a schema admin Can* check before the next handler.
+func (h *AdminHandler) authorize(check func(context.Context) (bool, error)) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ok, err := check(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, err)
+				return
+			}
+			if !ok {
+				vent.HandleError(w, r, vent.Forbidden("forbidden"))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
-	return rc, nil
 }
 
 // UserHasPermission reports whether user has the named permission.
@@ -597,32 +594,6 @@ func userGroupsWithPermissions(ctx context.Context, user *ent.AuthUser) ([]*ent.
 	}
 	user.Edges.Groups = groups
 	return groups, nil
-}
-
-func NewAuthorizationMiddleware(permissions ...string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := GetUser(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, err)
-				return
-			}
-
-			for _, permission := range permissions {
-				ok, err := UserHasPermission(r.Context(), user, permission)
-				if err != nil {
-					vent.HandleError(w, r, err)
-					return
-				}
-				if !ok {
-					vent.HandleError(w, r, vent.Forbidden("forbidden"))
-					return
-				}
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
 }
 
 func newLoggerMiddleware() func(http.Handler) http.Handler {

@@ -99,6 +99,7 @@ func (e *AdminExtension) Templates() []*gen.Template {
 					"templates/admin/handler.tmpl",
 					"templates/admin/schema_handlers.tmpl",
 					"templates/admin/fields.tmpl",
+					"templates/admin/schemas.tmpl",
 					"templates/admin/migrate.tmpl",
 				),
 		),
@@ -686,6 +687,7 @@ func cleanupStaleAdminFiles(target string) error {
 		"handler.go":         {},
 		"schema_handlers.go": {},
 		"fields.go":          {},
+		"schemas.go":         {},
 		"migrate.go":         {},
 	}
 	for _, entry := range entries {
