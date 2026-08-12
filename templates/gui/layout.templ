@@ -53,13 +53,14 @@ templ CommandPaletteResults(props CommandPaletteProps) {
 
 templ CommandPalette(props CommandPaletteProps) {
 	{{ endpoint := requestctx.MustAdminPath(ctx) + "command_palette/" }}
+	{{ fetch := fmt.Sprintf(`@get(%q, {filterSignals: {include: /^commandpalette\.query$/}})`, endpoint) }}
 	<div
 		id="command-palette"
 		class="command-palette"
 		data-signals="{commandpalette: {query: '', _open: false, _index: 0}}"
 		data-on:keydown__window="commandPalette.onWindowKeydown(evt, $commandpalette)"
 		data-show="$commandpalette._open"
-		data-effect={ fmt.Sprintf("$commandpalette._open && (commandPalette.focusInput(), @get(%q))", endpoint) }
+		data-effect={ "$commandpalette._open && (commandPalette.focusInput(), " + fetch + ")" }
 		style="display: none"
 	>
 		<div
@@ -84,7 +85,7 @@ templ CommandPalette(props CommandPaletteProps) {
 					autocomplete="off"
 					spellcheck="false"
 					data-bind="commandpalette.query"
-					data-on:input__debounce.200ms={ fmt.Sprintf("@get(%q)", endpoint) }
+					data-on:input__debounce.200ms={ fetch }
 				/>
 				<kbd class="command-palette-kbd">esc</kbd>
 			</div>
