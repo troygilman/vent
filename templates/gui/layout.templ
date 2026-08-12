@@ -105,13 +105,12 @@ templ Layout(props LayoutProps) {
 		<div class="sidebar">
 			<div class="sidebar-brand">
 				<a href={ templ.SafeURL(requestctx.MustAdminPath(ctx)) } class="sidebar-brand-link">
-					<img
-						src={ templ.SafeURL(requestctx.MustAdminPath(ctx) + "static/img/vent-logo.png") }
-						alt="Vent"
-						class="sidebar-brand-logo"
-					/>
+					<span class="sidebar-brand-logo" aria-hidden="true"></span>
+					<span class="sidebar-brand-text">
+						<span class="sidebar-brand-name">Vent</span>
+						<span class="sidebar-brand-subtitle">Admin</span>
+					</span>
 				</a>
-				<div class="sidebar-brand-subtitle">Vent Admin</div>
 			</div>
 			<ul class="sidebar-nav">
 				<li class={ "nav-item", templ.KV("active", props.ActiveSchemaName == "") }>

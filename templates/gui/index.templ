@@ -14,6 +14,8 @@ templ Index() {
 	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	{{ fontPath := templ.SafeURL(adminPath + "static/fonts/inter-latin.woff2") }}
 	{{ stylePath := templ.SafeURL(adminPath + "static/css/style.css") }}
+	{{ faviconIcoPath := templ.SafeURL(adminPath + "static/img/favicon.ico") }}
+	{{ faviconPngPath := templ.SafeURL(adminPath + "static/img/vent-logo.png") }}
 	<!DOCTYPE html>
 	<html lang="en" data-theme={ theme }>
 		<head>
@@ -22,6 +24,8 @@ templ Index() {
 			<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
 			<meta name="csrf-token" content={ requestctx.MustCSRFToken(ctx) }/>
 			<title>Vent Admin</title>
+			<link rel="icon" href={ faviconPngPath } type="image/png"/>
+			<link rel="alternate icon" href={ faviconIcoPath } sizes="any"/>
 			<link rel="preload" href={ fontPath } as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href={ stylePath } as="style"/>
 			<link rel="stylesheet" href={ stylePath } media="all"/>
