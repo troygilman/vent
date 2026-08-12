@@ -26,6 +26,7 @@ templ Index() {
 			<link rel="preload" href={ stylePath } as="style"/>
 			<link rel="stylesheet" href={ stylePath } media="all"/>
 			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>
+			<script src={ templ.SafeURL(adminPath + "static/js/command-palette.js") }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{
 					"datastar": datastarPath,

@@ -136,6 +136,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.Use(authMiddleware, userMiddleware, staffMiddleware)
 
 			authed.POST("/preferences/theme/", h.postThemeHandler())
+			authed.GET("/command_palette/", h.getCommandPaletteHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
 			{{ range $item := $adminNodes }}
@@ -189,26 +190,69 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
 	func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
+		return gui.LayoutProps{
+			Schemas:          h.listVisibleSchemas(ctx, ""),
+			ActiveSchemaName: activeSchemaName,
+			Breadcrumbs:      breadcrumbs,
+		}
+	}
+
+	// listVisibleSchemas returns schemas the current user can read, optionally filtered by search.
+	func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch string) []gui.SchemaMetadata {
 		schemas := make([]gui.SchemaMetadata, 0)
+		query := strings.ToLower(strings.TrimSpace(schemaSearch))
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
 		{{ $rc := $item.RC }}
 		if ok, err := h.schemas.{{ $node.Name }}.CanRead(ctx); err == nil && ok {
-			schemas = append(schemas, gui.SchemaMetadata{
-				Name:        "{{ $node.Name }}",
-				DisplayName: "{{ $rc.PluralDisplayName }}",
-				Path:        requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/",
-			})
+			displayName := "{{ $rc.PluralDisplayName }}"
+			if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("{{ $node.Name }}"), query) {
+				schemas = append(schemas, gui.SchemaMetadata{
+					Name:        "{{ $node.Name }}",
+					DisplayName: displayName,
+					Path:        requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/",
+				})
+			}
 		}
 		{{ end }}
 		slices.SortFunc(schemas, func(a, b gui.SchemaMetadata) int {
 			return cmp.Compare(a.DisplayName, b.DisplayName)
 		})
-		return gui.LayoutProps{
-			Schemas:          schemas,
-			ActiveSchemaName: activeSchemaName,
-			Breadcrumbs:      breadcrumbs,
-		}
+		return schemas
+	}
+
+	// getCommandPaletteHandler returns filtered schema results for the command palette.
+	func (h *AdminHandler) getCommandPaletteHandler() http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var signals struct {
+				CommandPalette struct {
+					Query string `json:"query"`
+				} `json:"commandpalette"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid command palette request").WithCause(err))
+				return
+			}
+
+			search := strings.TrimSpace(signals.CommandPalette.Query)
+			schemas := h.listVisibleSchemas(r.Context(), search)
+
+			sse := datastar.NewSSE(w, r)
+			if err := sse.MarshalAndPatchSignals(map[string]any{
+				"commandpalette": map[string]any{
+					"_index": 0,
+				},
+			}); err != nil {
+				vent.HandleError(w, r, err)
+				return
+			}
+			if err := sse.PatchElementTempl(gui.CommandPaletteResults(gui.CommandPaletteProps{
+				Schemas: schemas,
+				Query:   search,
+			})); err != nil {
+				vent.HandleError(w, r, err)
+			}
+		})
 	}
 
 // normalizeError maps domain/ent errors to client-safe HttpErrors.

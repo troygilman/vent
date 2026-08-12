@@ -1,6 +1,10 @@
 package gui
 
-import "github.com/troygilman/vent/requestctx"
+import (
+	"fmt"
+
+	"github.com/troygilman/vent/requestctx"
+)
 
 type LayoutProps struct {
 	Schemas          []SchemaMetadata
@@ -14,8 +18,89 @@ type SchemaMetadata struct {
 	Path        string
 }
 
+type CommandPaletteProps struct {
+	Schemas []SchemaMetadata
+	Query   string
+}
+
+templ CommandPaletteResults(props CommandPaletteProps) {
+	<div id="command-palette-results" class="command-palette-results" role="listbox" aria-label="Schemas">
+		if len(props.Schemas) == 0 {
+			<div class="command-palette-empty">
+				if props.Query == "" {
+					No schemas available
+				} else {
+					No schemas matching “{ props.Query }”
+				}
+			</div>
+		} else {
+			for i, schema := range props.Schemas {
+				<a
+					href={ schema.Path }
+					class="command-palette-item"
+					role="option"
+					data-class:active={ fmt.Sprintf("$commandpalette._index === %d", i) }
+					data-on:mouseenter={ fmt.Sprintf("$commandpalette._index = %d", i) }
+					data-on:click="commandPalette.close($commandpalette)"
+				>
+					<span class="command-palette-item-name">{ schema.DisplayName }</span>
+					<span class="command-palette-item-meta">Schema</span>
+				</a>
+			}
+		}
+	</div>
+}
+
+templ CommandPalette(props CommandPaletteProps) {
+	{{ endpoint := requestctx.MustAdminPath(ctx) + "command_palette/" }}
+	<div
+		id="command-palette"
+		class="command-palette"
+		data-signals="{commandpalette: {query: '', _open: false, _index: 0}}"
+		data-on:keydown__window="commandPalette.onWindowKeydown(evt, $commandpalette)"
+		data-show="$commandpalette._open"
+		data-effect={ fmt.Sprintf("$commandpalette._open && (commandPalette.focusInput(), @get(%q))", endpoint) }
+		style="display: none"
+	>
+		<div
+			class="command-palette-backdrop"
+			data-on:click="commandPalette.close($commandpalette)"
+		></div>
+		<div
+			class="command-palette-dialog"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Command palette"
+			data-on:keydown="commandPalette.onDialogKeydown(evt, $commandpalette)"
+		>
+			<div class="command-palette-input-row">
+				@SearchIcon()
+				<input
+					id="command-palette-input"
+					type="search"
+					class="command-palette-input"
+					placeholder="Search schemas..."
+					aria-label="Search schemas"
+					autocomplete="off"
+					spellcheck="false"
+					data-bind="commandpalette.query"
+					data-on:input__debounce.200ms={ fmt.Sprintf("@get(%q)", endpoint) }
+				/>
+				<kbd class="command-palette-kbd">esc</kbd>
+			</div>
+			@CommandPaletteResults(props)
+			<div class="command-palette-footer">
+				<span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+				<span><kbd>↵</kbd> open</span>
+				<span><kbd>esc</kbd> close</span>
+			</div>
+		</div>
+	</div>
+}
+
 templ Layout(props LayoutProps) {
 	<div class="admin-layout">
+		@CommandPalette(CommandPaletteProps{Schemas: props.Schemas})
 		<div class="sidebar">
 			<div class="sidebar-brand">
 				<a href={ templ.SafeURL(requestctx.MustAdminPath(ctx)) } class="sidebar-brand-link">
@@ -34,7 +119,17 @@ templ Layout(props LayoutProps) {
 						Home
 					</a>
 				</li>
-				<li class="nav-title">Schemas</li>
+				<li class="nav-title">
+					<span>Schemas</span>
+					<button
+						type="button"
+						class="nav-title-action"
+						aria-label="Open command palette (Ctrl+P)"
+						data-on:click="commandPalette.open($commandpalette)"
+					>
+						<kbd class="nav-title-kbd">⌘P</kbd>
+					</button>
+				</li>
 				for _, schema := range props.Schemas {
 					<li class={ "nav-item", templ.KV("active", schema.Name == props.ActiveSchemaName) }>
 						<a href={ schema.Path } class="nav-link">{ schema.DisplayName }</a>
