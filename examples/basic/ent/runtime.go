@@ -3,9 +3,18 @@
 package ent
 
 import (
+	"time"
+
+	"github.com/troygilman/vent/examples/basic/ent/apikey"
+	"github.com/troygilman/vent/examples/basic/ent/auditevent"
+	"github.com/troygilman/vent/examples/basic/ent/author"
+	"github.com/troygilman/vent/examples/basic/ent/book"
+	"github.com/troygilman/vent/examples/basic/ent/category"
 	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/review"
 	"github.com/troygilman/vent/examples/basic/ent/schema"
+	"github.com/troygilman/vent/examples/basic/ent/tag"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
@@ -13,6 +22,74 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	apikeyFields := schema.ApiKey{}.Fields()
+	_ = apikeyFields
+	// apikeyDescName is the schema descriptor for name field.
+	apikeyDescName := apikeyFields[0].Descriptor()
+	// apikey.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	apikey.NameValidator = apikeyDescName.Validators[0].(func(string) error)
+	// apikeyDescToken is the schema descriptor for token field.
+	apikeyDescToken := apikeyFields[1].Descriptor()
+	// apikey.TokenValidator is a validator for the "token" field. It is called by the builders before save.
+	apikey.TokenValidator = apikeyDescToken.Validators[0].(func(string) error)
+	auditeventFields := schema.AuditEvent{}.Fields()
+	_ = auditeventFields
+	// auditeventDescAction is the schema descriptor for action field.
+	auditeventDescAction := auditeventFields[0].Descriptor()
+	// auditevent.ActionValidator is a validator for the "action" field. It is called by the builders before save.
+	auditevent.ActionValidator = auditeventDescAction.Validators[0].(func(string) error)
+	// auditeventDescCreatedAt is the schema descriptor for created_at field.
+	auditeventDescCreatedAt := auditeventFields[2].Descriptor()
+	// auditevent.DefaultCreatedAt holds the default value on creation for the created_at field.
+	auditevent.DefaultCreatedAt = auditeventDescCreatedAt.Default.(func() time.Time)
+	authorFields := schema.Author{}.Fields()
+	_ = authorFields
+	// authorDescName is the schema descriptor for name field.
+	authorDescName := authorFields[0].Descriptor()
+	// author.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	author.NameValidator = authorDescName.Validators[0].(func(string) error)
+	// authorDescActive is the schema descriptor for active field.
+	authorDescActive := authorFields[2].Descriptor()
+	// author.DefaultActive holds the default value on creation for the active field.
+	author.DefaultActive = authorDescActive.Default.(bool)
+	bookFields := schema.Book{}.Fields()
+	_ = bookFields
+	// bookDescTitle is the schema descriptor for title field.
+	bookDescTitle := bookFields[0].Descriptor()
+	// book.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	book.TitleValidator = bookDescTitle.Validators[0].(func(string) error)
+	// bookDescPages is the schema descriptor for pages field.
+	bookDescPages := bookFields[2].Descriptor()
+	// book.DefaultPages holds the default value on creation for the pages field.
+	book.DefaultPages = bookDescPages.Default.(int)
+	// book.PagesValidator is a validator for the "pages" field. It is called by the builders before save.
+	book.PagesValidator = bookDescPages.Validators[0].(func(int) error)
+	// bookDescPrice is the schema descriptor for price field.
+	bookDescPrice := bookFields[3].Descriptor()
+	// book.DefaultPrice holds the default value on creation for the price field.
+	book.DefaultPrice = bookDescPrice.Default.(float64)
+	// book.PriceValidator is a validator for the "price" field. It is called by the builders before save.
+	book.PriceValidator = bookDescPrice.Validators[0].(func(float64) error)
+	// bookDescPublished is the schema descriptor for published field.
+	bookDescPublished := bookFields[4].Descriptor()
+	// book.DefaultPublished holds the default value on creation for the published field.
+	book.DefaultPublished = bookDescPublished.Default.(bool)
+	// bookDescCreatedAt is the schema descriptor for created_at field.
+	bookDescCreatedAt := bookFields[6].Descriptor()
+	// book.DefaultCreatedAt holds the default value on creation for the created_at field.
+	book.DefaultCreatedAt = bookDescCreatedAt.Default.(func() time.Time)
+	// bookDescViewCount is the schema descriptor for view_count field.
+	bookDescViewCount := bookFields[7].Descriptor()
+	// book.DefaultViewCount holds the default value on creation for the view_count field.
+	book.DefaultViewCount = bookDescViewCount.Default.(int)
+	// book.ViewCountValidator is a validator for the "view_count" field. It is called by the builders before save.
+	book.ViewCountValidator = bookDescViewCount.Validators[0].(func(int) error)
+	categoryFields := schema.Category{}.Fields()
+	_ = categoryFields
+	// categoryDescName is the schema descriptor for name field.
+	categoryDescName := categoryFields[0].Descriptor()
+	// category.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	category.NameValidator = categoryDescName.Validators[0].(func(string) error)
 	permissionMixin := schema.Permission{}.Mixin()
 	permissionMixinFields0 := permissionMixin[0].Fields()
 	_ = permissionMixinFields0
@@ -31,6 +108,40 @@ func init() {
 	permissiongroupDescName := permissiongroupMixinFields0[0].Descriptor()
 	// permissiongroup.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	permissiongroup.NameValidator = permissiongroupDescName.Validators[0].(func(string) error)
+	reviewFields := schema.Review{}.Fields()
+	_ = reviewFields
+	// reviewDescReviewer is the schema descriptor for reviewer field.
+	reviewDescReviewer := reviewFields[0].Descriptor()
+	// review.ReviewerValidator is a validator for the "reviewer" field. It is called by the builders before save.
+	review.ReviewerValidator = reviewDescReviewer.Validators[0].(func(string) error)
+	// reviewDescRating is the schema descriptor for rating field.
+	reviewDescRating := reviewFields[1].Descriptor()
+	// review.RatingValidator is a validator for the "rating" field. It is called by the builders before save.
+	review.RatingValidator = func() func(int) error {
+		validators := reviewDescRating.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(rating int) error {
+			for _, fn := range fns {
+				if err := fn(rating); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// reviewDescCreatedAt is the schema descriptor for created_at field.
+	reviewDescCreatedAt := reviewFields[3].Descriptor()
+	// review.DefaultCreatedAt holds the default value on creation for the created_at field.
+	review.DefaultCreatedAt = reviewDescCreatedAt.Default.(func() time.Time)
+	tagFields := schema.Tag{}.Fields()
+	_ = tagFields
+	// tagDescName is the schema descriptor for name field.
+	tagDescName := tagFields[0].Descriptor()
+	// tag.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	tag.NameValidator = tagDescName.Validators[0].(func(string) error)
 	userMixin := schema.User{}.Mixin()
 	userMixinFields0 := userMixin[0].Fields()
 	_ = userMixinFields0

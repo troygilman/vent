@@ -9,14 +9,1230 @@ import (
 	"strconv"
 
 	"github.com/troygilman/vent"
+	"github.com/troygilman/vent/examples/basic/ent/auditevent"
+	"github.com/troygilman/vent/examples/basic/ent/author"
+	"github.com/troygilman/vent/examples/basic/ent/book"
+	"github.com/troygilman/vent/examples/basic/ent/category"
 	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/review"
+	"github.com/troygilman/vent/examples/basic/ent/tag"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
 
 	"github.com/starfederation/datastar-go/datastar"
 )
+
+// ============================================================================
+// AuditEvent Handlers
+// ============================================================================
+
+// AuditEventCreateInput is the typed input for creating a AuditEvent
+type AuditEventCreateInput struct {
+}
+
+// AuditEventUpdateInput is the typed input for updating a AuditEvent
+type AuditEventUpdateInput struct {
+}
+
+// getAuditEventListHandler returns the handler for GET /admin/auditevents/
+func (h *AdminHandler) getAuditEventListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.auditEventFields.eagerLoadQuery(h.client.AuditEvent.Query()).
+			Order(auditevent.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.auditEventFields.listColumns))
+			for j, field := range h.auditEventFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%saudit-events/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.AuditEvent.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "AuditEvent", gui.SchemaListBreadcrumbs("Audit Events")),
+			RouteName:           "audit-events",
+			SingularDisplayName: "Audit Event",
+			PluralDisplayName:   "Audit Events",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "action", Label: "Action", Type: "string"},
+				{Name: "detail", Label: "Detail", Type: "string"},
+				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildAuditEventPageProps builds the edit page props for AuditEvent.
+func (h *AdminHandler) buildAuditEventPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.auditEventFields.eagerLoadQuery(h.client.AuditEvent.Query().
+		Where(auditevent.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.AuditEvent.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.AuditEvent.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.AuditEvent.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.AuditEvent.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.auditEventFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.AuditEvent.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "AuditEvent", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"audit-events",
+			"Audit Events",
+			entityDisplay,
+		)),
+		RouteName:     "audit-events",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getAuditEventHandler returns the handler for GET /admin/auditevents/{id}/
+func (h *AdminHandler) getAuditEventHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildAuditEventPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// ============================================================================
+// Author Handlers
+// ============================================================================
+
+// AuthorCreateInput is the typed input for creating a Author
+type AuthorCreateInput struct {
+	Name   string  `json:"name"`
+	Bio    *string `json:"bio"`
+	Active *bool   `json:"active"`
+}
+
+// AuthorUpdateInput is the typed input for updating a Author
+type AuthorUpdateInput struct {
+	Name   *string               `json:"name"`
+	Bio    OptionalInput[string] `json:"bio"`
+	Active *bool                 `json:"active"`
+}
+
+// getAuthorListHandler returns the handler for GET /admin/authors/
+func (h *AdminHandler) getAuthorListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.authorFields.eagerLoadQuery(h.client.Author.Query()).
+			Order(author.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.authorFields.listColumns))
+			for j, field := range h.authorFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%sauthors/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Author.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Author", gui.SchemaListBreadcrumbs("Authors")),
+			RouteName:           "authors",
+			SingularDisplayName: "Author",
+			PluralDisplayName:   "Authors",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "active", Label: "Active", Type: "bool"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildAuthorAddPageProps builds the add page props for Author.
+func (h *AdminHandler) buildAuthorAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.Author.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.authorFields.createFormFields {
+		html, err := field.CreateHTML(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	return gui.SchemaEntityAddProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Author", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"authors",
+			"Authors",
+			"Author",
+		)),
+		RouteName:           "authors",
+		SingularDisplayName: "Author",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patchAuthorAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildAuthorAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// getAuthorAddHandler returns the handler for GET /admin/authors/add/
+func (h *AdminHandler) getAuthorAddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.buildAuthorAddPageProps(r.Context(), "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildAuthorPageProps builds the edit page props for Author.
+func (h *AdminHandler) buildAuthorPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.authorFields.eagerLoadQuery(h.client.Author.Query().
+		Where(author.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Author.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Author.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Author.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Author.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.authorFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Author.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Author", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"authors",
+			"Authors",
+			entityDisplay,
+		)),
+		RouteName:     "authors",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getAuthorHandler returns the handler for GET /admin/authors/{id}/
+func (h *AdminHandler) getAuthorHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildAuthorPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchAuthorPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildAuthorPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// postAuthorHandler returns the handler for POST /admin/authors/
+func (h *AdminHandler) postAuthorHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Entity AuthorCreateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchAuthorAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Author.ValidateCreate(r.Context(), input); err != nil {
+			h.patchAuthorAddPageError(w, r, err)
+			return
+		}
+
+		builder := h.client.Author.Create()
+
+		for _, field := range h.authorFields.createBindFields {
+			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
+				h.patchAuthorAddPageError(w, r, err)
+				return
+			}
+		}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			h.patchAuthorAddPageError(w, r, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "authors/")
+	})
+}
+
+// patchAuthorHandler returns the handler for PATCH /admin/authors/{id}/
+func (h *AdminHandler) patchAuthorHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Author.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Author.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity AuthorUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchAuthorPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Author.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchAuthorPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Author.UpdateOneID(id)
+
+		for _, field := range h.authorFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchAuthorPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchAuthorPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "authors/")
+	})
+}
+
+// deleteAuthorHandler returns the handler for DELETE /admin/authors/{id}/
+func (h *AdminHandler) deleteAuthorHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Author.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Author.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		if err := h.schemas.Author.ValidateDelete(r.Context(), id); err != nil {
+			h.patchAuthorPageError(w, r, id, err)
+			return
+		}
+
+		if err := h.client.Author.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchAuthorPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "authors/")
+	})
+}
+
+// ============================================================================
+// Book Handlers
+// ============================================================================
+
+// BookCreateInput is the typed input for creating a Book
+type BookCreateInput struct {
+	Title       string   `json:"title"`
+	Isbn        *string  `json:"isbn"`
+	Author      string   `json:"author"`
+	Category    string   `json:"category"`
+	Tags        []string `json:"tags"`
+	Pages       *int     `json:"pages"`
+	Price       *float64 `json:"price"`
+	Published   *bool    `json:"published"`
+	PublishedAt *string  `json:"published_at"`
+	Notes       string   `json:"notes"`
+}
+
+// BookUpdateInput is the typed input for updating a Book
+type BookUpdateInput struct {
+	Title       *string               `json:"title"`
+	Isbn        OptionalInput[string] `json:"isbn"`
+	Author      *string               `json:"author"`
+	Category    *string               `json:"category"`
+	Tags        *[]string             `json:"tags"`
+	Pages       *int                  `json:"pages"`
+	Price       *float64              `json:"price"`
+	Published   *bool                 `json:"published"`
+	PublishedAt OptionalInput[string] `json:"published_at"`
+	Notes       *string               `json:"notes"`
+}
+
+// getBookListHandler returns the handler for GET /admin/books/
+func (h *AdminHandler) getBookListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.bookFields.eagerLoadQuery(h.client.Book.Query()).
+			Order(book.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.bookFields.listColumns))
+			for j, field := range h.bookFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%sbooks/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Book.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Book", gui.SchemaListBreadcrumbs("Books")),
+			RouteName:           "books",
+			SingularDisplayName: "Book",
+			PluralDisplayName:   "Books",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "title", Label: "Title", Type: "string"},
+				{Name: "author", Label: "Author", Type: "edge"},
+				{Name: "category", Label: "Category", Type: "edge"},
+				{Name: "published", Label: "Published", Type: "bool"},
+				{Name: "price", Label: "Price", Type: "float64"},
+				{Name: "published_at", Label: "PublishedAt", Type: "time.Time"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildBookAddPageProps builds the add page props for Book.
+func (h *AdminHandler) buildBookAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.Book.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.bookFields.createFormFields {
+		html, err := field.CreateHTML(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	return gui.SchemaEntityAddProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Book", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"books",
+			"Books",
+			"Book",
+		)),
+		RouteName:           "books",
+		SingularDisplayName: "Book",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patchBookAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildBookAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// getBookAddHandler returns the handler for GET /admin/books/add/
+func (h *AdminHandler) getBookAddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.buildBookAddPageProps(r.Context(), "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildBookPageProps builds the edit page props for Book.
+func (h *AdminHandler) buildBookPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.bookFields.eagerLoadQuery(h.client.Book.Query().
+		Where(book.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Book.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Book.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Book.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Book.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.bookFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Book.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Book", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"books",
+			"Books",
+			entityDisplay,
+		)),
+		RouteName:     "books",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getBookHandler returns the handler for GET /admin/books/{id}/
+func (h *AdminHandler) getBookHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildBookPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchBookPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildBookPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// postBookHandler returns the handler for POST /admin/books/
+func (h *AdminHandler) postBookHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Entity BookCreateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchBookAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Book.ValidateCreate(r.Context(), input); err != nil {
+			h.patchBookAddPageError(w, r, err)
+			return
+		}
+
+		builder := h.client.Book.Create()
+
+		for _, field := range h.bookFields.createBindFields {
+			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
+				h.patchBookAddPageError(w, r, err)
+				return
+			}
+		}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			h.patchBookAddPageError(w, r, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "books/")
+	})
+}
+
+// patchBookHandler returns the handler for PATCH /admin/books/{id}/
+func (h *AdminHandler) patchBookHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Book.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Book.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity BookUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchBookPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Book.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchBookPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Book.UpdateOneID(id)
+
+		for _, field := range h.bookFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchBookPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchBookPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "books/")
+	})
+}
+
+// deleteBookHandler returns the handler for DELETE /admin/books/{id}/
+func (h *AdminHandler) deleteBookHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Book.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Book.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		if err := h.schemas.Book.ValidateDelete(r.Context(), id); err != nil {
+			h.patchBookPageError(w, r, id, err)
+			return
+		}
+
+		if err := h.client.Book.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchBookPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "books/")
+	})
+}
+
+// ============================================================================
+// Category Handlers
+// ============================================================================
+
+// CategoryCreateInput is the typed input for creating a Category
+type CategoryCreateInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+}
+
+// CategoryUpdateInput is the typed input for updating a Category
+type CategoryUpdateInput struct {
+	Name        *string               `json:"name"`
+	Description OptionalInput[string] `json:"description"`
+}
+
+// getCategoryListHandler returns the handler for GET /admin/categorys/
+func (h *AdminHandler) getCategoryListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.categoryFields.eagerLoadQuery(h.client.Category.Query()).
+			Order(category.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.categoryFields.listColumns))
+			for j, field := range h.categoryFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%scategories/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Category.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Category", gui.SchemaListBreadcrumbs("Categories")),
+			RouteName:           "categories",
+			SingularDisplayName: "Category",
+			PluralDisplayName:   "Categories",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "description", Label: "Description", Type: "string"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildCategoryAddPageProps builds the add page props for Category.
+func (h *AdminHandler) buildCategoryAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.Category.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.categoryFields.createFormFields {
+		html, err := field.CreateHTML(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	return gui.SchemaEntityAddProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Category", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"categories",
+			"Categories",
+			"Category",
+		)),
+		RouteName:           "categories",
+		SingularDisplayName: "Category",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patchCategoryAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildCategoryAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// getCategoryAddHandler returns the handler for GET /admin/categorys/add/
+func (h *AdminHandler) getCategoryAddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.buildCategoryAddPageProps(r.Context(), "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildCategoryPageProps builds the edit page props for Category.
+func (h *AdminHandler) buildCategoryPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.categoryFields.eagerLoadQuery(h.client.Category.Query().
+		Where(category.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Category.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Category.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Category.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Category.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.categoryFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Category.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Category", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"categories",
+			"Categories",
+			entityDisplay,
+		)),
+		RouteName:     "categories",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getCategoryHandler returns the handler for GET /admin/categorys/{id}/
+func (h *AdminHandler) getCategoryHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildCategoryPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchCategoryPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildCategoryPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// postCategoryHandler returns the handler for POST /admin/categorys/
+func (h *AdminHandler) postCategoryHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Entity CategoryCreateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchCategoryAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Category.ValidateCreate(r.Context(), input); err != nil {
+			h.patchCategoryAddPageError(w, r, err)
+			return
+		}
+
+		builder := h.client.Category.Create()
+
+		for _, field := range h.categoryFields.createBindFields {
+			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
+				h.patchCategoryAddPageError(w, r, err)
+				return
+			}
+		}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			h.patchCategoryAddPageError(w, r, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "categories/")
+	})
+}
+
+// patchCategoryHandler returns the handler for PATCH /admin/categorys/{id}/
+func (h *AdminHandler) patchCategoryHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Category.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Category.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity CategoryUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchCategoryPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Category.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchCategoryPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Category.UpdateOneID(id)
+
+		for _, field := range h.categoryFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchCategoryPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchCategoryPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "categories/")
+	})
+}
+
+// deleteCategoryHandler returns the handler for DELETE /admin/categorys/{id}/
+func (h *AdminHandler) deleteCategoryHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Category.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Category.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		if err := h.schemas.Category.ValidateDelete(r.Context(), id); err != nil {
+			h.patchCategoryPageError(w, r, id, err)
+			return
+		}
+
+		if err := h.client.Category.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchCategoryPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "categories/")
+	})
+}
 
 // ============================================================================
 // Permission Handlers
@@ -262,7 +1478,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			for j, field := range h.permissionGroupFields.listColumns {
 				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					cell.LinkURL = fmt.Sprintf("%spermission-groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
 				cells[j] = cell
 			}
@@ -279,10 +1495,10 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		}
 
 		props := gui.SchemaTableProps{
-			LayoutProps:         h.buildLayoutProps(r.Context(), "PermissionGroup", gui.SchemaListBreadcrumbs("PermissionGroups")),
-			RouteName:           "permission_groups",
-			SingularDisplayName: "PermissionGroup",
-			PluralDisplayName:   "PermissionGroups",
+			LayoutProps:         h.buildLayoutProps(r.Context(), "PermissionGroup", gui.SchemaListBreadcrumbs("Permission Groups")),
+			RouteName:           "permission-groups",
+			SingularDisplayName: "Permission Group",
+			PluralDisplayName:   "Permission Groups",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
@@ -322,12 +1538,12 @@ func (h *AdminHandler) buildPermissionGroupAddPageProps(ctx context.Context, err
 	return gui.SchemaEntityAddProps{
 		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaAddBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"permission_groups",
-			"PermissionGroups",
-			"PermissionGroup",
+			"permission-groups",
+			"Permission Groups",
+			"Permission Group",
 		)),
-		RouteName:           "permission_groups",
-		SingularDisplayName: "PermissionGroup",
+		RouteName:           "permission-groups",
+		SingularDisplayName: "Permission Group",
 		ErrorMessage:        errorMessage,
 		Fields:              fields,
 	}, nil
@@ -407,11 +1623,11 @@ func (h *AdminHandler) buildPermissionGroupPageProps(ctx context.Context, id int
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"permission_groups",
-			"PermissionGroups",
+			"permission-groups",
+			"Permission Groups",
 			entityDisplay,
 		)),
-		RouteName:     "permission_groups",
+		RouteName:     "permission-groups",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
@@ -485,7 +1701,7 @@ func (h *AdminHandler) postPermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
 	})
 }
 
@@ -537,7 +1753,7 @@ func (h *AdminHandler) patchPermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
 	})
 }
 
@@ -571,7 +1787,673 @@ func (h *AdminHandler) deletePermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
+	})
+}
+
+// ============================================================================
+// Review Handlers
+// ============================================================================
+
+// ReviewCreateInput is the typed input for creating a Review
+type ReviewCreateInput struct {
+	Reviewer string  `json:"reviewer"`
+	Rating   int     `json:"rating"`
+	Body     *string `json:"body"`
+	Book     string  `json:"book"`
+}
+
+// ReviewUpdateInput is the typed input for updating a Review
+type ReviewUpdateInput struct {
+	Reviewer *string               `json:"reviewer"`
+	Rating   *int                  `json:"rating"`
+	Body     OptionalInput[string] `json:"body"`
+	Book     *string               `json:"book"`
+}
+
+// getReviewListHandler returns the handler for GET /admin/reviews/
+func (h *AdminHandler) getReviewListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.reviewFields.eagerLoadQuery(h.client.Review.Query()).
+			Order(review.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.reviewFields.listColumns))
+			for j, field := range h.reviewFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%sreviews/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Review.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Review", gui.SchemaListBreadcrumbs("Reviews")),
+			RouteName:           "reviews",
+			SingularDisplayName: "Review",
+			PluralDisplayName:   "Reviews",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "reviewer", Label: "Reviewer", Type: "string"},
+				{Name: "rating", Label: "Rating", Type: "int"},
+				{Name: "book", Label: "Book", Type: "edge"},
+				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildReviewAddPageProps builds the add page props for Review.
+func (h *AdminHandler) buildReviewAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.Review.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.reviewFields.createFormFields {
+		html, err := field.CreateHTML(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	return gui.SchemaEntityAddProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Review", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"reviews",
+			"Reviews",
+			"Review",
+		)),
+		RouteName:           "reviews",
+		SingularDisplayName: "Review",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patchReviewAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildReviewAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// getReviewAddHandler returns the handler for GET /admin/reviews/add/
+func (h *AdminHandler) getReviewAddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.buildReviewAddPageProps(r.Context(), "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildReviewPageProps builds the edit page props for Review.
+func (h *AdminHandler) buildReviewPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.reviewFields.eagerLoadQuery(h.client.Review.Query().
+		Where(review.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Review.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Review.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Review.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Review.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.reviewFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Review.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Review", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"reviews",
+			"Reviews",
+			entityDisplay,
+		)),
+		RouteName:     "reviews",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getReviewHandler returns the handler for GET /admin/reviews/{id}/
+func (h *AdminHandler) getReviewHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildReviewPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchReviewPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildReviewPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// postReviewHandler returns the handler for POST /admin/reviews/
+func (h *AdminHandler) postReviewHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Entity ReviewCreateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchReviewAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Review.ValidateCreate(r.Context(), input); err != nil {
+			h.patchReviewAddPageError(w, r, err)
+			return
+		}
+
+		builder := h.client.Review.Create()
+
+		for _, field := range h.reviewFields.createBindFields {
+			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
+				h.patchReviewAddPageError(w, r, err)
+				return
+			}
+		}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			h.patchReviewAddPageError(w, r, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "reviews/")
+	})
+}
+
+// patchReviewHandler returns the handler for PATCH /admin/reviews/{id}/
+func (h *AdminHandler) patchReviewHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Review.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Review.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity ReviewUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchReviewPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Review.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchReviewPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Review.UpdateOneID(id)
+
+		for _, field := range h.reviewFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchReviewPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchReviewPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "reviews/")
+	})
+}
+
+// ============================================================================
+// Tag Handlers
+// ============================================================================
+
+// TagCreateInput is the typed input for creating a Tag
+type TagCreateInput struct {
+	Name  string   `json:"name"`
+	Books []string `json:"books"`
+}
+
+// TagUpdateInput is the typed input for updating a Tag
+type TagUpdateInput struct {
+	Name  *string   `json:"name"`
+	Books *[]string `json:"books"`
+}
+
+// getTagListHandler returns the handler for GET /admin/tags/
+func (h *AdminHandler) getTagListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.tagFields.eagerLoadQuery(h.client.Tag.Query()).
+			Order(tag.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.tagFields.listColumns))
+			for j, field := range h.tagFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%stags/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Tag.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Tag", gui.SchemaListBreadcrumbs("Tags")),
+			RouteName:           "tags",
+			SingularDisplayName: "Tag",
+			PluralDisplayName:   "Tags",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "id", Label: "ID", Type: "int"},
+				{Name: "name", Label: "Name", Type: "string"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildTagAddPageProps builds the add page props for Tag.
+func (h *AdminHandler) buildTagAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.Tag.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.tagFields.createFormFields {
+		html, err := field.CreateHTML(ctx)
+		if err != nil {
+			return gui.SchemaEntityAddProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	return gui.SchemaEntityAddProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Tag", gui.SchemaAddBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"tags",
+			"Tags",
+			"Tag",
+		)),
+		RouteName:           "tags",
+		SingularDisplayName: "Tag",
+		ErrorMessage:        errorMessage,
+		Fields:              fields,
+	}, nil
+}
+
+func (h *AdminHandler) patchTagAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildTagAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityAddPage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// getTagAddHandler returns the handler for GET /admin/tags/add/
+func (h *AdminHandler) getTagAddHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		props, err := h.buildTagAddPageProps(r.Context(), "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityAddPage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildTagPageProps builds the edit page props for Tag.
+func (h *AdminHandler) buildTagPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.tagFields.eagerLoadQuery(h.client.Tag.Query().
+		Where(tag.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Tag.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Tag.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Tag.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Tag.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.tagFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Tag.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Tag", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"tags",
+			"Tags",
+			entityDisplay,
+		)),
+		RouteName:     "tags",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getTagHandler returns the handler for GET /admin/tags/{id}/
+func (h *AdminHandler) getTagHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildTagPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchTagPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildTagPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// postTagHandler returns the handler for POST /admin/tags/
+func (h *AdminHandler) postTagHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var signals struct {
+			Entity TagCreateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchTagAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Tag.ValidateCreate(r.Context(), input); err != nil {
+			h.patchTagAddPageError(w, r, err)
+			return
+		}
+
+		builder := h.client.Tag.Create()
+
+		for _, field := range h.tagFields.createBindFields {
+			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
+				h.patchTagAddPageError(w, r, err)
+				return
+			}
+		}
+
+		if _, err := builder.Save(r.Context()); err != nil {
+			h.patchTagAddPageError(w, r, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "tags/")
+	})
+}
+
+// patchTagHandler returns the handler for PATCH /admin/tags/{id}/
+func (h *AdminHandler) patchTagHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Tag.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Tag.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity TagUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchTagPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Tag.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchTagPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Tag.UpdateOneID(id)
+
+		for _, field := range h.tagFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchTagPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchTagPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "tags/")
+	})
+}
+
+// deleteTagHandler returns the handler for DELETE /admin/tags/{id}/
+func (h *AdminHandler) deleteTagHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Tag.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Tag.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		if err := h.schemas.Tag.ValidateDelete(r.Context(), id); err != nil {
+			h.patchTagPageError(w, r, id, err)
+			return
+		}
+
+		if err := h.client.Tag.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchTagPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "tags/")
 	})
 }
 

@@ -12,10 +12,24 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// ApiKey is the client for interacting with the ApiKey builders.
+	ApiKey *ApiKeyClient
+	// AuditEvent is the client for interacting with the AuditEvent builders.
+	AuditEvent *AuditEventClient
+	// Author is the client for interacting with the Author builders.
+	Author *AuthorClient
+	// Book is the client for interacting with the Book builders.
+	Book *BookClient
+	// Category is the client for interacting with the Category builders.
+	Category *CategoryClient
 	// Permission is the client for interacting with the Permission builders.
 	Permission *PermissionClient
 	// PermissionGroup is the client for interacting with the PermissionGroup builders.
 	PermissionGroup *PermissionGroupClient
+	// Review is the client for interacting with the Review builders.
+	Review *ReviewClient
+	// Tag is the client for interacting with the Tag builders.
+	Tag *TagClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -149,8 +163,15 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.ApiKey = NewApiKeyClient(tx.config)
+	tx.AuditEvent = NewAuditEventClient(tx.config)
+	tx.Author = NewAuthorClient(tx.config)
+	tx.Book = NewBookClient(tx.config)
+	tx.Category = NewCategoryClient(tx.config)
 	tx.Permission = NewPermissionClient(tx.config)
 	tx.PermissionGroup = NewPermissionGroupClient(tx.config)
+	tx.Review = NewReviewClient(tx.config)
+	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 
@@ -161,7 +182,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Permission.QueryXXX(), the query will be executed
+// applies a query, for example: ApiKey.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

@@ -13,8 +13,14 @@ import (
 // SchemaAdmins holds per-schema admin surface implementations.
 // A nil slot uses the generated Default*Admin for that schema.
 type SchemaAdmins struct {
+	AuditEvent      AuditEventAdmin
+	Author          AuthorAdmin
+	Book            BookAdmin
+	Category        CategoryAdmin
 	Permission      PermissionAdmin
 	PermissionGroup PermissionGroupAdmin
+	Review          ReviewAdmin
+	Tag             TagAdmin
 	User            UserAdmin
 }
 
@@ -39,6 +45,22 @@ func MustAdmin(ctx context.Context) Admin {
 	return Admin{schemas: admins}
 }
 
+func (a Admin) AuditEvent() AuditEventAdmin {
+	return a.schemas.AuditEvent
+}
+
+func (a Admin) Author() AuthorAdmin {
+	return a.schemas.Author
+}
+
+func (a Admin) Book() BookAdmin {
+	return a.schemas.Book
+}
+
+func (a Admin) Category() CategoryAdmin {
+	return a.schemas.Category
+}
+
 func (a Admin) Permission() PermissionAdmin {
 	return a.schemas.Permission
 }
@@ -47,8 +69,388 @@ func (a Admin) PermissionGroup() PermissionGroupAdmin {
 	return a.schemas.PermissionGroup
 }
 
+func (a Admin) Review() ReviewAdmin {
+	return a.schemas.Review
+}
+
+func (a Admin) Tag() TagAdmin {
+	return a.schemas.Tag
+}
+
 func (a Admin) User() UserAdmin {
 	return a.schemas.User
+}
+
+// AuditEventAdmin is the customizable admin surface for AuditEvent.
+// Embed DefaultAuditEventAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type AuditEventAdmin interface {
+	FieldAction() AuditEventField
+	FieldDetail() AuditEventField
+	FieldCreatedAt() AuditEventField
+	Name(e *ent.AuditEvent) string
+	ValidateCreate(ctx context.Context, input AuditEventCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input AuditEventUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.AuditEvent) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.AuditEvent) (bool, error)
+	CanDelete(ctx context.Context, e *ent.AuditEvent) (bool, error)
+}
+
+// DefaultAuditEventAdmin is the generated default AuditEvent admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultAuditEventAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultAuditEventAdmin returns a default AuditEvent admin using client.
+func NewDefaultAuditEventAdmin(client *ent.Client) DefaultAuditEventAdmin {
+	return DefaultAuditEventAdmin{Client: client}
+}
+
+func (DefaultAuditEventAdmin) Name(e *ent.AuditEvent) string {
+	return fmt.Sprintf("%v", e.ID)
+}
+
+func (a DefaultAuditEventAdmin) FieldAction() AuditEventField {
+	return NewAuditEventActionField(a.Client)
+}
+
+func (a DefaultAuditEventAdmin) FieldDetail() AuditEventField {
+	return NewAuditEventDetailField(a.Client)
+}
+
+func (a DefaultAuditEventAdmin) FieldCreatedAt() AuditEventField {
+	return NewAuditEventCreatedAtField(a.Client)
+}
+
+func (DefaultAuditEventAdmin) ValidateCreate(context.Context, AuditEventCreateInput) error {
+	return nil
+}
+
+func (DefaultAuditEventAdmin) ValidateUpdate(ctx context.Context, id int, input AuditEventUpdateInput) error {
+	return nil
+}
+
+func (DefaultAuditEventAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultAuditEventAdmin) CanRead(ctx context.Context, _ *ent.AuditEvent) (bool, error) {
+	return defaultCan(ctx, "read_audit_event")
+}
+
+func (DefaultAuditEventAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return false, nil
+}
+
+func (DefaultAuditEventAdmin) CanUpdate(ctx context.Context, e *ent.AuditEvent) (bool, error) {
+	return false, nil
+}
+
+func (DefaultAuditEventAdmin) CanDelete(ctx context.Context, e *ent.AuditEvent) (bool, error) {
+	return false, nil
+}
+
+// AuthorAdmin is the customizable admin surface for Author.
+// Embed DefaultAuthorAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type AuthorAdmin interface {
+	FieldName() AuthorField
+	FieldBio() AuthorField
+	FieldActive() AuthorField
+	Name(e *ent.Author) string
+	ValidateCreate(ctx context.Context, input AuthorCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input AuthorUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Author) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Author) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Author) (bool, error)
+}
+
+// DefaultAuthorAdmin is the generated default Author admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultAuthorAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultAuthorAdmin returns a default Author admin using client.
+func NewDefaultAuthorAdmin(client *ent.Client) DefaultAuthorAdmin {
+	return DefaultAuthorAdmin{Client: client}
+}
+
+func (DefaultAuthorAdmin) Name(e *ent.Author) string {
+	return fmt.Sprintf("%v", e.Name)
+}
+
+func (a DefaultAuthorAdmin) FieldName() AuthorField {
+	return NewAuthorNameField(a.Client)
+}
+
+func (a DefaultAuthorAdmin) FieldBio() AuthorField {
+	return NewAuthorBioField(a.Client)
+}
+
+func (a DefaultAuthorAdmin) FieldActive() AuthorField {
+	return NewAuthorActiveField(a.Client)
+}
+
+func (DefaultAuthorAdmin) ValidateCreate(context.Context, AuthorCreateInput) error {
+	return nil
+}
+
+func (DefaultAuthorAdmin) ValidateUpdate(ctx context.Context, id int, input AuthorUpdateInput) error {
+	return nil
+}
+
+func (DefaultAuthorAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultAuthorAdmin) CanRead(ctx context.Context, _ *ent.Author) (bool, error) {
+	return defaultCan(ctx, "read_author")
+}
+
+func (DefaultAuthorAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_author")
+}
+
+func (DefaultAuthorAdmin) CanUpdate(ctx context.Context, e *ent.Author) (bool, error) {
+	ok, err := defaultCan(ctx, "update_author")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultAuthorAdmin) CanDelete(ctx context.Context, e *ent.Author) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_author")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+// BookAdmin is the customizable admin surface for Book.
+// Embed DefaultBookAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type BookAdmin interface {
+	FieldTitle() BookField
+	FieldIsbn() BookField
+	FieldAuthor() BookField
+	FieldCategory() BookField
+	FieldTags() BookField
+	FieldPages() BookField
+	FieldPrice() BookField
+	FieldPublished() BookField
+	FieldPublishedAt() BookField
+	FieldViewCount() BookField
+	FieldCreatedAt() BookField
+	FieldNotes() BookField
+	Name(e *ent.Book) string
+	ValidateCreate(ctx context.Context, input BookCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input BookUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Book) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Book) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Book) (bool, error)
+}
+
+// DefaultBookAdmin is the generated default Book admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultBookAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultBookAdmin returns a default Book admin using client.
+func NewDefaultBookAdmin(client *ent.Client) DefaultBookAdmin {
+	return DefaultBookAdmin{Client: client}
+}
+
+func (DefaultBookAdmin) Name(e *ent.Book) string {
+	return fmt.Sprintf("%v", e.ID)
+}
+
+func (a DefaultBookAdmin) FieldTitle() BookField {
+	return NewBookTitleField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldIsbn() BookField {
+	return NewBookIsbnField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldAuthor() BookField {
+	return NewBookAuthorField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldCategory() BookField {
+	return NewBookCategoryField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldTags() BookField {
+	return NewBookTagsField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldPages() BookField {
+	return NewBookPagesField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldPrice() BookField {
+	return NewBookPriceField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldPublished() BookField {
+	return NewBookPublishedField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldPublishedAt() BookField {
+	return NewBookPublishedAtField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldViewCount() BookField {
+	return NewBookViewCountField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldCreatedAt() BookField {
+	return NewBookCreatedAtField(a.Client)
+}
+
+func (a DefaultBookAdmin) FieldNotes() BookField {
+	return nil
+}
+
+func (DefaultBookAdmin) ValidateCreate(context.Context, BookCreateInput) error {
+	return nil
+}
+
+func (DefaultBookAdmin) ValidateUpdate(ctx context.Context, id int, input BookUpdateInput) error {
+	return nil
+}
+
+func (DefaultBookAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultBookAdmin) CanRead(ctx context.Context, _ *ent.Book) (bool, error) {
+	return defaultCan(ctx, "read_book")
+}
+
+func (DefaultBookAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_book")
+}
+
+func (DefaultBookAdmin) CanUpdate(ctx context.Context, e *ent.Book) (bool, error) {
+	ok, err := defaultCan(ctx, "update_book")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultBookAdmin) CanDelete(ctx context.Context, e *ent.Book) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_book")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+// CategoryAdmin is the customizable admin surface for Category.
+// Embed DefaultCategoryAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type CategoryAdmin interface {
+	FieldName() CategoryField
+	FieldDescription() CategoryField
+	Name(e *ent.Category) string
+	ValidateCreate(ctx context.Context, input CategoryCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input CategoryUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Category) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Category) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Category) (bool, error)
+}
+
+// DefaultCategoryAdmin is the generated default Category admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultCategoryAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultCategoryAdmin returns a default Category admin using client.
+func NewDefaultCategoryAdmin(client *ent.Client) DefaultCategoryAdmin {
+	return DefaultCategoryAdmin{Client: client}
+}
+
+func (DefaultCategoryAdmin) Name(e *ent.Category) string {
+	return fmt.Sprintf("%v", e.Name)
+}
+
+func (a DefaultCategoryAdmin) FieldName() CategoryField {
+	return NewCategoryNameField(a.Client)
+}
+
+func (a DefaultCategoryAdmin) FieldDescription() CategoryField {
+	return NewCategoryDescriptionField(a.Client)
+}
+
+func (DefaultCategoryAdmin) ValidateCreate(context.Context, CategoryCreateInput) error {
+	return nil
+}
+
+func (DefaultCategoryAdmin) ValidateUpdate(ctx context.Context, id int, input CategoryUpdateInput) error {
+	return nil
+}
+
+func (DefaultCategoryAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultCategoryAdmin) CanRead(ctx context.Context, _ *ent.Category) (bool, error) {
+	return defaultCan(ctx, "read_category")
+}
+
+func (DefaultCategoryAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_category")
+}
+
+func (DefaultCategoryAdmin) CanUpdate(ctx context.Context, e *ent.Category) (bool, error) {
+	ok, err := defaultCan(ctx, "update_category")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultCategoryAdmin) CanDelete(ctx context.Context, e *ent.Category) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_category")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
 }
 
 // PermissionAdmin is the customizable admin surface for Permission.
@@ -209,6 +611,182 @@ func (DefaultPermissionGroupAdmin) CanUpdate(ctx context.Context, e *ent.Permiss
 
 func (DefaultPermissionGroupAdmin) CanDelete(ctx context.Context, e *ent.PermissionGroup) (bool, error) {
 	ok, err := defaultCan(ctx, "delete_permission_group")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+// ReviewAdmin is the customizable admin surface for Review.
+// Embed DefaultReviewAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type ReviewAdmin interface {
+	FieldReviewer() ReviewField
+	FieldRating() ReviewField
+	FieldBody() ReviewField
+	FieldBook() ReviewField
+	FieldCreatedAt() ReviewField
+	Name(e *ent.Review) string
+	ValidateCreate(ctx context.Context, input ReviewCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input ReviewUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Review) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Review) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Review) (bool, error)
+}
+
+// DefaultReviewAdmin is the generated default Review admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultReviewAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultReviewAdmin returns a default Review admin using client.
+func NewDefaultReviewAdmin(client *ent.Client) DefaultReviewAdmin {
+	return DefaultReviewAdmin{Client: client}
+}
+
+func (DefaultReviewAdmin) Name(e *ent.Review) string {
+	return fmt.Sprintf("%v", e.ID)
+}
+
+func (a DefaultReviewAdmin) FieldReviewer() ReviewField {
+	return NewReviewReviewerField(a.Client)
+}
+
+func (a DefaultReviewAdmin) FieldRating() ReviewField {
+	return NewReviewRatingField(a.Client)
+}
+
+func (a DefaultReviewAdmin) FieldBody() ReviewField {
+	return NewReviewBodyField(a.Client)
+}
+
+func (a DefaultReviewAdmin) FieldBook() ReviewField {
+	return NewReviewBookField(a.Client)
+}
+
+func (a DefaultReviewAdmin) FieldCreatedAt() ReviewField {
+	return NewReviewCreatedAtField(a.Client)
+}
+
+func (DefaultReviewAdmin) ValidateCreate(context.Context, ReviewCreateInput) error {
+	return nil
+}
+
+func (DefaultReviewAdmin) ValidateUpdate(ctx context.Context, id int, input ReviewUpdateInput) error {
+	return nil
+}
+
+func (DefaultReviewAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultReviewAdmin) CanRead(ctx context.Context, _ *ent.Review) (bool, error) {
+	return defaultCan(ctx, "read_review")
+}
+
+func (DefaultReviewAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_review")
+}
+
+func (DefaultReviewAdmin) CanUpdate(ctx context.Context, e *ent.Review) (bool, error) {
+	ok, err := defaultCan(ctx, "update_review")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultReviewAdmin) CanDelete(ctx context.Context, e *ent.Review) (bool, error) {
+	return false, nil
+}
+
+// TagAdmin is the customizable admin surface for Tag.
+// Embed DefaultTagAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type TagAdmin interface {
+	FieldID() TagField
+	FieldName() TagField
+	FieldBooks() TagField
+	Name(e *ent.Tag) string
+	ValidateCreate(ctx context.Context, input TagCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input TagUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Tag) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Tag) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Tag) (bool, error)
+}
+
+// DefaultTagAdmin is the generated default Tag admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultTagAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultTagAdmin returns a default Tag admin using client.
+func NewDefaultTagAdmin(client *ent.Client) DefaultTagAdmin {
+	return DefaultTagAdmin{Client: client}
+}
+
+func (DefaultTagAdmin) Name(e *ent.Tag) string {
+	return fmt.Sprintf("%v", e.Name)
+}
+
+func (a DefaultTagAdmin) FieldID() TagField {
+	return NewTagIdField(a.Client)
+}
+
+func (a DefaultTagAdmin) FieldName() TagField {
+	return NewTagNameField(a.Client)
+}
+
+func (a DefaultTagAdmin) FieldBooks() TagField {
+	return NewTagBooksField(a.Client)
+}
+
+func (DefaultTagAdmin) ValidateCreate(context.Context, TagCreateInput) error {
+	return nil
+}
+
+func (DefaultTagAdmin) ValidateUpdate(ctx context.Context, id int, input TagUpdateInput) error {
+	return nil
+}
+
+func (DefaultTagAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultTagAdmin) CanRead(ctx context.Context, _ *ent.Tag) (bool, error) {
+	return defaultCan(ctx, "read_tag")
+}
+
+func (DefaultTagAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_tag")
+}
+
+func (DefaultTagAdmin) CanUpdate(ctx context.Context, e *ent.Tag) (bool, error) {
+	ok, err := defaultCan(ctx, "update_tag")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultTagAdmin) CanDelete(ctx context.Context, e *ent.Tag) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_tag")
 	if err != nil || !ok {
 		return ok, err
 	}

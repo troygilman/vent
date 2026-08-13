@@ -7,6 +7,8 @@ import (
 	"github.com/troygilman/vent"
 )
 
+// User extends the Vent auth user mixin with an extra field and schema-level
+// overrides: custom table columns, fieldsets, and an extra permission name.
 type User struct {
 	ent.Schema
 }
@@ -16,9 +18,11 @@ func (User) Fields() []ent.Field {
 		field.Time("last_login").Optional(),
 	}
 }
+
 func (User) Edges() []ent.Edge {
 	return nil
 }
+
 func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		vent.UserMixin{
@@ -30,6 +34,8 @@ func (User) Mixin() []ent.Mixin {
 func (User) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		vent.VentSchemaAnnotation{
+			SingularDisplayName: "User",
+			PluralDisplayName:   "Users",
 			TableColumns: []string{
 				"email",
 				"is_staff",

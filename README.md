@@ -313,6 +313,18 @@ just dev   # gen, then run the example server on :8080
 
 Default login after first run: `admin@vent.com` / `test_user`.
 
+The example schemas are a small library domain that exercises Vent features side by side:
+
+| Schema | What it demonstrates |
+| ------ | -------------------- |
+| `User` / `Permission` / `PermissionGroup` | Auth mixins, custom permissions, fieldsets, table columns, field override (`is_superuser`) |
+| `Book` | Mixed field kinds (`string`/`int`/`float`/`bool`/`time`), unique + M2M edges, custom route, read-only fields, `CustomFields` (`notes`), extra `publish` permission |
+| `Author` / `Category` | Display names, unique FK targets |
+| `Tag` | Zero-annotation schema (defaults only) + M2M |
+| `Review` | `DisableDelete`, required unique FK, read-only timestamps |
+| `AuditEvent` | `ReadOnly` admin |
+| `ApiKey` | `DisableAdmin` (Ent model only; no admin UI) |
+
 Other recipes: `just migrations`, `just migrate`.
 
 ---
