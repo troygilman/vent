@@ -127,7 +127,20 @@ func (PermissionMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRolePermission},
 		VentSchemaAnnotation{
-			DisableAdmin: true,
+			DisableCreate:  true,
+			DisableDelete:  true,
+			ReadOnlyFields: []string{"name"},
+			TableColumns: []string{
+				"name",
+			},
+			FieldSets: []FieldSet{
+				{
+					Fields: []string{
+						"name",
+						"groups",
+					},
+				},
+			},
 		},
 	}
 }

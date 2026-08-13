@@ -9,6 +9,7 @@ import (
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
+	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
@@ -17,6 +18,7 @@ import (
 
 // Keep schema packages imported even when no field references a default var.
 var (
+	_ = permission.Label
 	_ = permissiongroup.Label
 	_ = user.Label
 )
@@ -32,6 +34,190 @@ func permissionSchema(name string) string {
 
 func permissionLabel(name string) string {
 	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
+}
+
+// PermissionField is the typed admin field contract for Permission.
+type PermissionField interface {
+	ListCell(e *ent.Permission) string
+	CreateHTML(ctx context.Context) (string, error)
+	UpdateHTML(ctx context.Context, e *ent.Permission) (string, error)
+	ApplyCreate(ctx context.Context, builder *ent.PermissionCreate, input PermissionCreateInput) error
+	ApplyUpdate(ctx context.Context, builder *ent.PermissionUpdateOne, input PermissionUpdateInput) error
+}
+
+// PermissionFields holds the resolved admin field implementations for Permission.
+type PermissionFields struct {
+	listColumns      []PermissionField
+	createFormFields []PermissionField
+	updateFormFields []PermissionField
+	createBindFields []PermissionField
+	updateBindFields []PermissionField
+}
+
+func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) {
+	f := PermissionFields{}
+	NameField := schemaAdmin.FieldName()
+	if NameField == nil {
+		return PermissionFields{}, fmt.Errorf("PermissionAdmin.FieldName() returned nil")
+	}
+	GroupsField := schemaAdmin.FieldGroups()
+	if GroupsField == nil {
+		return PermissionFields{}, fmt.Errorf("PermissionAdmin.FieldGroups() returned nil")
+	}
+	f.listColumns = []PermissionField{
+		NameField,
+	}
+	f.createFormFields = []PermissionField{
+		NameField,
+		GroupsField,
+	}
+	f.updateFormFields = []PermissionField{
+		NameField,
+		GroupsField,
+	}
+	f.createBindFields = []PermissionField{
+		GroupsField,
+	}
+	f.updateBindFields = []PermissionField{
+		GroupsField,
+	}
+	return f, nil
+}
+
+func (f PermissionFields) eagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery {
+	q = q.WithGroups()
+	return q
+}
+
+type PermissionNameField struct {
+	client *ent.Client
+}
+
+// NewPermissionNameField returns the generated default implementation for name.
+func NewPermissionNameField(client *ent.Client) PermissionNameField {
+	return PermissionNameField{client: client}
+}
+
+func (f PermissionNameField) ListCell(e *ent.Permission) string {
+	return vent.FormatFormValue(e.Name)
+}
+
+func (f PermissionNameField) CreateHTML(ctx context.Context) (string, error) {
+	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
+		Name:     "name",
+		Label:    "Name",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+	})
+}
+
+func (f PermissionNameField) UpdateHTML(ctx context.Context, e *ent.Permission) (string, error) {
+	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
+		Name:     "name",
+		Label:    "Name",
+		Value:    vent.FormatFormValue(e.Name),
+		Editable: false,
+	})
+}
+
+func (f PermissionNameField) ApplyCreate(_ context.Context, builder *ent.PermissionCreate, input PermissionCreateInput) error {
+	return nil
+}
+
+func (f PermissionNameField) ApplyUpdate(_ context.Context, builder *ent.PermissionUpdateOne, input PermissionUpdateInput) error {
+	return nil
+}
+
+type PermissionGroupsField struct {
+	client *ent.Client
+}
+
+// NewPermissionGroupsField returns the generated default implementation for groups.
+func NewPermissionGroupsField(client *ent.Client) PermissionGroupsField {
+	return PermissionGroupsField{client: client}
+}
+
+func (f PermissionGroupsField) ListCell(e *ent.Permission) string {
+	return fmt.Sprintf("%v", e.Edges.Groups)
+}
+
+func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
+	options, err := f.loadGroupsOptions(ctx)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
+		Name:     "groups",
+		Label:    "Groups",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
+func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission) (string, error) {
+	options, err := f.loadGroupsOptionsWithSelection(ctx, e)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
+		Name:     "groups",
+		Label:    "Groups",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
+func (f PermissionGroupsField) ApplyCreate(_ context.Context, builder *ent.PermissionCreate, input PermissionCreateInput) error {
+	if len(input.Groups) > 0 {
+		ids, err := parseIDList(input.Groups, "groups")
+		if err != nil {
+			return err
+		}
+		builder.AddGroupIDs(ids...)
+	}
+	return nil
+}
+
+func (f PermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.PermissionUpdateOne, input PermissionUpdateInput) error {
+	if input.Groups != nil {
+		builder.ClearGroups()
+		if len(*input.Groups) > 0 {
+			ids, err := parseIDList(*input.Groups, "groups")
+			if err != nil {
+				return err
+			}
+			builder.AddGroupIDs(ids...)
+		}
+	}
+	return nil
+}
+func (f PermissionGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.PermissionGroup.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := make([]gui.SelectOption, len(entities))
+	for i, entity := range entities {
+		options[i] = gui.SelectOption{
+			Value: entity.ID,
+			Label: DefaultPermissionGroupAdmin{}.Name(entity),
+		}
+	}
+	return options, nil
+}
+
+func (f PermissionGroupsField) loadGroupsOptionsWithSelection(ctx context.Context, e *ent.Permission) ([]gui.SelectOption, error) {
+	options, err := f.loadGroupsOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	selected := make(map[int]struct{})
+	for _, related := range e.Edges.Groups {
+		selected[related.ID] = struct{}{}
+	}
+	for i := range options {
+		_, options[i].Selected = selected[options[i].Value]
+	}
+	return options, nil
 }
 
 // PermissionGroupField is the typed admin field contract for PermissionGroup.

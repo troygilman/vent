@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/troygilman/vent"
+	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
@@ -16,6 +17,216 @@ import (
 
 	"github.com/starfederation/datastar-go/datastar"
 )
+
+// ============================================================================
+// Permission Handlers
+// ============================================================================
+
+// PermissionCreateInput is the typed input for creating a Permission
+type PermissionCreateInput struct {
+	Groups []string `json:"groups"`
+}
+
+// PermissionUpdateInput is the typed input for updating a Permission
+type PermissionUpdateInput struct {
+	Groups *[]string `json:"groups"`
+}
+
+// getPermissionListHandler returns the handler for GET /admin/permissions/
+func (h *AdminHandler) getPermissionListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entities, err := h.client.Permission.Query().
+			Order(permission.ByID()).
+			All(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		rows := make([]gui.SchemaTableRow, len(entities))
+		for i, e := range entities {
+			cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
+			for j, field := range h.permissionFields.listColumns {
+				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
+				if j == 0 {
+					cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+				}
+				cells[j] = cell
+			}
+			rows[i] = gui.SchemaTableRow{Cells: cells}
+		}
+
+		canCreate, err := h.schemas.Permission.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		renderCtx := gui.RenderContext{
+			CanCreate: canCreate,
+		}
+
+		props := gui.SchemaTableProps{
+			LayoutProps:         h.buildLayoutProps(r.Context(), "Permission", gui.SchemaListBreadcrumbs("Permissions")),
+			RouteName:           "permissions",
+			SingularDisplayName: "Permission",
+			PluralDisplayName:   "Permissions",
+			Columns: []gui.SchemaTableColumn{
+				{Name: "name", Label: "Name", Type: "string"},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
+		}
+
+		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+// buildPermissionPageProps builds the edit page props for Permission.
+func (h *AdminHandler) buildPermissionPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query().
+		Where(permission.IDEQ(id))).
+		Only(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+
+	if err := denyIfCannot(h.schemas.Permission.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canCreate, err := h.schemas.Permission.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canUpdate, err := h.schemas.Permission.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	canDelete, err := h.schemas.Permission.CanDelete(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
+	renderCtx := gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canUpdate,
+		CanDelete: canDelete,
+	}
+	ctx = gui.WithRenderContext(ctx, renderCtx)
+
+	fields := []gui.SchemaEntityFieldProps{}
+
+	for _, field := range h.permissionFields.updateFormFields {
+		html, err := field.UpdateHTML(ctx, e)
+		if err != nil {
+			return gui.SchemaEntityChangeProps{}, err
+		}
+		if html != "" {
+			fields = append(fields, gui.SchemaEntityFieldProps{HTML: html})
+		}
+	}
+
+	entityDisplay := h.schemas.Permission.Name(e)
+	props := gui.SchemaEntityChangeProps{
+		LayoutProps: h.buildLayoutProps(ctx, "Permission", gui.SchemaEntityBreadcrumbs(
+			requestctx.MustAdminPath(ctx),
+			"permissions",
+			"Permissions",
+			entityDisplay,
+		)),
+		RouteName:     "permissions",
+		EntityID:      id,
+		EntityDisplay: entityDisplay,
+		ErrorMessage:  errorMessage,
+		Fields:        fields,
+		RenderContext: renderCtx,
+	}
+	return props, nil
+}
+
+// getPermissionHandler returns the handler for GET /admin/permissions/{id}/
+func (h *AdminHandler) getPermissionHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		props, err := h.buildPermissionPageProps(r.Context(), id, "")
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		if err := gui.SchemaEntityChangePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) patchPermissionPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildPermissionPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+
+// patchPermissionHandler returns the handler for PATCH /admin/permissions/{id}/
+func (h *AdminHandler) patchPermissionHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.Permission.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.Permission.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
+		var signals struct {
+			Entity PermissionUpdateInput `json:"entity"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			h.patchPermissionPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			return
+		}
+		input := signals.Entity
+
+		if err := h.schemas.Permission.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchPermissionPageError(w, r, id, err)
+			return
+		}
+
+		builder := h.client.Permission.UpdateOneID(id)
+
+		for _, field := range h.permissionFields.updateBindFields {
+			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
+				h.patchPermissionPageError(w, r, id, err)
+				return
+			}
+		}
+
+		if err := builder.Exec(r.Context()); err != nil {
+			h.patchPermissionPageError(w, r, id, err)
+			return
+		}
+
+		sse := datastar.NewSSE(w, r)
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permissions/")
+	})
+}
 
 // ============================================================================
 // PermissionGroup Handlers
@@ -209,18 +420,6 @@ func (h *AdminHandler) buildPermissionGroupPageProps(ctx context.Context, id int
 	return props, nil
 }
 
-func (h *AdminHandler) patchPermissionGroupPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.buildPermissionGroupPageProps(r.Context(), id, normalizeError(err).PublicMessage())
-	if buildErr != nil {
-		vent.HandleError(w, r, normalizeError(buildErr))
-		return
-	}
-	sse := datastar.NewSSE(w, r)
-	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
-		vent.HandleError(w, r, patchErr)
-	}
-}
-
 // getPermissionGroupHandler returns the handler for GET /admin/permissiongroups/{id}/
 func (h *AdminHandler) getPermissionGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -240,6 +439,17 @@ func (h *AdminHandler) getPermissionGroupHandler() http.Handler {
 			vent.HandleError(w, r, err)
 		}
 	})
+}
+func (h *AdminHandler) patchPermissionGroupPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildPermissionGroupPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
 }
 
 // postPermissionGroupHandler returns the handler for POST /admin/permissiongroups/
@@ -568,18 +778,6 @@ func (h *AdminHandler) buildUserPageProps(ctx context.Context, id int, errorMess
 	return props, nil
 }
 
-func (h *AdminHandler) patchUserPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.buildUserPageProps(r.Context(), id, normalizeError(err).PublicMessage())
-	if buildErr != nil {
-		vent.HandleError(w, r, normalizeError(buildErr))
-		return
-	}
-	sse := datastar.NewSSE(w, r)
-	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
-		vent.HandleError(w, r, patchErr)
-	}
-}
-
 // getUserHandler returns the handler for GET /admin/users/{id}/
 func (h *AdminHandler) getUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -599,6 +797,17 @@ func (h *AdminHandler) getUserHandler() http.Handler {
 			vent.HandleError(w, r, err)
 		}
 	})
+}
+func (h *AdminHandler) patchUserPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildUserPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
 }
 
 // postUserHandler returns the handler for POST /admin/users/

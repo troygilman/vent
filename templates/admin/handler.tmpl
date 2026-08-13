@@ -144,15 +144,21 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			{{ $rc := $item.RC }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
 				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				{{- if not $rc.DisableCreate }}
 				schema.POST("/", h.post{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
 				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
-				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				{{- end }}
+				{{- if not $rc.ReadOnly }}
 				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
-				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorizePermission("delete_{{ resourceName $node.Name }}"))
 				{{- if $rc.HasPasswordRoutes }}
 				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
 				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
 				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
+				{{- end }}
+				{{- end }}
+				{{- if not $rc.DisableDelete }}
+				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorizePermission("delete_{{ resourceName $node.Name }}"))
 				{{- end }}
 			})
 			{{ end }}

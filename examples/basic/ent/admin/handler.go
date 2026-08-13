@@ -48,6 +48,8 @@ type AdminHandler struct {
 	secureCookies           bool
 	schemas                 SchemaAdmins
 
+	permissionFields PermissionFields
+
 	permissionGroupFields PermissionGroupFields
 
 	userFields UserFields
@@ -62,6 +64,10 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	}
 
 	schemas := config.Schemas
+
+	if schemas.Permission == nil {
+		schemas.Permission = NewDefaultPermissionAdmin(config.Client)
+	}
 
 	if schemas.PermissionGroup == nil {
 		schemas.PermissionGroup = NewDefaultPermissionGroupAdmin(config.Client)
@@ -78,6 +84,14 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 		tokenGenerator:          auth.NewJwtTokenGenerator(config.SecretProvider),
 		secureCookies:           config.SecureCookies,
 		schemas:                 schemas,
+	}
+
+	{
+		fields, err := newPermissionFields(schemas.Permission)
+		if err != nil {
+			return nil, err
+		}
+		h.permissionFields = fields
 	}
 
 	{
@@ -135,25 +149,31 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/command_palette/", h.getCommandPaletteHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
+			authed.Group("permissions", func(schema *route.Router) {
+				schema.GET("/", h.getPermissionListHandler(), h.authorizePermission("read_permission"))
+				schema.GET("/{id}/", h.getPermissionHandler(), h.authorizePermission("read_permission"))
+				schema.PATCH("/{id}/", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
+			})
+
 			authed.Group("permission_groups", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
+				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
 				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
 				schema.GET("/add/{$}", h.getPermissionGroupAddHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
-				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
 				schema.PATCH("/{id}/", h.patchPermissionGroupHandler(), h.authorizePermission("update_permission_group"))
 				schema.DELETE("/{id}/", h.deletePermissionGroupHandler(), h.authorizePermission("delete_permission_group"))
 			})
 
 			authed.Group("users", func(schema *route.Router) {
 				schema.GET("/", h.getUserListHandler(), h.authorizePermission("read_user"))
+				schema.GET("/{id}/", h.getUserHandler(), h.authorizePermission("read_user"))
 				schema.POST("/", h.postUserHandler(), h.authorize(h.schemas.User.CanCreate))
 				schema.GET("/add/{$}", h.getUserAddHandler(), h.authorize(h.schemas.User.CanCreate))
-				schema.GET("/{id}/", h.getUserHandler(), h.authorizePermission("read_user"))
 				schema.PATCH("/{id}/", h.patchUserHandler(), h.authorizePermission("update_user"))
-				schema.DELETE("/{id}/", h.deleteUserHandler(), h.authorizePermission("delete_user"))
 				schema.GET("/{id}/password/", h.getUserPasswordHandler(), h.authorizePermission("read_user"))
 				schema.PUT("/{id}/password/", h.putUserPasswordHandler(), h.authorizePermission("update_user"))
 				schema.DELETE("/{id}/password/", h.deleteUserPasswordHandler(), h.authorizePermission("update_user"))
+				schema.DELETE("/{id}/", h.deleteUserHandler(), h.authorizePermission("delete_user"))
 			})
 
 		})
@@ -201,6 +221,17 @@ func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName st
 func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch string) []gui.SchemaMetadata {
 	schemas := make([]gui.SchemaMetadata, 0)
 	query := strings.ToLower(strings.TrimSpace(schemaSearch))
+
+	if ok, err := defaultCan(ctx, "read_permission"); err == nil && ok {
+		displayName := "Permissions"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("Permission"), query) {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "Permission",
+				DisplayName: displayName,
+				Path:        requestctx.MustAdminPath(ctx) + "permissions/",
+			})
+		}
+	}
 
 	if ok, err := defaultCan(ctx, "read_permission_group"); err == nil && ok {
 		displayName := "PermissionGroups"

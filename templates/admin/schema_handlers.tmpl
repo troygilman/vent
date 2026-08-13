@@ -96,8 +96,9 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	})
 }
 
-// build{{ $node.Name }}AddPageProps builds the add page props for {{ $node.Name }}.
-func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	{{- if not $rc.DisableCreate }}
+	// build{{ $node.Name }}AddPageProps builds the add page props for {{ $node.Name }}.
+	func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
 	canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityAddProps{}, err
@@ -159,6 +160,7 @@ func (h *AdminHandler) get{{ $node.Name }}AddHandler() http.Handler {
 		}
 	})
 }
+{{- end }}
 
 // build{{ $node.Name }}PageProps builds the edit page props for {{ $node.Name }}.
 func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
@@ -221,18 +223,6 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 	return props, nil
 }
 
-func (h *AdminHandler) patch{{ $node.Name }}PageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.build{{ $node.Name }}PageProps(r.Context(), id, normalizeError(err).PublicMessage())
-	if buildErr != nil {
-		vent.HandleError(w, r, normalizeError(buildErr))
-		return
-	}
-	sse := datastar.NewSSE(w, r)
-	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
-		vent.HandleError(w, r, patchErr)
-	}
-}
-
 // get{{ $node.Name }}Handler returns the handler for GET /admin/{{ lower $node.Name }}s/{id}/
 func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -254,6 +244,21 @@ func (h *AdminHandler) get{{ $node.Name }}Handler() http.Handler {
 	})
 }
 
+	{{- if or (not $rc.ReadOnly) (not $rc.DisableDelete) }}
+	func (h *AdminHandler) patch{{ $node.Name }}PageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.build{{ $node.Name }}PageProps(r.Context(), id, normalizeError(err).PublicMessage())
+	if buildErr != nil {
+		vent.HandleError(w, r, normalizeError(buildErr))
+		return
+	}
+	sse := datastar.NewSSE(w, r)
+	if patchErr := sse.PatchElementTempl(gui.SchemaEntityChangePage(props)); patchErr != nil {
+		vent.HandleError(w, r, patchErr)
+	}
+}
+{{- end }}
+
+{{- if not $rc.DisableCreate }}
 // post{{ $node.Name }}Handler returns the handler for POST /admin/{{ lower $node.Name }}s/
 func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -289,7 +294,9 @@ func (h *AdminHandler) post{{ $node.Name }}Handler() http.Handler {
 		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "{{ $rc.RouteName }}/")
 	})
 }
+{{- end }}
 
+{{- if not $rc.ReadOnly }}
 // patch{{ $node.Name }}Handler returns the handler for PATCH /admin/{{ lower $node.Name }}s/{id}/
 func (h *AdminHandler) patch{{ $node.Name }}Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -503,11 +510,13 @@ func (h *AdminHandler) delete{{ $node.Name }}PasswordHandler() http.Handler {
 
 		sse := datastar.NewSSE(w, r)
 		sse.Redirect(fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", requestctx.MustAdminPath(r.Context()), id))
-	})
-}
-{{- end }}
+		})
+	}
+	{{- end }}
+	{{- end }}
 
-// delete{{ $node.Name }}Handler returns the handler for DELETE /admin/{{ lower $node.Name }}s/{id}/
+	{{- if not $rc.DisableDelete }}
+	// delete{{ $node.Name }}Handler returns the handler for DELETE /admin/{{ lower $node.Name }}s/{id}/
 	func (h *AdminHandler) delete{{ $node.Name }}Handler() http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id, err := strconv.Atoi(r.PathValue("id"))
@@ -540,5 +549,6 @@ func (h *AdminHandler) delete{{ $node.Name }}PasswordHandler() http.Handler {
 			sse.Redirect(requestctx.MustAdminPath(r.Context()) + "{{ $rc.RouteName }}/")
 		})
 	}
+{{- end }}
 {{ end }}
 {{ end }}

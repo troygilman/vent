@@ -13,9 +13,87 @@ import (
 // SchemaAdmins holds per-schema admin surface implementations.
 // A nil slot uses the generated Default*Admin for that schema.
 type SchemaAdmins struct {
+	Permission PermissionAdmin
+
 	PermissionGroup PermissionGroupAdmin
 
 	User UserAdmin
+}
+
+// PermissionAdmin is the customizable admin surface for Permission.
+// Embed DefaultPermissionAdmin and override only the methods you need.
+//
+// Field* methods supply field implementations. Validate* methods own mutation
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
+type PermissionAdmin interface {
+	FieldName() PermissionField
+	FieldGroups() PermissionField
+	Name(e *ent.Permission) string
+	ValidateCreate(ctx context.Context, input PermissionCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input PermissionUpdateInput) error
+	ValidateDelete(ctx context.Context, id int) error
+	CanRead(ctx context.Context, e *ent.Permission) (bool, error)
+	CanCreate(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.Permission) (bool, error)
+	CanDelete(ctx context.Context, e *ent.Permission) (bool, error)
+}
+
+// DefaultPermissionAdmin is the generated default Permission admin surface.
+// Embed it to keep defaults while overriding individual methods.
+// Client is required for default field implementations.
+type DefaultPermissionAdmin struct {
+	Client *ent.Client
+}
+
+// NewDefaultPermissionAdmin returns a default Permission admin using client.
+func NewDefaultPermissionAdmin(client *ent.Client) DefaultPermissionAdmin {
+	return DefaultPermissionAdmin{Client: client}
+}
+
+func (DefaultPermissionAdmin) Name(e *ent.Permission) string {
+	return fmt.Sprintf("%v", e.Name)
+}
+
+func (a DefaultPermissionAdmin) FieldName() PermissionField {
+	return NewPermissionNameField(a.Client)
+}
+
+func (a DefaultPermissionAdmin) FieldGroups() PermissionField {
+	return NewPermissionGroupsField(a.Client)
+}
+
+func (DefaultPermissionAdmin) ValidateCreate(context.Context, PermissionCreateInput) error {
+	return nil
+}
+
+func (DefaultPermissionAdmin) ValidateUpdate(ctx context.Context, id int, input PermissionUpdateInput) error {
+	return nil
+}
+
+func (DefaultPermissionAdmin) ValidateDelete(ctx context.Context, id int) error {
+	return nil
+}
+
+func (DefaultPermissionAdmin) CanRead(ctx context.Context, _ *ent.Permission) (bool, error) {
+	return defaultCan(ctx, "read_permission")
+}
+
+func (DefaultPermissionAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return false, nil
+}
+
+func (DefaultPermissionAdmin) CanUpdate(ctx context.Context, e *ent.Permission) (bool, error) {
+	ok, err := defaultCan(ctx, "update_permission")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
+}
+
+func (DefaultPermissionAdmin) CanDelete(ctx context.Context, e *ent.Permission) (bool, error) {
+	return false, nil
 }
 
 // PermissionGroupAdmin is the customizable admin surface for PermissionGroup.

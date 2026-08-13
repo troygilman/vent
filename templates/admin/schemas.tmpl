@@ -114,40 +114,52 @@ func (Default{{ $node.Name }}Admin) CanRead(ctx context.Context, _ *ent.{{ $node
 	return defaultCan(ctx, "read_{{ $permSuffix }}")
 }
 
-func (Default{{ $node.Name }}Admin) CanCreate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "create_{{ $permSuffix }}")
-}
-
-func (Default{{ $node.Name }}Admin) CanUpdate(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
-	ok, err := defaultCan(ctx, "update_{{ $permSuffix }}")
-	if err != nil || !ok {
-		return ok, err
-	}
-	{{- if $rc.IsAuthUserSchema }}
-	return allowSuperuserMutation(ctx, e)
-	{{- else }}
-	return true, nil
-	{{- end }}
-}
-
-func (Default{{ $node.Name }}Admin) CanDelete(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
-	ok, err := defaultCan(ctx, "delete_{{ $permSuffix }}")
-	if err != nil || !ok {
-		return ok, err
-	}
-	{{- if $rc.IsAuthUserSchema }}
-	currentUser, err := GetUser(ctx)
-	if err != nil {
-		return false, err
-	}
-	if currentUser.ID == e.ID {
+	func (Default{{ $node.Name }}Admin) CanCreate(ctx context.Context) (bool, error) {
+		{{- if $rc.DisableCreate }}
 		return false, nil
+		{{- else }}
+		return defaultCan(ctx, "create_{{ $permSuffix }}")
+		{{- end }}
 	}
-	return allowSuperuserMutation(ctx, e)
-	{{- else }}
-	return true, nil
-	{{- end }}
-}
+
+	func (Default{{ $node.Name }}Admin) CanUpdate(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
+		{{- if $rc.ReadOnly }}
+		return false, nil
+		{{- else }}
+		ok, err := defaultCan(ctx, "update_{{ $permSuffix }}")
+		if err != nil || !ok {
+			return ok, err
+		}
+		{{- if $rc.IsAuthUserSchema }}
+		return allowSuperuserMutation(ctx, e)
+		{{- else }}
+		return true, nil
+		{{- end }}
+		{{- end }}
+	}
+
+	func (Default{{ $node.Name }}Admin) CanDelete(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
+		{{- if $rc.DisableDelete }}
+		return false, nil
+		{{- else }}
+		ok, err := defaultCan(ctx, "delete_{{ $permSuffix }}")
+		if err != nil || !ok {
+			return ok, err
+		}
+		{{- if $rc.IsAuthUserSchema }}
+		currentUser, err := GetUser(ctx)
+		if err != nil {
+			return false, err
+		}
+		if currentUser.ID == e.ID {
+			return false, nil
+		}
+		return allowSuperuserMutation(ctx, e)
+		{{- else }}
+		return true, nil
+		{{- end }}
+		{{- end }}
+	}
 
 {{ end }}
 

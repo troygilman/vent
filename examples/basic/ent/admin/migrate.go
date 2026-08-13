@@ -21,12 +21,14 @@ var permissions = []struct {
 	Name   string
 	Schema string
 }{
-	{Name: "create_permission_group", Schema: "PermissionGroup"},
+	{Name: "read_permission", Schema: "Permission"},
+	{Name: "update_permission", Schema: "Permission"},
 	{Name: "read_permission_group", Schema: "PermissionGroup"},
+	{Name: "create_permission_group", Schema: "PermissionGroup"},
 	{Name: "update_permission_group", Schema: "PermissionGroup"},
 	{Name: "delete_permission_group", Schema: "PermissionGroup"},
-	{Name: "create_user", Schema: "User"},
 	{Name: "read_user", Schema: "User"},
+	{Name: "create_user", Schema: "User"},
 	{Name: "update_user", Schema: "User"},
 	{Name: "delete_user", Schema: "User"},
 	{Name: "impersonate", Schema: "User"},
@@ -100,6 +102,11 @@ func (d *Differ) diffAuthPermissions(ctx context.Context) error {
 		return err
 	}
 
+	desired := make(map[string]struct{}, len(permissions))
+	for _, permission := range permissions {
+		desired[permission.Name] = struct{}{}
+	}
+
 	currentPermissionsMap := make(map[string]*ent.Permission)
 	for _, permission := range currentPermissions {
 		currentPermissionsMap[permission.Name] = permission
@@ -113,17 +120,29 @@ func (d *Differ) diffAuthPermissions(ctx context.Context) error {
 		permissionBuilders = append(permissionBuilders, d.writeClient.Permission.Create().SetName(permission.Name))
 	}
 
-	if len(permissionBuilders) == 0 {
-		return nil
+	if len(permissionBuilders) > 0 {
+		created, err := d.writeClient.Permission.CreateBulk(permissionBuilders...).Save(ctx)
+		if err != nil {
+			return err
+		}
+		if len(created) > 0 {
+			d.writer.Change("Added permissions")
+			d.flush = true
+		}
 	}
 
-	created, err := d.writeClient.Permission.CreateBulk(permissionBuilders...).Save(ctx)
-	if err != nil {
-		return err
+	removed := false
+	for _, permission := range currentPermissions {
+		if _, ok := desired[permission.Name]; ok {
+			continue
+		}
+		if err := d.writeClient.Permission.DeleteOneID(permission.ID).Exec(ctx); err != nil {
+			return err
+		}
+		removed = true
 	}
-
-	if len(created) > 0 {
-		d.writer.Change("Added permissions")
+	if removed {
+		d.writer.Change("Removed permissions")
 		d.flush = true
 	}
 

@@ -532,6 +532,14 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 		customFields[fieldKey] = struct{}{}
 	}
 
+	for _, fieldName := range annotation.ReadOnlyFields {
+		if !hasFieldOrID(node, fieldName) && !hasEdge(node, fieldName) {
+			if _, ok := customFields[fieldName]; !ok && !(fieldName == "password" && isAuthUserNode(node)) {
+				errs = append(errs, fmt.Sprintf("schema %q read-only field %q does not exist", node.Name, fieldName))
+			}
+		}
+	}
+
 	for _, fieldSet := range annotation.FieldSets {
 		for _, fieldName := range fieldSet.Fields {
 			if fieldName != "id" {

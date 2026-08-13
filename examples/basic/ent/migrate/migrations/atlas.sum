@@ -1,4 +1,4 @@
-h1:FA9vIrP1dzSPaN88LJt7EROLPzau78Bb9H8zzt7+AqQ=
+h1:u9+RQ509wdY2uVXsbJw3nkor4NfvHLi0MY5ek0ClkIo=
 0000_init.sql h1:SHyIZcCjApXlkYtZn9bGU4O+KwJ2wkZpnEkeNn6Le1Y=
 0001_update_auth_permissions.sql h1:Dur8v7A9k2DLyxsHD73g9RoDpLUdOoGDZpIp0hjJmu0=
 0002_null_password_hash.sql h1:P5GtEdBs2ptFIDOxtchSJ2FYQ74xuCUDggcppFp8hYQ=
@@ -6,3 +6,6 @@ h1:FA9vIrP1dzSPaN88LJt7EROLPzau78Bb9H8zzt7+AqQ=
 0004_update_auth_permissions.sql h1:OKtJn+0FNKDkfrPuSij8Vm1St1L7hJ8Fc/nEhKFPsNY=
 0005_rename_auth_schemas.sql h1:AVdckB1GYFnr4CJAl8RLpYhP3uUt0rf/Qw9aDm+zJIQ=
 0006_update_auth_permissions.sql h1:3NR7gFNvk0Puvp36MH7oHw4UuPlSjcgGaT4SoKxjuM0=
+0007_update_auth_permissions.sql h1:Rn+zppteX49Ry3JcNf/+eoeD1Xo/hfBEZJNhbJ2SjvE=
+0008_update_auth_permissions.sql h1:GWhX72nOMf4U0YZjVtcugNaWIwSC1ZVHcqSykUWju6E=
+0009_update_auth_permissions.sql h1:Wk+Qv9A2wZCtqE73+HGeYLVgExPDvJR7JvYo7hmUQco=

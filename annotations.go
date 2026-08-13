@@ -55,6 +55,10 @@ func (a *VentAuthMixinAnnotation) parse(node *gen.Type) error {
 
 type VentSchemaAnnotation struct {
 	DisableAdmin        bool
+	ReadOnly            bool
+	DisableCreate       bool
+	DisableDelete       bool
+	ReadOnlyFields      []string
 	RouteName           string
 	SingularDisplayName string
 	PluralDisplayName   string

@@ -211,9 +211,89 @@ func TestBuildProjectedRenderConfigBuiltinCustomOnNonAuthUserFails(t *testing.T)
 	}
 }
 
-func TestBuildProjectedRenderConfigDisabledAdmin(t *testing.T) {
+func TestBuildProjectedRenderConfigReadOnly(t *testing.T) {
 	node := &gen.Type{
 		Name: "Permission",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				ReadOnly:     true,
+				TableColumns: []string{"name"},
+				FieldSets:    []FieldSet{{Fields: []string{"name", "groups"}}},
+			},
+		},
+		Fields: []*gen.Field{
+			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+		},
+		Edges: []*gen.Edge{
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
+		},
+	}
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+	if !rc.AdminEnabled {
+		t.Fatal("AdminEnabled = false, want true")
+	}
+	if !rc.ReadOnly {
+		t.Fatal("ReadOnly = false, want true")
+	}
+	if !rc.DisableCreate || !rc.DisableDelete {
+		t.Fatalf("ReadOnly schema flags = create %v delete %v, want both true", rc.DisableCreate, rc.DisableDelete)
+	}
+	assertSurfaceMemberNames(t, rc.AdminSurface, []string{"name", "groups"})
+	assertTableColumnNames(t, rc.TableColumns, []string{"name"})
+}
+
+func TestBuildProjectedRenderConfigReadOnlyFields(t *testing.T) {
+	node := &gen.Type{
+		Name: "Permission",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				DisableCreate:  true,
+				DisableDelete:  true,
+				ReadOnlyFields: []string{"name"},
+				TableColumns:   []string{"name"},
+				FieldSets:      []FieldSet{{Fields: []string{"name", "groups"}}},
+			},
+		},
+		Fields: []*gen.Field{
+			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+		},
+		Edges: []*gen.Edge{
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
+		},
+	}
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+	if rc.ReadOnly {
+		t.Fatal("ReadOnly = true, want false")
+	}
+	if !rc.DisableCreate || !rc.DisableDelete {
+		t.Fatalf("flags = create %v delete %v, want both true", rc.DisableCreate, rc.DisableDelete)
+	}
+	name := findSurfaceMember(t, rc.AdminSurface, "name")
+	if name.BindCreate || name.BindUpdate {
+		t.Fatalf("name bind flags = create %v update %v, want false/false", name.BindCreate, name.BindUpdate)
+	}
+	groups := findSurfaceMember(t, rc.AdminSurface, "groups")
+	if !groups.BindUpdate {
+		t.Fatal("groups BindUpdate = false, want true")
+	}
+	for _, field := range rc.UpdateInputFields {
+		if field.Name == "name" {
+			t.Fatal("UpdateInputFields includes name, want groups only")
+		}
+	}
+}
+
+func TestBuildProjectedRenderConfigDisabledAdmin(t *testing.T) {
+	node := &gen.Type{
+		Name: "LegacyHidden",
 		Annotations: gen.Annotations{
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
 				DisableAdmin: true,

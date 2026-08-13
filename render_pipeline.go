@@ -35,6 +35,10 @@ type SchemaMeta struct {
 	Permissions       []Permission
 	IsAuthUserSchema  bool
 	HasPasswordRoutes bool
+	ReadOnly          bool
+	DisableCreate     bool
+	DisableDelete     bool
+	ReadOnlyFields    []string
 	// PackageDir is the Ent-generated schema package directory (e.g. "user").
 	PackageDir string
 }
@@ -209,6 +213,10 @@ func resolveSchemaMeta(node *gen.Type) SchemaMeta {
 	}
 
 	if hasAnnotation {
+		meta.ReadOnly = annotation.ReadOnly
+		meta.DisableCreate = annotation.ReadOnly || annotation.DisableCreate
+		meta.DisableDelete = annotation.ReadOnly || annotation.DisableDelete
+		meta.ReadOnlyFields = append([]string(nil), annotation.ReadOnlyFields...)
 		if annotation.RouteName != "" {
 			meta.RouteName = annotation.RouteName
 		}
@@ -383,7 +391,7 @@ func applyLayout(catalog memberCatalog, layout layoutSpec, meta SchemaMeta) (app
 		if err != nil {
 			return appliedLayout{}, err
 		}
-		adminSurface = append(adminSurface, resolveAdminSurfaceMember(member))
+		adminSurface = append(adminSurface, resolveAdminSurfaceMember(member, meta))
 	}
 
 	tableColumnNames := layout.tableColumns
@@ -452,25 +460,27 @@ func resolveCatalogMember(catalog memberCatalog, name string, adminSurfaceSet ma
 	return member, nil
 }
 
-func resolveAdminSurfaceMember(member *catalogMember) resolvedMember {
+func resolveAdminSurfaceMember(member *catalogMember, meta SchemaMeta) resolvedMember {
+	var resolved resolvedMember
 	switch member.kind {
 	case MemberEntField:
 		if member.name == "id" {
-			return resolvedMember{
+			resolved = resolvedMember{
 				member:     member,
 				inForm:     true,
 				bindCreate: false,
 				bindUpdate: false,
 			}
-		}
-		return resolvedMember{
-			member:     member,
-			inForm:     true,
-			bindCreate: true,
-			bindUpdate: true,
+		} else {
+			resolved = resolvedMember{
+				member:     member,
+				inForm:     true,
+				bindCreate: true,
+				bindUpdate: true,
+			}
 		}
 	case MemberEdge:
-		return resolvedMember{
+		resolved = resolvedMember{
 			member:     member,
 			inForm:     true,
 			bindCreate: true,
@@ -478,22 +488,37 @@ func resolveAdminSurfaceMember(member *catalogMember) resolvedMember {
 		}
 	case MemberCustom:
 		if member.name == "password" {
-			return resolvedMember{
+			resolved = resolvedMember{
 				member:     member,
 				inForm:     true,
 				bindCreate: false,
 				bindUpdate: false,
 			}
-		}
-		return resolvedMember{
-			member:     member,
-			inForm:     true,
-			bindCreate: true,
-			bindUpdate: true,
+		} else {
+			resolved = resolvedMember{
+				member:     member,
+				inForm:     true,
+				bindCreate: true,
+				bindUpdate: true,
+			}
 		}
 	default:
-		return resolvedMember{member: member, inForm: true}
+		resolved = resolvedMember{member: member, inForm: true}
 	}
+	if isReadOnlyField(meta, member.name) {
+		resolved.bindCreate = false
+		resolved.bindUpdate = false
+	}
+	return resolved
+}
+
+func isReadOnlyField(meta SchemaMeta, name string) bool {
+	for _, field := range meta.ReadOnlyFields {
+		if field == name {
+			return true
+		}
+	}
+	return false
 }
 
 func projectRenderConfig(meta SchemaMeta, applied appliedLayout) RenderConfig {
