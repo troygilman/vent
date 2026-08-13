@@ -25,7 +25,7 @@ func (f SuperuserOnlyIsSuperuser) CreateHTML(ctx context.Context) (string, error
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
 		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
-		Editable: editable,
+		Editable: editable && gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -38,7 +38,7 @@ func (f SuperuserOnlyIsSuperuser) UpdateHTML(ctx context.Context, e *ent.AuthUse
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
 		Value:    vent.FormatFormValue(e.IsSuperuser),
-		Editable: editable,
+		Editable: editable && gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 

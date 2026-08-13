@@ -98,6 +98,15 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 
 // build{{ $node.Name }}AddPageProps builds the add page props for {{ $node.Name }}.
 func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.{{ fieldsVarName $node.Name }}.createFormFields {

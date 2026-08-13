@@ -106,7 +106,7 @@ func (f AuthGroupNameField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "name",
 		Label:    "Name",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -115,7 +115,7 @@ func (f AuthGroupNameField) UpdateHTML(ctx context.Context, e *ent.AuthGroup) (s
 		Name:     "name",
 		Label:    "Name",
 		Value:    vent.FormatFormValue(e.Name),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -152,7 +152,7 @@ func (f AuthGroupPermissionsField) CreateHTML(ctx context.Context) (string, erro
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
 		Name:     "permissions",
 		Label:    "Permissions",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
@@ -165,7 +165,7 @@ func (f AuthGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.AuthGr
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
 		Name:     "permissions",
 		Label:    "Permissions",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
@@ -379,7 +379,7 @@ func (f AuthUserEmailField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "email",
 		Label:    "Email",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -388,7 +388,7 @@ func (f AuthUserEmailField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (st
 		Name:     "email",
 		Label:    "Email",
 		Value:    vent.FormatFormValue(e.Email),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -426,13 +426,19 @@ func (f AuthUserPasswordField) UpdateHTML(ctx context.Context, e *ent.AuthUser) 
 	if vent.PasswordHashIsSet(e.PasswordHash) {
 		status = "Set"
 	}
+	actionLabel := ""
+	actionURL := ""
+	if gui.MustRenderContext(ctx).CanUpdate {
+		actionLabel = "Manage Password"
+		actionURL = fmt.Sprintf("%sauth_users/%d/password/", requestctx.MustAdminPath(ctx), e.ID)
+	}
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:        "password",
 		Label:       "Password",
 		Value:       status,
 		Editable:    false,
-		ActionLabel: "Manage Password",
-		ActionURL:   fmt.Sprintf("%sauth_users/%d/password/", requestctx.MustAdminPath(ctx), e.ID),
+		ActionLabel: actionLabel,
+		ActionURL:   actionURL,
 	})
 }
 
@@ -462,7 +468,7 @@ func (f AuthUserIsStaffField) CreateHTML(ctx context.Context) (string, error) {
 		Name:     "is_staff",
 		Label:    "IsStaff",
 		Value:    vent.FormatFormValue(authuser.DefaultIsStaff),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -471,7 +477,7 @@ func (f AuthUserIsStaffField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (
 		Name:     "is_staff",
 		Label:    "IsStaff",
 		Value:    vent.FormatFormValue(e.IsStaff),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -507,7 +513,7 @@ func (f AuthUserIsSuperuserField) CreateHTML(ctx context.Context) (string, error
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
 		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -516,7 +522,7 @@ func (f AuthUserIsSuperuserField) UpdateHTML(ctx context.Context, e *ent.AuthUse
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
 		Value:    vent.FormatFormValue(e.IsSuperuser),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -552,12 +558,12 @@ func (f AuthUserIsActiveField) CreateHTML(ctx context.Context) (string, error) {
 		Name:     "is_active",
 		Label:    "IsActive",
 		Value:    vent.FormatFormValue(authuser.DefaultIsActive),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
 func (f AuthUserIsActiveField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
-	editable := true
+	editable := gui.MustRenderContext(ctx).CanUpdate
 	if currentUser, err := GetUser(ctx); err == nil && currentUser.ID == e.ID {
 		editable = false
 	}
@@ -604,7 +610,7 @@ func (f AuthUserGroupsField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
 		Name:     "groups",
 		Label:    "Groups",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
@@ -617,7 +623,7 @@ func (f AuthUserGroupsField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (s
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
 		Name:     "groups",
 		Label:    "Groups",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
@@ -693,7 +699,7 @@ func (f AuthUserLastLoginField) CreateHTML(ctx context.Context) (string, error) 
 	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
 		Name:     "last_login",
 		Label:    "LastLogin",
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
@@ -702,7 +708,7 @@ func (f AuthUserLastLoginField) UpdateHTML(ctx context.Context, e *ent.AuthUser)
 		Name:     "last_login",
 		Label:    "LastLogin",
 		Value:    vent.FormatFormValue(e.LastLogin),
-		Editable: true,
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 

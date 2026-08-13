@@ -17,8 +17,11 @@ func WithRenderContext(ctx context.Context, rc RenderContext) context.Context {
 	return context.WithValue(ctx, renderContextKey{}, rc)
 }
 
-// RenderContextFrom returns the RenderContext stored on ctx, if any.
-func RenderContextFrom(ctx context.Context) (RenderContext, bool) {
+// MustRenderContext returns the RenderContext stored on ctx, or panics.
+func MustRenderContext(ctx context.Context) RenderContext {
 	rc, ok := ctx.Value(renderContextKey{}).(RenderContext)
-	return rc, ok
+	if !ok {
+		panic("gui: render context not found in context")
+	}
+	return rc
 }

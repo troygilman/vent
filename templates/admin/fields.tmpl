@@ -187,30 +187,30 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}
 }
 
 func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) (string, error) {
-	{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
-	return "", nil
-	{{- else if isMemberKindEdge $member }}
-	options, err := f.load{{ pascal $member.Name }}Options(ctx)
-	if err != nil {
-		return "", err
-	}
-	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-		Name:     "{{ $member.Name }}",
-		Label:    "{{ $member.Label }}",
-		Editable: true,
-		Options:  options,
-	})
-	{{- else }}
-	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-		Name:     "{{ $member.Name }}",
-		Label:    "{{ $member.Label }}",
-		{{- if $member.HasDefaultValue }}
-		Value:    vent.FormatFormValue({{ $rc.PackageDir }}.{{ $member.DefaultValueName }}),
+		{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
+		return "", nil
+		{{- else if isMemberKindEdge $member }}
+		options, err := f.load{{ pascal $member.Name }}Options(ctx)
+		if err != nil {
+			return "", err
+		}
+		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+			Name:     "{{ $member.Name }}",
+			Label:    "{{ $member.Label }}",
+			Editable: gui.MustRenderContext(ctx).CanUpdate,
+			Options:  options,
+		})
+		{{- else }}
+		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+			Name:     "{{ $member.Name }}",
+			Label:    "{{ $member.Label }}",
+			{{- if $member.HasDefaultValue }}
+			Value:    vent.FormatFormValue({{ $rc.PackageDir }}.{{ $member.DefaultValueName }}),
+			{{- end }}
+			Editable: gui.MustRenderContext(ctx).CanUpdate,
+		})
 		{{- end }}
-		Editable: true,
-	})
-	{{- end }}
-}
+	}
 
 func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, e *ent.{{ $node.Name }}) (string, error) {
 	{{- if eq $member.Name "id" }}
@@ -225,13 +225,19 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 	if vent.PasswordHashIsSet(e.PasswordHash) {
 		status = "Set"
 	}
+	actionLabel := ""
+	actionURL := ""
+	if gui.MustRenderContext(ctx).CanUpdate {
+		actionLabel = "Manage Password"
+		actionURL = fmt.Sprintf("%s{{ $rc.RouteName }}/%d/password/", requestctx.MustAdminPath(ctx), e.ID)
+	}
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:        "password",
 		Label:       "Password",
 		Value:       status,
 		Editable:    false,
-		ActionLabel: "Manage Password",
-		ActionURL:   fmt.Sprintf("%s{{ $rc.RouteName }}/%d/password/", requestctx.MustAdminPath(ctx), e.ID),
+		ActionLabel: actionLabel,
+		ActionURL:   actionURL,
 	})
 	{{- else if isMemberKindEdge $member }}
 	options, err := f.load{{ pascal $member.Name }}OptionsWithSelection(ctx, e)
@@ -241,12 +247,12 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
 		Name:     "{{ $member.Name }}",
 		Label:    "{{ $member.Label }}",
-		Editable: {{ $member.BindUpdate }},
+		Editable: {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
 		Options:  options,
 	})
 	{{- else }}
 		{{- if and $rc.IsAuthUserSchema (eq $member.Name "is_active") }}
-		editable := {{ $member.BindUpdate }}
+		editable := {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }}
 		if currentUser, err := GetUser(ctx); err == nil && currentUser.ID == e.ID {
 			editable = false
 		}
@@ -263,7 +269,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 			{{- if not (isFieldKindPassword $member.FieldKind) }}
 			Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
 			{{- end }}
-			Editable: {{ $member.BindUpdate }},
+			Editable: {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
 		})
 		{{- end }}
 		{{- end }}

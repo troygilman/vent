@@ -86,6 +86,15 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 
 // buildAuthGroupAddPageProps builds the add page props for AuthGroup.
 func (h *AdminHandler) buildAuthGroupAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.AuthGroup.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.authGroupFields.createFormFields {
@@ -436,6 +445,15 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 
 // buildAuthUserAddPageProps builds the add page props for AuthUser.
 func (h *AdminHandler) buildAuthUserAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.AuthUser.CanCreate(ctx)
+	if err != nil {
+		return gui.SchemaEntityAddProps{}, err
+	}
+	ctx = gui.WithRenderContext(ctx, gui.RenderContext{
+		CanCreate: canCreate,
+		CanUpdate: canCreate,
+	})
+
 	fields := []gui.SchemaEntityFieldProps{}
 
 	for _, field := range h.authUserFields.createFormFields {
