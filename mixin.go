@@ -36,7 +36,6 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRoleUser},
 		VentSchemaAnnotation{
-			DisplayField: "email",
 			TableColumns: []string{
 				"email",
 				"is_staff",
@@ -89,7 +88,6 @@ func (AuthGroupMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRoleGroup},
 		VentSchemaAnnotation{
-			DisplayField: "name",
 			TableColumns: []string{
 				"name",
 			},
@@ -129,7 +127,6 @@ func (AuthPermissionMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRolePermission},
 		VentSchemaAnnotation{
-			DisplayField: "name",
 			DisableAdmin: true,
 		},
 	}

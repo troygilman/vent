@@ -29,10 +29,12 @@ type SchemaMeta struct {
 	RouteName           string
 	SingularDisplayName string
 	PluralDisplayName   string
-	DisplayField        string
-	Permissions         []Permission
-	IsAuthUserSchema    bool
-	HasPasswordRoutes   bool
+	// DefaultNameField is the entity field used by generated Default*Admin.Name.
+	// Not an annotation; inferred as Name when that field exists, otherwise ID.
+	DefaultNameField  string
+	Permissions       []Permission
+	IsAuthUserSchema  bool
+	HasPasswordRoutes bool
 	// PackageDir is the Ent-generated schema package directory (e.g. "authuser").
 	PackageDir string
 }
@@ -50,11 +52,10 @@ type SurfaceMember struct {
 	MemberKind MemberKind
 	FieldKind  FieldKind
 
-	EdgeTypeName     string
-	EdgeUnique       bool
-	EdgeDisplayField string
-	EdgeSingular     string
-	EagerLoad        bool
+	EdgeTypeName string
+	EdgeUnique   bool
+	EdgeSingular string
+	EagerLoad    bool
 
 	OptionalOnCreate bool
 	Nillable         bool
@@ -119,7 +120,6 @@ type catalogMember struct {
 	fieldKind        FieldKind
 	edgeTypeName     string
 	edgeUnique       bool
-	edgeDisplayField string
 	edgeSingular     string
 	optionalOnCreate bool
 	nillable         bool
@@ -197,7 +197,7 @@ func resolveSchemaMeta(node *gen.Type) SchemaMeta {
 		RouteName:           pluralResourceName(node.Name),
 		SingularDisplayName: node.Name,
 		PluralDisplayName:   pluralDisplayName(node.Name),
-		DisplayField:        "ID",
+		DefaultNameField:    defaultNameField(node),
 		IsAuthUserSchema:    isAuthUserNode(node),
 		HasPasswordRoutes:   isAuthUserNode(node),
 		PackageDir:          node.PackageDir(),
@@ -217,9 +217,6 @@ func resolveSchemaMeta(node *gen.Type) SchemaMeta {
 		}
 		if annotation.PluralDisplayName != "" {
 			meta.PluralDisplayName = annotation.PluralDisplayName
-		}
-		if annotation.DisplayField != "" {
-			meta.DisplayField = pascalCase(annotation.DisplayField)
 		}
 		meta.Permissions = append([]Permission(nil), annotation.Permissions...)
 	}
@@ -259,16 +256,15 @@ func buildMemberCatalog(node *gen.Type, meta SchemaMeta) (memberCatalog, error) 
 			fieldKind = FieldKindForeignKeyUnique
 		}
 		catalog[edge.Name] = &catalogMember{
-			name:             edge.Name,
-			label:            pascalCase(edge.Name),
-			kind:             MemberEdge,
-			edge:             edge,
-			fieldKind:        fieldKind,
-			edgeTypeName:     edge.Type.Name,
-			edgeUnique:       edge.Unique,
-			edgeDisplayField: getEdgeDisplayField(edge.Type),
-			edgeSingular:     singularize(pascalCase(edge.Name)),
-			listType:         "edge",
+			name:         edge.Name,
+			label:        pascalCase(edge.Name),
+			kind:         MemberEdge,
+			edge:         edge,
+			fieldKind:    fieldKind,
+			edgeTypeName: edge.Type.Name,
+			edgeUnique:   edge.Unique,
+			edgeSingular: singularize(pascalCase(edge.Name)),
+			listType:     "edge",
 		}
 	}
 
@@ -540,7 +536,6 @@ func projectSurfaceMember(member resolvedMember) SurfaceMember {
 		FieldKind:        member.member.fieldKind,
 		EdgeTypeName:     member.member.edgeTypeName,
 		EdgeUnique:       member.member.edgeUnique,
-		EdgeDisplayField: member.member.edgeDisplayField,
 		EdgeSingular:     member.member.edgeSingular,
 		EagerLoad:        member.member.kind == MemberEdge,
 		OptionalOnCreate: member.member.optionalOnCreate,

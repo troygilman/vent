@@ -5,10 +5,22 @@
 package admin
 
 {{ $adminNodes := $.Annotations.VentConfig.Configs }}
+{{ $permissionSchema := $.Annotations.VentConfig.AuthSchemas.Permission }}
+{{ $needsPermissionLabels := false }}
+{{- range $item := $adminNodes }}
+{{- range $member := $item.RC.AdminSurface }}
+{{- if and (isMemberKindEdge $member) (eq $member.EdgeTypeName $permissionSchema) }}
+{{ $needsPermissionLabels = true }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 import (
 	"context"
 	"fmt"
+	{{- if $needsPermissionLabels }}
+	"sort"
+	{{- end }}
 
 	ent "{{ $.Config.Package }}"
 	{{- range $item := $adminNodes }}
@@ -26,8 +38,24 @@ var (
 	{{- end }}
 )
 
+{{- if $needsPermissionLabels }}
+
+func permissionSchema(name string) string {
+	for _, permission := range permissions {
+		if permission.Name == name {
+			return permission.Schema
+		}
+	}
+	return ""
+}
+
+func permissionLabel(name string) string {
+	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
+}
+{{- end }}
+
 {{ range $item := $adminNodes }}
-{{ $ctx := dict "Node" $item.Node "RC" $item.RC }}
+{{ $ctx := dict "Node" $item.Node "RC" $item.RC "PermissionSchema" $permissionSchema }}
 {{ template "admin/handler/helper/schema_fields" $ctx }}
 {{ end }}
 {{ end }}
@@ -35,6 +63,7 @@ var (
 {{ define "admin/handler/helper/schema_fields" }}
 {{ $node := get . "Node" }}
 {{ $rc := get . "RC" }}
+{{ $permissionSchema := get . "PermissionSchema" }}
 
 // {{ $node.Name }}Field is the typed admin field contract for {{ $node.Name }}.
 type {{ $node.Name }}Field interface {
@@ -113,7 +142,7 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 
 {{ range $member := $rc.AdminSurface }}
 {{- if hasGeneratedFieldDefault $member }}
-{{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
+{{ $ctx := dict "Node" $node "RC" $rc "Member" $member "PermissionSchema" $permissionSchema }}
 {{ template "admin/handler/helper/schema_field_type" $ctx }}
 {{- end }}
 {{ end }}
@@ -123,6 +152,7 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 {{ $node := get . "Node" }}
 {{ $rc := get . "RC" }}
 {{ $member := get . "Member" }}
+{{ $permissionSchema := get . "PermissionSchema" }}
 
 type {{ $node.Name }}{{ $member.SlotName }} struct {
 	client *ent.Client
@@ -141,7 +171,11 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}
 	{{- else if isMemberKindEdge $member }}
 	{{- if $member.EdgeUnique }}
 	if e.Edges.{{ pascal $member.Name }} != nil {
-		return fmt.Sprintf("%v", e.Edges.{{ pascal $member.Name }}.{{ $member.EdgeDisplayField }})
+		{{- if eq $member.EdgeTypeName $permissionSchema }}
+		return permissionLabel(e.Edges.{{ pascal $member.Name }}.Name)
+		{{- else }}
+		return Default{{ $member.EdgeTypeName }}Admin{}.Name(e.Edges.{{ pascal $member.Name }})
+		{{- end }}
 	}
 	return ""
 	{{- else }}
@@ -366,9 +400,18 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Opt
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: fmt.Sprintf("%v", entity.{{ $member.EdgeDisplayField }}),
+			{{- if eq $member.EdgeTypeName $permissionSchema }}
+			Label: permissionLabel(entity.Name),
+			{{- else }}
+			Label: Default{{ $member.EdgeTypeName }}Admin{}.Name(entity),
+			{{- end }}
 		}
 	}
+	{{- if eq $member.EdgeTypeName $permissionSchema }}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
+	{{- end }}
 	return options, nil
 }
 

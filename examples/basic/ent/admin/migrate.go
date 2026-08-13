@@ -14,19 +14,22 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
 )
 
-var metadata = map[string]vent.VentSchemaAnnotation{
-
-	"auth_group": {
-		Permissions: []vent.Permission{},
-	},
-
-	"auth_user": {
-		Permissions: []vent.Permission{},
-	},
+var permissions = []struct {
+	Name   string
+	Schema string
+}{
+	{Name: "create_auth_group", Schema: "AuthGroup"},
+	{Name: "read_auth_group", Schema: "AuthGroup"},
+	{Name: "update_auth_group", Schema: "AuthGroup"},
+	{Name: "delete_auth_group", Schema: "AuthGroup"},
+	{Name: "create_auth_user", Schema: "AuthUser"},
+	{Name: "read_auth_user", Schema: "AuthUser"},
+	{Name: "update_auth_user", Schema: "AuthUser"},
+	{Name: "delete_auth_user", Schema: "AuthUser"},
+	{Name: "impersonate", Schema: "AuthUser"},
 }
 
 func Diff(ctx context.Context, u string, dir migrate.Dir, formatter migrate.Formatter) error {
@@ -103,32 +106,23 @@ func (d *Differ) diffAuthPermissions(ctx context.Context) error {
 	}
 
 	permissionBuilders := []*ent.AuthPermissionCreate{}
-	for schemaName, annotation := range metadata {
-		for _, action := range []string{"create", "read", "update", "delete"} {
-			permissionName := fmt.Sprintf("%s_%s", action, schemaName)
-			_, ok := currentPermissionsMap[permissionName]
-			if !ok {
-				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permissionName))
-			}
+	for _, permission := range permissions {
+		if _, ok := currentPermissionsMap[permission.Name]; ok {
+			continue
 		}
-		for _, permission := range annotation.Permissions {
-			_, ok := currentPermissionsMap[permission.Name]
-			if !ok {
-				permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
-			}
-		}
+		permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
 	}
 
 	if len(permissionBuilders) == 0 {
 		return nil
 	}
 
-	permissions, err := d.writeClient.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
+	created, err := d.writeClient.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
 	if err != nil {
 		return err
 	}
 
-	if len(permissions) > 0 {
+	if len(created) > 0 {
 		d.writer.Change("Added permissions")
 		d.flush = true
 	}

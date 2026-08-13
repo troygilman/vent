@@ -308,13 +308,11 @@ func pointerInputType(t string) string {
 	return "*" + t
 }
 
-// getEdgeDisplayField returns the display field for an edge's target type
-func getEdgeDisplayField(targetType *gen.Type) string {
-	var annotation VentSchemaAnnotation
-	if err := annotation.parse(targetType); err == nil && annotation.DisplayField != "" {
-		return pascalCase(annotation.DisplayField)
+// defaultNameField is the entity field used by generated Default*Admin.Name.
+func defaultNameField(node *gen.Type) string {
+	if hasField(node, "name") {
+		return "Name"
 	}
-	// Default to ID if no display field specified
 	return "ID"
 }
 
@@ -509,10 +507,6 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 	}
 
 	var errs []string
-	if annotation.DisplayField != "" && !hasFieldOrID(node, annotation.DisplayField) {
-		errs = append(errs, fmt.Sprintf("schema %q display field %q does not exist", node.Name, annotation.DisplayField))
-	}
-
 	for _, column := range annotation.TableColumns {
 		if !hasFieldOrID(node, column) {
 			errs = append(errs, fmt.Sprintf("schema %q table column %q does not exist", node.Name, column))

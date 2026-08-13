@@ -58,7 +58,6 @@ type VentSchemaAnnotation struct {
 	RouteName           string
 	SingularDisplayName string
 	PluralDisplayName   string
-	DisplayField        string
 	CustomFields        []Field
 	FieldSets           []FieldSet
 	TableColumns        []string

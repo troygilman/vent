@@ -191,7 +191,7 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		}
 	}
 
-	entityDisplay := fmt.Sprintf("%v", e.Name)
+	entityDisplay := h.schemas.AuthGroup.Name(e)
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthGroup", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
@@ -530,7 +530,7 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		}
 	}
 
-	entityDisplay := fmt.Sprintf("%v", e.Email)
+	entityDisplay := h.schemas.AuthUser.Name(e)
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
@@ -673,7 +673,7 @@ func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id in
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
-	entityDisplay := fmt.Sprintf("%v", e.Email)
+	entityDisplay := h.schemas.AuthUser.Name(e)
 	return gui.SchemaEntityPasswordProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaPasswordBreadcrumbs(
 			requestctx.MustAdminPath(ctx),

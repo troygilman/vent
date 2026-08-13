@@ -10,6 +10,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 
 	ent "{{ $.Config.Package }}"
 	{{- if $needsVent }}
@@ -39,6 +40,7 @@ type {{ $node.Name }}Admin interface {
 	{{- range $member := $rc.AdminSurface }}
 	Field{{ $member.Label }}() {{ $node.Name }}Field
 	{{- end }}
+	Name(e *ent.{{ $node.Name }}) string
 	ValidateCreate(ctx context.Context, input {{ $node.Name }}CreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input {{ $node.Name }}UpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -60,7 +62,11 @@ func NewDefault{{ $node.Name }}Admin(client *ent.Client) Default{{ $node.Name }}
 	return Default{{ $node.Name }}Admin{Client: client}
 }
 
-{{- range $member := $rc.AdminSurface }}
+func (Default{{ $node.Name }}Admin) Name(e *ent.{{ $node.Name }}) string {
+	return fmt.Sprintf("%v", e.{{ $rc.DefaultNameField }})
+}
+
+	{{- range $member := $rc.AdminSurface }}
 
 func (a Default{{ $node.Name }}Admin) Field{{ $member.Label }}() {{ $node.Name }}Field {
 	{{- if hasGeneratedFieldDefault $member }}

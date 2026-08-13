@@ -299,6 +299,21 @@ func TestPluralResourceName(t *testing.T) {
 	}
 }
 
+func TestDefaultNameField(t *testing.T) {
+	nameNode := &gen.Type{
+		Name:   "AuthGroup",
+		Fields: []*gen.Field{{Name: "name"}},
+	}
+	if got := defaultNameField(nameNode); got != "Name" {
+		t.Fatalf("defaultNameField(name) = %q, want Name", got)
+	}
+
+	idNode := &gen.Type{Name: "AuthUser"}
+	if got := defaultNameField(idNode); got != "ID" {
+		t.Fatalf("defaultNameField(empty) = %q, want ID", got)
+	}
+}
+
 func TestResourceName(t *testing.T) {
 	tests := map[string]string{
 		"AuthUser":        "auth_user",

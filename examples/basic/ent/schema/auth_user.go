@@ -30,13 +30,15 @@ func (AuthUser) Mixin() []ent.Mixin {
 func (AuthUser) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		vent.VentSchemaAnnotation{
-			DisplayField: "email",
 			TableColumns: []string{
 				"email",
 				"is_staff",
 				"is_superuser",
 				"is_active",
 				"last_login",
+			},
+			Permissions: []vent.Permission{
+				{Name: "impersonate", Desc: "Act as another user"},
 			},
 			FieldSets: []vent.FieldSet{
 				{

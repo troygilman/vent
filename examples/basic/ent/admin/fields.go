@@ -5,6 +5,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
@@ -19,6 +20,19 @@ var (
 	_ = authgroup.Label
 	_ = authuser.Label
 )
+
+func permissionSchema(name string) string {
+	for _, permission := range permissions {
+		if permission.Name == name {
+			return permission.Schema
+		}
+	}
+	return ""
+}
+
+func permissionLabel(name string) string {
+	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
+}
 
 // AuthGroupField is the typed admin field contract for AuthGroup.
 type AuthGroupField interface {
@@ -189,9 +203,12 @@ func (f AuthGroupPermissionsField) loadPermissionsOptions(ctx context.Context) (
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: fmt.Sprintf("%v", entity.Name),
+			Label: permissionLabel(entity.Name),
 		}
 	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
 	return options, nil
 }
 
@@ -638,7 +655,7 @@ func (f AuthUserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.Selec
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: fmt.Sprintf("%v", entity.Name),
+			Label: DefaultAuthGroupAdmin{}.Name(entity),
 		}
 	}
 	return options, nil

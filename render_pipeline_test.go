@@ -22,10 +22,6 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 	if !rc.IsAuthUserSchema || !rc.HasPasswordRoutes {
 		t.Fatalf("Meta auth flags = %#v, want auth user with password routes", rc.SchemaMeta)
 	}
-	if rc.DisplayField != "Email" {
-		t.Fatalf("DisplayField = %q, want Email", rc.DisplayField)
-	}
-
 	assertSurfaceMemberNames(t, rc.AdminSurface, []string{
 		"id", "email", "password", "is_staff", "is_superuser", "is_active", "groups",
 	})
@@ -237,13 +233,28 @@ func TestBuildProjectedRenderConfigDisabledAdmin(t *testing.T) {
 	}
 }
 
+func TestBuildProjectedRenderConfigKeepsDeclaredPermissions(t *testing.T) {
+	node := authUserLikeNode()
+	annotation := node.Annotations[VentSchemaAnnotation{}.Name()].(VentSchemaAnnotation)
+	annotation.Permissions = []Permission{{Name: "impersonate", Desc: "Act as another user"}}
+	node.Annotations[VentSchemaAnnotation{}.Name()] = annotation
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+	want := []Permission{{Name: "impersonate", Desc: "Act as another user"}}
+	if !reflect.DeepEqual(rc.Permissions, want) {
+		t.Fatalf("Permissions = %#v, want %#v", rc.Permissions, want)
+	}
+}
+
 func authUserLikeNode() *gen.Type {
 	return &gen.Type{
 		Name: "AuthUser",
 		Annotations: gen.Annotations{
 			VentAuthMixinAnnotation{}.Name(): VentAuthMixinAnnotation{Role: AuthRoleUser},
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
-				DisplayField: "email",
 				TableColumns: []string{"email", "is_staff", "is_superuser", "is_active"},
 				FieldSets: []FieldSet{{
 					Fields: []string{

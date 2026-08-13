@@ -4,6 +4,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
@@ -25,6 +26,7 @@ type SchemaAdmins struct {
 type AuthGroupAdmin interface {
 	FieldName() AuthGroupField
 	FieldPermissions() AuthGroupField
+	Name(e *ent.AuthGroup) string
 	ValidateCreate(ctx context.Context, input AuthGroupCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input AuthGroupUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -44,6 +46,10 @@ type DefaultAuthGroupAdmin struct {
 // NewDefaultAuthGroupAdmin returns a default AuthGroup admin using client.
 func NewDefaultAuthGroupAdmin(client *ent.Client) DefaultAuthGroupAdmin {
 	return DefaultAuthGroupAdmin{Client: client}
+}
+
+func (DefaultAuthGroupAdmin) Name(e *ent.AuthGroup) string {
+	return fmt.Sprintf("%v", e.Name)
 }
 
 func (a DefaultAuthGroupAdmin) FieldName() AuthGroupField {
@@ -96,6 +102,7 @@ type AuthUserAdmin interface {
 	FieldIsActive() AuthUserField
 	FieldGroups() AuthUserField
 	FieldLastLogin() AuthUserField
+	Name(e *ent.AuthUser) string
 	ValidateCreate(ctx context.Context, input AuthUserCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input AuthUserUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -115,6 +122,10 @@ type DefaultAuthUserAdmin struct {
 // NewDefaultAuthUserAdmin returns a default AuthUser admin using client.
 func NewDefaultAuthUserAdmin(client *ent.Client) DefaultAuthUserAdmin {
 	return DefaultAuthUserAdmin{Client: client}
+}
+
+func (DefaultAuthUserAdmin) Name(e *ent.AuthUser) string {
+	return fmt.Sprintf("%v", e.ID)
 }
 
 func (a DefaultAuthUserAdmin) FieldID() AuthUserField {

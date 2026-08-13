@@ -203,7 +203,7 @@ func (h *AdminHandler) build{{ $node.Name }}PageProps(ctx context.Context, id in
 		}
 	}
 
-	entityDisplay := fmt.Sprintf("%v", e.{{ $rc.DisplayField }})
+	entityDisplay := h.schemas.{{ $node.Name }}.Name(e)
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "{{ $node.Name }}", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
@@ -347,7 +347,7 @@ func (h *AdminHandler) build{{ $node.Name }}PasswordPageProps(ctx context.Contex
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
-	entityDisplay := fmt.Sprintf("%v", e.{{ $rc.DisplayField }})
+	entityDisplay := h.schemas.{{ $node.Name }}.Name(e)
 	return gui.SchemaEntityPasswordProps{
 		LayoutProps: h.buildLayoutProps(ctx, "{{ $node.Name }}", gui.SchemaPasswordBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
