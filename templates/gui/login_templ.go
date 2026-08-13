@@ -104,7 +104,7 @@ func Login(props LoginProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-indicator=\"_indicator\"><h2 class=\"login-title\">Admin Login</h2><div class=\"login-fields\"><div class=\"login-field\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-indicator=\"_indicator\"><span class=\"login-logo\" aria-hidden=\"true\"></span><h1 class=\"login-title\">Admin Login</h1><div class=\"login-fields\"><div class=\"login-field\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -138,7 +138,7 @@ func Login(props LoginProps) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(props.EmailError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 40, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 41, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -184,7 +184,7 @@ func Login(props LoginProps) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(err)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 69, Col: 14}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/login.templ`, Line: 70, Col: 14}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {

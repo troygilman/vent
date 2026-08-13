@@ -18,7 +18,8 @@ templ Login(props LoginProps) {
 	<div id="login" class="login-shell">
 		<div class="login-card">
 			<form class="login-body" data-on:submit={ "@post('" + requestctx.MustAdminPath(ctx) + "login/')" } data-indicator="_indicator">
-				<h2 class="login-title">Admin Login</h2>
+				<span class="login-logo" aria-hidden="true"></span>
+				<h1 class="login-title">Admin Login</h1>
 				<div class="login-fields">
 					<div class="login-field">
 						<label class={ "input", templ.KV("error", props.EmailError != "") }>
