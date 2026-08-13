@@ -136,24 +136,24 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/{$}", h.getAdminHandler())
 
 			authed.Group("auth_groups", func(schema *route.Router) {
-				schema.GET("/", h.getAuthGroupListHandler(), h.authorize(h.schemas.AuthGroup.CanRead))
+				schema.GET("/", h.getAuthGroupListHandler(), h.authorizePermission("read_auth_group"))
 				schema.POST("/", h.postAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
 				schema.GET("/add/{$}", h.getAuthGroupAddHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
-				schema.GET("/{id}/", h.getAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanRead))
-				schema.PATCH("/{id}/", h.patchAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanUpdate))
-				schema.DELETE("/{id}/", h.deleteAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanDelete))
+				schema.GET("/{id}/", h.getAuthGroupHandler(), h.authorizePermission("read_auth_group"))
+				schema.PATCH("/{id}/", h.patchAuthGroupHandler(), h.authorizePermission("update_auth_group"))
+				schema.DELETE("/{id}/", h.deleteAuthGroupHandler(), h.authorizePermission("delete_auth_group"))
 			})
 
 			authed.Group("auth_users", func(schema *route.Router) {
-				schema.GET("/", h.getAuthUserListHandler(), h.authorize(h.schemas.AuthUser.CanRead))
+				schema.GET("/", h.getAuthUserListHandler(), h.authorizePermission("read_auth_user"))
 				schema.POST("/", h.postAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
 				schema.GET("/add/{$}", h.getAuthUserAddHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
-				schema.GET("/{id}/", h.getAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanRead))
-				schema.PATCH("/{id}/", h.patchAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
-				schema.DELETE("/{id}/", h.deleteAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanDelete))
-				schema.GET("/{id}/password/", h.getAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanRead))
-				schema.PUT("/{id}/password/", h.putAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
-				schema.DELETE("/{id}/password/", h.deleteAuthUserPasswordHandler(), h.authorize(h.schemas.AuthUser.CanUpdate))
+				schema.GET("/{id}/", h.getAuthUserHandler(), h.authorizePermission("read_auth_user"))
+				schema.PATCH("/{id}/", h.patchAuthUserHandler(), h.authorizePermission("update_auth_user"))
+				schema.DELETE("/{id}/", h.deleteAuthUserHandler(), h.authorizePermission("delete_auth_user"))
+				schema.GET("/{id}/password/", h.getAuthUserPasswordHandler(), h.authorizePermission("read_auth_user"))
+				schema.PUT("/{id}/password/", h.putAuthUserPasswordHandler(), h.authorizePermission("update_auth_user"))
+				schema.DELETE("/{id}/password/", h.deleteAuthUserPasswordHandler(), h.authorizePermission("update_auth_user"))
 			})
 
 		})
@@ -202,7 +202,7 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 	schemas := make([]gui.SchemaMetadata, 0)
 	query := strings.ToLower(strings.TrimSpace(schemaSearch))
 
-	if ok, err := h.schemas.AuthGroup.CanRead(ctx); err == nil && ok {
+	if ok, err := defaultCan(ctx, "read_auth_group"); err == nil && ok {
 		displayName := "AuthGroups"
 		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("AuthGroup"), query) {
 			schemas = append(schemas, gui.SchemaMetadata{
@@ -213,7 +213,7 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 		}
 	}
 
-	if ok, err := h.schemas.AuthUser.CanRead(ctx); err == nil && ok {
+	if ok, err := defaultCan(ctx, "read_auth_user"); err == nil && ok {
 		displayName := "AuthUsers"
 		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("AuthUser"), query) {
 			schemas = append(schemas, gui.SchemaMetadata{
@@ -574,6 +574,13 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// authorizePermission runs a schema-level CRUD permission check before the next handler.
+func (h *AdminHandler) authorizePermission(permission string) func(http.Handler) http.Handler {
+	return h.authorize(func(ctx context.Context) (bool, error) {
+		return defaultCan(ctx, permission)
+	})
 }
 
 // authorize runs a schema admin Can* check before the next handler.

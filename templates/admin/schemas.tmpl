@@ -6,16 +6,15 @@ package admin
 
 {{ $adminNodes := $.Annotations.VentConfig.Configs }}
 {{ $needsVent := false }}
-{{ range $item := $adminNodes }}{{ if $item.RC.IsAuthUserSchema }}{{ $needsVent = true }}{{ end }}{{ end }}
+{{ $authUserSchema := "" }}
+{{ range $item := $adminNodes }}{{ if $item.RC.IsAuthUserSchema }}{{ $needsVent = true }}{{ $authUserSchema = $item.Node.Name }}{{ end }}{{ end }}
 
 import (
 	"context"
 	"fmt"
 
 	ent "{{ $.Config.Package }}"
-	{{- if $needsVent }}
 	"github.com/troygilman/vent"
-	{{- end }}
 )
 
 // SchemaAdmins holds per-schema admin surface implementations.
@@ -35,7 +34,9 @@ type SchemaAdmins struct {
 // Embed Default{{ $node.Name }}Admin and override only the methods you need.
 //
 // Field* methods supply field implementations. Validate* methods own mutation
-// policy. Can* methods own permission checks for routes and UI.
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
 type {{ $node.Name }}Admin interface {
 	{{- range $member := $rc.AdminSurface }}
 	Field{{ $member.Label }}() {{ $node.Name }}Field
@@ -44,10 +45,10 @@ type {{ $node.Name }}Admin interface {
 	ValidateCreate(ctx context.Context, input {{ $node.Name }}CreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input {{ $node.Name }}UpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
-	CanRead(ctx context.Context) (bool, error)
+	CanRead(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error)
 	CanCreate(ctx context.Context) (bool, error)
-	CanUpdate(ctx context.Context) (bool, error)
-	CanDelete(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error)
+	CanDelete(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error)
 }
 
 // Default{{ $node.Name }}Admin is the generated default {{ $node.Name }} admin surface.
@@ -109,7 +110,7 @@ func (Default{{ $node.Name }}Admin) ValidateDelete(ctx context.Context, id int) 
 	return nil
 }
 
-func (Default{{ $node.Name }}Admin) CanRead(ctx context.Context) (bool, error) {
+func (Default{{ $node.Name }}Admin) CanRead(ctx context.Context, _ *ent.{{ $node.Name }}) (bool, error) {
 	return defaultCan(ctx, "read_{{ $permSuffix }}")
 }
 
@@ -117,12 +118,35 @@ func (Default{{ $node.Name }}Admin) CanCreate(ctx context.Context) (bool, error)
 	return defaultCan(ctx, "create_{{ $permSuffix }}")
 }
 
-func (Default{{ $node.Name }}Admin) CanUpdate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "update_{{ $permSuffix }}")
+func (Default{{ $node.Name }}Admin) CanUpdate(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
+	ok, err := defaultCan(ctx, "update_{{ $permSuffix }}")
+	if err != nil || !ok {
+		return ok, err
+	}
+	{{- if $rc.IsAuthUserSchema }}
+	return allowSuperuserMutation(ctx, e)
+	{{- else }}
+	return true, nil
+	{{- end }}
 }
 
-func (Default{{ $node.Name }}Admin) CanDelete(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "delete_{{ $permSuffix }}")
+func (Default{{ $node.Name }}Admin) CanDelete(ctx context.Context, e *ent.{{ $node.Name }}) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_{{ $permSuffix }}")
+	if err != nil || !ok {
+		return ok, err
+	}
+	{{- if $rc.IsAuthUserSchema }}
+	currentUser, err := GetUser(ctx)
+	if err != nil {
+		return false, err
+	}
+	if currentUser.ID == e.ID {
+		return false, nil
+	}
+	return allowSuperuserMutation(ctx, e)
+	{{- else }}
+	return true, nil
+	{{- end }}
 }
 
 {{ end }}
@@ -134,4 +158,24 @@ func defaultCan(ctx context.Context, permission string) (bool, error) {
 	}
 	return UserHasPermission(ctx, user, permission)
 }
+
+func denyIfCannot(ok bool, err error) error {
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return vent.Forbidden("forbidden")
+	}
+	return nil
+}
+{{- if $needsVent }}
+
+func allowSuperuserMutation(ctx context.Context, target *ent.{{ $authUserSchema }}) (bool, error) {
+	currentUser, err := GetUser(ctx)
+	if err != nil {
+		return false, err
+	}
+	return currentUser.IsSuperuser || !target.IsSuperuser, nil
+}
+{{- end }}
 {{ end }}

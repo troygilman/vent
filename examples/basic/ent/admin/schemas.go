@@ -22,7 +22,9 @@ type SchemaAdmins struct {
 // Embed DefaultAuthGroupAdmin and override only the methods you need.
 //
 // Field* methods supply field implementations. Validate* methods own mutation
-// policy. Can* methods own permission checks for routes and UI.
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
 type AuthGroupAdmin interface {
 	FieldName() AuthGroupField
 	FieldPermissions() AuthGroupField
@@ -30,10 +32,10 @@ type AuthGroupAdmin interface {
 	ValidateCreate(ctx context.Context, input AuthGroupCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input AuthGroupUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
-	CanRead(ctx context.Context) (bool, error)
+	CanRead(ctx context.Context, e *ent.AuthGroup) (bool, error)
 	CanCreate(ctx context.Context) (bool, error)
-	CanUpdate(ctx context.Context) (bool, error)
-	CanDelete(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.AuthGroup) (bool, error)
+	CanDelete(ctx context.Context, e *ent.AuthGroup) (bool, error)
 }
 
 // DefaultAuthGroupAdmin is the generated default AuthGroup admin surface.
@@ -72,7 +74,7 @@ func (DefaultAuthGroupAdmin) ValidateDelete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (DefaultAuthGroupAdmin) CanRead(ctx context.Context) (bool, error) {
+func (DefaultAuthGroupAdmin) CanRead(ctx context.Context, _ *ent.AuthGroup) (bool, error) {
 	return defaultCan(ctx, "read_auth_group")
 }
 
@@ -80,19 +82,29 @@ func (DefaultAuthGroupAdmin) CanCreate(ctx context.Context) (bool, error) {
 	return defaultCan(ctx, "create_auth_group")
 }
 
-func (DefaultAuthGroupAdmin) CanUpdate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "update_auth_group")
+func (DefaultAuthGroupAdmin) CanUpdate(ctx context.Context, e *ent.AuthGroup) (bool, error) {
+	ok, err := defaultCan(ctx, "update_auth_group")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
 }
 
-func (DefaultAuthGroupAdmin) CanDelete(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "delete_auth_group")
+func (DefaultAuthGroupAdmin) CanDelete(ctx context.Context, e *ent.AuthGroup) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_auth_group")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return true, nil
 }
 
 // AuthUserAdmin is the customizable admin surface for AuthUser.
 // Embed DefaultAuthUserAdmin and override only the methods you need.
 //
 // Field* methods supply field implementations. Validate* methods own mutation
-// policy. Can* methods own permission checks for routes and UI.
+// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
+// schema CRUD permissions (read_/create_/...) own schema-level access for
+// routes, menu visibility, and create.
 type AuthUserAdmin interface {
 	FieldID() AuthUserField
 	FieldEmail() AuthUserField
@@ -106,10 +118,10 @@ type AuthUserAdmin interface {
 	ValidateCreate(ctx context.Context, input AuthUserCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input AuthUserUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
-	CanRead(ctx context.Context) (bool, error)
+	CanRead(ctx context.Context, e *ent.AuthUser) (bool, error)
 	CanCreate(ctx context.Context) (bool, error)
-	CanUpdate(ctx context.Context) (bool, error)
-	CanDelete(ctx context.Context) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.AuthUser) (bool, error)
+	CanDelete(ctx context.Context, e *ent.AuthUser) (bool, error)
 }
 
 // DefaultAuthUserAdmin is the generated default AuthUser admin surface.
@@ -188,7 +200,7 @@ func (DefaultAuthUserAdmin) ValidateDelete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (DefaultAuthUserAdmin) CanRead(ctx context.Context) (bool, error) {
+func (DefaultAuthUserAdmin) CanRead(ctx context.Context, _ *ent.AuthUser) (bool, error) {
 	return defaultCan(ctx, "read_auth_user")
 }
 
@@ -196,12 +208,27 @@ func (DefaultAuthUserAdmin) CanCreate(ctx context.Context) (bool, error) {
 	return defaultCan(ctx, "create_auth_user")
 }
 
-func (DefaultAuthUserAdmin) CanUpdate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "update_auth_user")
+func (DefaultAuthUserAdmin) CanUpdate(ctx context.Context, e *ent.AuthUser) (bool, error) {
+	ok, err := defaultCan(ctx, "update_auth_user")
+	if err != nil || !ok {
+		return ok, err
+	}
+	return allowSuperuserMutation(ctx, e)
 }
 
-func (DefaultAuthUserAdmin) CanDelete(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "delete_auth_user")
+func (DefaultAuthUserAdmin) CanDelete(ctx context.Context, e *ent.AuthUser) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_auth_user")
+	if err != nil || !ok {
+		return ok, err
+	}
+	currentUser, err := GetUser(ctx)
+	if err != nil {
+		return false, err
+	}
+	if currentUser.ID == e.ID {
+		return false, nil
+	}
+	return allowSuperuserMutation(ctx, e)
 }
 
 func defaultCan(ctx context.Context, permission string) (bool, error) {
@@ -210,4 +237,22 @@ func defaultCan(ctx context.Context, permission string) (bool, error) {
 		return false, err
 	}
 	return UserHasPermission(ctx, user, permission)
+}
+
+func denyIfCannot(ok bool, err error) error {
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return vent.Forbidden("forbidden")
+	}
+	return nil
+}
+
+func allowSuperuserMutation(ctx context.Context, target *ent.AuthUser) (bool, error) {
+	currentUser, err := GetUser(ctx)
+	if err != nil {
+		return false, err
+	}
+	return currentUser.IsSuperuser || !target.IsSuperuser, nil
 }

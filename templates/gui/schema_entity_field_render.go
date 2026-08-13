@@ -25,6 +25,10 @@ func applyFormEditable(ctx context.Context, editable bool) bool {
 
 func RenderTextFieldHTML(ctx context.Context, props SchemaEntityTextFieldProps) (string, error) {
 	props.Editable = applyFormEditable(ctx, props.Editable)
+	if rc, ok := RenderContextFrom(ctx); ok && !rc.CanUpdate {
+		props.ActionLabel = ""
+		props.ActionURL = ""
+	}
 	return renderComponentHTML(ctx, SchemaEntityTextField(props))
 }
 

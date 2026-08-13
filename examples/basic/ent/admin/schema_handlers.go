@@ -62,20 +62,8 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 			vent.HandleError(w, r, err)
 			return
 		}
-		canUpdate, err := h.schemas.AuthGroup.CanUpdate(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, err)
-			return
-		}
-		canDelete, err := h.schemas.AuthGroup.CanDelete(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, err)
-			return
-		}
 		renderCtx := gui.RenderContext{
 			CanCreate: canCreate,
-			CanUpdate: canUpdate,
-			CanDelete: canDelete,
 		}
 
 		props := gui.SchemaTableProps{
@@ -160,15 +148,18 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
+	if err := denyIfCannot(h.schemas.AuthGroup.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
 	canCreate, err := h.schemas.AuthGroup.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canUpdate, err := h.schemas.AuthGroup.CanUpdate(ctx)
+	canUpdate, err := h.schemas.AuthGroup.CanUpdate(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canDelete, err := h.schemas.AuthGroup.CanDelete(ctx)
+	canDelete, err := h.schemas.AuthGroup.CanDelete(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
@@ -287,6 +278,16 @@ func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
 			return
 		}
 
+		e, err := h.client.AuthGroup.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthGroup.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
 		var signals struct {
 			Entity AuthGroupUpdateInput `json:"entity"`
 		}
@@ -326,6 +327,16 @@ func (h *AdminHandler) deleteAuthGroupHandler() http.Handler {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.AuthGroup.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthGroup.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
 			return
 		}
 
@@ -397,20 +408,8 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 			vent.HandleError(w, r, err)
 			return
 		}
-		canUpdate, err := h.schemas.AuthUser.CanUpdate(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, err)
-			return
-		}
-		canDelete, err := h.schemas.AuthUser.CanDelete(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, err)
-			return
-		}
 		renderCtx := gui.RenderContext{
 			CanCreate: canCreate,
-			CanUpdate: canUpdate,
-			CanDelete: canDelete,
 		}
 
 		props := gui.SchemaTableProps{
@@ -499,15 +498,18 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
+	if err := denyIfCannot(h.schemas.AuthUser.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityChangeProps{}, err
+	}
 	canCreate, err := h.schemas.AuthUser.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx)
+	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canDelete, err := h.schemas.AuthUser.CanDelete(ctx)
+	canDelete, err := h.schemas.AuthUser.CanDelete(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
@@ -626,6 +628,16 @@ func (h *AdminHandler) patchAuthUserHandler() http.Handler {
 			return
 		}
 
+		e, err := h.client.AuthUser.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
 		var signals struct {
 			Entity AuthUserUpdateInput `json:"entity"`
 		}
@@ -673,6 +685,14 @@ func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id in
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
+	if err := denyIfCannot(h.schemas.AuthUser.CanRead(ctx, e)); err != nil {
+		return gui.SchemaEntityPasswordProps{}, err
+	}
+	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx, e)
+	if err != nil {
+		return gui.SchemaEntityPasswordProps{}, err
+	}
+
 	entityDisplay := h.schemas.AuthUser.Name(e)
 	return gui.SchemaEntityPasswordProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaPasswordBreadcrumbs(
@@ -687,6 +707,7 @@ func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id in
 		EntityDisplay: entityDisplay,
 		PasswordSet:   vent.PasswordHashIsSet(e.PasswordHash),
 		ErrorMessage:  errorMessage,
+		RenderContext: gui.RenderContext{CanUpdate: canUpdate},
 	}, nil
 }
 
@@ -732,6 +753,16 @@ func (h *AdminHandler) putAuthUserPasswordHandler() http.Handler {
 			return
 		}
 
+		e, err := h.client.AuthUser.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
 		var signals struct {
 			Password AuthUserPasswordInput `json:"password"`
 		}
@@ -773,6 +804,16 @@ func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
 			return
 		}
 
+		e, err := h.client.AuthUser.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+
 		currentUser, err := GetUser(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
@@ -799,6 +840,16 @@ func (h *AdminHandler) deleteAuthUserHandler() http.Handler {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid id").WithCause(err))
+			return
+		}
+
+		e, err := h.client.AuthUser.Get(r.Context(), id)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		if err := denyIfCannot(h.schemas.AuthUser.CanDelete(r.Context(), e)); err != nil {
+			vent.HandleError(w, r, err)
 			return
 		}
 

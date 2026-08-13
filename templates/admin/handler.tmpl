@@ -143,16 +143,16 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			{{ $node := $item.Node }}
 			{{ $rc := $item.RC }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
-				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
+				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
 				schema.POST("/", h.post{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
 				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
-				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
-				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
-				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanDelete))
+				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
+				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorizePermission("delete_{{ resourceName $node.Name }}"))
 				{{- if $rc.HasPasswordRoutes }}
-				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanRead))
-				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
-				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanUpdate))
+				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
+				schema.DELETE("/{id}/password/", h.delete{{ $node.Name }}PasswordHandler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
 				{{- end }}
 			})
 			{{ end }}
@@ -204,7 +204,7 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		{{ range $item := $adminNodes }}
 		{{ $node := $item.Node }}
 		{{ $rc := $item.RC }}
-		if ok, err := h.schemas.{{ $node.Name }}.CanRead(ctx); err == nil && ok {
+		if ok, err := defaultCan(ctx, "read_{{ resourceName $node.Name }}"); err == nil && ok {
 			displayName := "{{ $rc.PluralDisplayName }}"
 			if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("{{ $node.Name }}"), query) {
 				schemas = append(schemas, gui.SchemaMetadata{
@@ -565,6 +565,13 @@ func NewStaffMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// authorizePermission runs a schema-level CRUD permission check before the next handler.
+func (h *AdminHandler) authorizePermission(permission string) func(http.Handler) http.Handler {
+	return h.authorize(func(ctx context.Context) (bool, error) {
+		return defaultCan(ctx, permission)
+	})
 }
 
 // authorize runs a schema admin Can* check before the next handler.
