@@ -164,7 +164,10 @@ templ Layout(props LayoutProps) {
 						}
 						if props.CurrentUserName != "" {
 							<div class="current-user" title={ props.CurrentUserName }>
-								{ props.CurrentUserName }
+								<span class="current-user-avatar" aria-hidden="true">
+									@UserIcon()
+								</span>
+								<span class="current-user-name">{ props.CurrentUserName }</span>
 							</div>
 						}
 					</div>
