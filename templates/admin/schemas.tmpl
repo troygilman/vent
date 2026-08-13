@@ -5,6 +5,7 @@
 package admin
 
 {{ $adminNodes := $.Annotations.VentConfig.Configs }}
+{{ $permissionSchema := $.Annotations.VentConfig.AuthSchemas.Permission }}
 {{ $needsVent := false }}
 {{ $authUserSchema := "" }}
 {{ range $item := $adminNodes }}{{ if $item.RC.IsAuthUserSchema }}{{ $needsVent = true }}{{ $authUserSchema = $item.Node.Name }}{{ end }}{{ end }}
@@ -20,11 +21,38 @@ import (
 // SchemaAdmins holds per-schema admin surface implementations.
 // A nil slot uses the generated Default*Admin for that schema.
 type SchemaAdmins struct {
-	{{ range $item := $adminNodes }}
-	{{ $node := $item.Node }}
-	{{ $node.Name }} {{ $node.Name }}Admin
-	{{ end }}
+	{{- range $item := $adminNodes }}
+	{{ $item.Node.Name }} {{ $item.Node.Name }}Admin
+	{{- end }}
 }
+
+type adminContextKey struct{}
+
+// Admin is the request-scoped handle for schema admin implementations.
+type Admin struct {
+	schemas SchemaAdmins
+}
+
+func withAdmin(ctx context.Context, admins SchemaAdmins) context.Context {
+	return context.WithValue(ctx, adminContextKey{}, admins)
+}
+
+// MustAdmin returns the schema admins stored on ctx.
+// It panics if they were not applied to the request.
+func MustAdmin(ctx context.Context) Admin {
+	admins, ok := ctx.Value(adminContextKey{}).(SchemaAdmins)
+	if !ok {
+		panic("vent: schema admins missing from context")
+	}
+	return Admin{schemas: admins}
+}
+
+{{- range $item := $adminNodes }}
+
+func (a Admin) {{ $item.Node.Name }}() {{ $item.Node.Name }}Admin {
+	return a.schemas.{{ $item.Node.Name }}
+}
+{{- end }}
 
 {{ range $item := $adminNodes }}
 {{ $node := $item.Node }}
@@ -63,8 +91,23 @@ func NewDefault{{ $node.Name }}Admin(client *ent.Client) Default{{ $node.Name }}
 	return Default{{ $node.Name }}Admin{Client: client}
 }
 
+{{- if eq $node.Name $permissionSchema }}
+func permissionSchemaName(name string) string {
+	for _, permission := range permissions {
+		if permission.Name == name {
+			return permission.Schema
+		}
+	}
+	return ""
+}
+{{- end }}
+
 func (Default{{ $node.Name }}Admin) Name(e *ent.{{ $node.Name }}) string {
+	{{- if eq $node.Name $permissionSchema }}
+	return vent.FormatPermissionSelectLabel(permissionSchemaName(e.Name), e.Name)
+	{{- else }}
 	return fmt.Sprintf("%v", e.{{ $rc.DefaultNameField }})
+	{{- end }}
 }
 
 	{{- range $member := $rc.AdminSurface }}

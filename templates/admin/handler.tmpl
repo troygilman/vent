@@ -133,7 +133,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 		admin.POST("/logout/", h.postLogoutHandler())
 
 		admin.Group("", func(authed *route.Router) {
-			authed.Use(authMiddleware, userMiddleware, staffMiddleware)
+			authed.Use(authMiddleware, userMiddleware, staffMiddleware, h.adminContextMiddleware())
 
 			authed.POST("/preferences/theme/", h.postThemeHandler())
 			authed.GET("/command_palette/", h.getCommandPaletteHandler())
@@ -582,6 +582,14 @@ func (h *AdminHandler) authorizePermission(permission string) func(http.Handler)
 	return h.authorize(func(ctx context.Context) (bool, error) {
 		return defaultCan(ctx, permission)
 	})
+}
+
+func (h *AdminHandler) adminContextMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(withAdmin(r.Context(), h.schemas)))
+		})
+	}
 }
 
 // authorize runs a schema admin Can* check before the next handler.

@@ -13,11 +13,42 @@ import (
 // SchemaAdmins holds per-schema admin surface implementations.
 // A nil slot uses the generated Default*Admin for that schema.
 type SchemaAdmins struct {
-	Permission PermissionAdmin
-
+	Permission      PermissionAdmin
 	PermissionGroup PermissionGroupAdmin
+	User            UserAdmin
+}
 
-	User UserAdmin
+type adminContextKey struct{}
+
+// Admin is the request-scoped handle for schema admin implementations.
+type Admin struct {
+	schemas SchemaAdmins
+}
+
+func withAdmin(ctx context.Context, admins SchemaAdmins) context.Context {
+	return context.WithValue(ctx, adminContextKey{}, admins)
+}
+
+// MustAdmin returns the schema admins stored on ctx.
+// It panics if they were not applied to the request.
+func MustAdmin(ctx context.Context) Admin {
+	admins, ok := ctx.Value(adminContextKey{}).(SchemaAdmins)
+	if !ok {
+		panic("vent: schema admins missing from context")
+	}
+	return Admin{schemas: admins}
+}
+
+func (a Admin) Permission() PermissionAdmin {
+	return a.schemas.Permission
+}
+
+func (a Admin) PermissionGroup() PermissionGroupAdmin {
+	return a.schemas.PermissionGroup
+}
+
+func (a Admin) User() UserAdmin {
+	return a.schemas.User
 }
 
 // PermissionAdmin is the customizable admin surface for Permission.
@@ -51,9 +82,17 @@ type DefaultPermissionAdmin struct {
 func NewDefaultPermissionAdmin(client *ent.Client) DefaultPermissionAdmin {
 	return DefaultPermissionAdmin{Client: client}
 }
+func permissionSchemaName(name string) string {
+	for _, permission := range permissions {
+		if permission.Name == name {
+			return permission.Schema
+		}
+	}
+	return ""
+}
 
 func (DefaultPermissionAdmin) Name(e *ent.Permission) string {
-	return fmt.Sprintf("%v", e.Name)
+	return vent.FormatPermissionSelectLabel(permissionSchemaName(e.Name), e.Name)
 }
 
 func (a DefaultPermissionAdmin) FieldName() PermissionField {

@@ -35,7 +35,7 @@ type PermissionUpdateInput struct {
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.client.Permission.Query().
+		entities, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query()).
 			Order(permission.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -47,7 +47,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 		for i, e := range entities {
 			cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
 			for j, field := range h.permissionFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
 					cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
@@ -72,6 +72,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 			PluralDisplayName:   "Permissions",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
@@ -247,7 +248,7 @@ type PermissionGroupUpdateInput struct {
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.client.PermissionGroup.Query().
+		entities, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query()).
 			Order(permissiongroup.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -259,7 +260,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		for i, e := range entities {
 			cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
 			for j, field := range h.permissionGroupFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
 					cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
@@ -601,7 +602,7 @@ type UserUpdateInput struct {
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.client.User.Query().
+		entities, err := h.userFields.eagerLoadQuery(h.client.User.Query()).
 			Order(user.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -613,7 +614,7 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		for i, e := range entities {
 			cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
 			for j, field := range h.userFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
+				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
 					cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}

@@ -507,12 +507,6 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 	}
 
 	var errs []string
-	for _, column := range annotation.TableColumns {
-		if !hasFieldOrID(node, column) {
-			errs = append(errs, fmt.Sprintf("schema %q table column %q does not exist", node.Name, column))
-		}
-	}
-
 	customFields := make(map[string]struct{}, len(annotation.CustomFields))
 	for _, field := range annotation.CustomFields {
 		fieldKey := strings.ToLower(field.Name)
@@ -530,6 +524,14 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 			errs = append(errs, fmt.Sprintf("schema %q custom field %q has unsupported input type %q", node.Name, field.Name, customFieldKindValue(field)))
 		}
 		customFields[fieldKey] = struct{}{}
+	}
+
+	for _, column := range annotation.TableColumns {
+		if !hasFieldOrID(node, column) && !hasEdge(node, column) {
+			if _, ok := customFields[column]; !ok && !(column == "password" && isAuthUserNode(node)) {
+				errs = append(errs, fmt.Sprintf("schema %q table column %q does not exist", node.Name, column))
+			}
+		}
 	}
 
 	for _, fieldName := range annotation.ReadOnlyFields {

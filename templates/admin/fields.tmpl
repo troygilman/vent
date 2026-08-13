@@ -5,22 +5,12 @@
 package admin
 
 {{ $adminNodes := $.Annotations.VentConfig.Configs }}
-{{ $permissionSchema := $.Annotations.VentConfig.AuthSchemas.Permission }}
-{{ $needsPermissionLabels := false }}
-{{- range $item := $adminNodes }}
-{{- range $member := $item.RC.AdminSurface }}
-{{- if and (isMemberKindEdge $member) (eq $member.EdgeTypeName $permissionSchema) }}
-{{ $needsPermissionLabels = true }}
-{{- end }}
-{{- end }}
-{{- end }}
 
 import (
 	"context"
 	"fmt"
-	{{- if $needsPermissionLabels }}
 	"sort"
-	{{- end }}
+	"strings"
 
 	ent "{{ $.Config.Package }}"
 	{{- range $item := $adminNodes }}
@@ -31,31 +21,17 @@ import (
 	"github.com/troygilman/vent/templates/gui"
 )
 
-// Keep schema packages imported even when no field references a default var.
+// Keep imports referenced even when no field uses them.
 var (
+	_ = sort.Strings
+	_ = strings.Builder{}
 	{{- range $item := $adminNodes }}
 	_ = {{ $item.RC.PackageDir }}.Label
 	{{- end }}
 )
 
-{{- if $needsPermissionLabels }}
-
-func permissionSchema(name string) string {
-	for _, permission := range permissions {
-		if permission.Name == name {
-			return permission.Schema
-		}
-	}
-	return ""
-}
-
-func permissionLabel(name string) string {
-	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
-}
-{{- end }}
-
 {{ range $item := $adminNodes }}
-{{ $ctx := dict "Node" $item.Node "RC" $item.RC "PermissionSchema" $permissionSchema }}
+{{ $ctx := dict "Node" $item.Node "RC" $item.RC }}
 {{ template "admin/handler/helper/schema_fields" $ctx }}
 {{ end }}
 {{ end }}
@@ -63,11 +39,10 @@ func permissionLabel(name string) string {
 {{ define "admin/handler/helper/schema_fields" }}
 {{ $node := get . "Node" }}
 {{ $rc := get . "RC" }}
-{{ $permissionSchema := get . "PermissionSchema" }}
 
 // {{ $node.Name }}Field is the typed admin field contract for {{ $node.Name }}.
 type {{ $node.Name }}Field interface {
-	ListCell(e *ent.{{ $node.Name }}) string
+	ListCell(ctx context.Context, e *ent.{{ $node.Name }}) string
 	CreateHTML(ctx context.Context) (string, error)
 	UpdateHTML(ctx context.Context, e *ent.{{ $node.Name }}) (string, error)
 	ApplyCreate(ctx context.Context, builder *ent.{{ $node.Name }}Create, input {{ $node.Name }}CreateInput) error
@@ -142,7 +117,7 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 
 {{ range $member := $rc.AdminSurface }}
 {{- if hasGeneratedFieldDefault $member }}
-{{ $ctx := dict "Node" $node "RC" $rc "Member" $member "PermissionSchema" $permissionSchema }}
+{{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
 {{ template "admin/handler/helper/schema_field_type" $ctx }}
 {{- end }}
 {{ end }}
@@ -152,7 +127,6 @@ func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *en
 {{ $node := get . "Node" }}
 {{ $rc := get . "RC" }}
 {{ $member := get . "Member" }}
-{{ $permissionSchema := get . "PermissionSchema" }}
 
 type {{ $node.Name }}{{ $member.SlotName }} struct {
 	client *ent.Client
@@ -163,7 +137,7 @@ func New{{ $node.Name }}{{ $member.SlotName }}(client *ent.Client) {{ $node.Name
 	return {{ $node.Name }}{{ $member.SlotName }}{client: client}
 }
 
-func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}) string {
+func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(ctx context.Context, e *ent.{{ $node.Name }}) string {
 	{{- if eq $member.Name "id" }}
 	return fmt.Sprintf("%d", e.ID)
 	{{- else if isCustomFieldPassword $member }}
@@ -171,16 +145,24 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(e *ent.{{ $node.Name }}
 	{{- else if isMemberKindEdge $member }}
 	{{- if $member.EdgeUnique }}
 	if e.Edges.{{ pascal $member.Name }} != nil {
-		{{- if eq $member.EdgeTypeName $permissionSchema }}
-		return permissionLabel(e.Edges.{{ pascal $member.Name }}.Name)
-		{{- else }}
-		return Default{{ $member.EdgeTypeName }}Admin{}.Name(e.Edges.{{ pascal $member.Name }})
-		{{- end }}
+		return MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(e.Edges.{{ pascal $member.Name }})
 	}
 	return ""
 	{{- else }}
-	return fmt.Sprintf("%v", e.Edges.{{ pascal $member.Name }})
+	if len(e.Edges.{{ pascal $member.Name }}) == 0 {
+		return ""
+	}
+	var labels strings.Builder
+	for i, related := range e.Edges.{{ pascal $member.Name }} {
+		if i > 0 {
+			labels.WriteString(", ")
+		}
+		labels.WriteString(MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(related))
+	}
+	return labels.String()
 	{{- end }}
+	{{- else if and (eq $member.Name "name") (eq $rc.DefaultNameField "Name") }}
+	return MustAdmin(ctx).{{ $node.Name }}().Name(e)
 	{{- else }}
 	return vent.FormatFormValue(e.{{ pascal $member.Name }})
 	{{- end }}
@@ -406,18 +388,12 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Opt
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			{{- if eq $member.EdgeTypeName $permissionSchema }}
-			Label: permissionLabel(entity.Name),
-			{{- else }}
-			Label: Default{{ $member.EdgeTypeName }}Admin{}.Name(entity),
-			{{- end }}
+			Label: MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(entity),
 		}
 	}
-	{{- if eq $member.EdgeTypeName $permissionSchema }}
 	sort.Slice(options, func(i, j int) bool {
 		return options[i].Label < options[j].Label
 	})
-	{{- end }}
 	return options, nil
 }
 

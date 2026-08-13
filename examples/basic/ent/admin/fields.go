@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
@@ -16,29 +17,18 @@ import (
 	"github.com/troygilman/vent/templates/gui"
 )
 
-// Keep schema packages imported even when no field references a default var.
+// Keep imports referenced even when no field uses them.
 var (
+	_ = sort.Strings
+	_ = strings.Builder{}
 	_ = permission.Label
 	_ = permissiongroup.Label
 	_ = user.Label
 )
 
-func permissionSchema(name string) string {
-	for _, permission := range permissions {
-		if permission.Name == name {
-			return permission.Schema
-		}
-	}
-	return ""
-}
-
-func permissionLabel(name string) string {
-	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
-}
-
 // PermissionField is the typed admin field contract for Permission.
 type PermissionField interface {
-	ListCell(e *ent.Permission) string
+	ListCell(ctx context.Context, e *ent.Permission) string
 	CreateHTML(ctx context.Context) (string, error)
 	UpdateHTML(ctx context.Context, e *ent.Permission) (string, error)
 	ApplyCreate(ctx context.Context, builder *ent.PermissionCreate, input PermissionCreateInput) error
@@ -66,6 +56,7 @@ func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) 
 	}
 	f.listColumns = []PermissionField{
 		NameField,
+		GroupsField,
 	}
 	f.createFormFields = []PermissionField{
 		NameField,
@@ -98,8 +89,8 @@ func NewPermissionNameField(client *ent.Client) PermissionNameField {
 	return PermissionNameField{client: client}
 }
 
-func (f PermissionNameField) ListCell(e *ent.Permission) string {
-	return vent.FormatFormValue(e.Name)
+func (f PermissionNameField) ListCell(ctx context.Context, e *ent.Permission) string {
+	return MustAdmin(ctx).Permission().Name(e)
 }
 
 func (f PermissionNameField) CreateHTML(ctx context.Context) (string, error) {
@@ -136,8 +127,18 @@ func NewPermissionGroupsField(client *ent.Client) PermissionGroupsField {
 	return PermissionGroupsField{client: client}
 }
 
-func (f PermissionGroupsField) ListCell(e *ent.Permission) string {
-	return fmt.Sprintf("%v", e.Edges.Groups)
+func (f PermissionGroupsField) ListCell(ctx context.Context, e *ent.Permission) string {
+	if len(e.Edges.Groups) == 0 {
+		return ""
+	}
+	var labels strings.Builder
+	for i, related := range e.Edges.Groups {
+		if i > 0 {
+			labels.WriteString(", ")
+		}
+		labels.WriteString(MustAdmin(ctx).PermissionGroup().Name(related))
+	}
+	return labels.String()
 }
 
 func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
@@ -199,9 +200,12 @@ func (f PermissionGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.Sel
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: DefaultPermissionGroupAdmin{}.Name(entity),
+			Label: MustAdmin(ctx).PermissionGroup().Name(entity),
 		}
 	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
 	return options, nil
 }
 
@@ -222,7 +226,7 @@ func (f PermissionGroupsField) loadGroupsOptionsWithSelection(ctx context.Contex
 
 // PermissionGroupField is the typed admin field contract for PermissionGroup.
 type PermissionGroupField interface {
-	ListCell(e *ent.PermissionGroup) string
+	ListCell(ctx context.Context, e *ent.PermissionGroup) string
 	CreateHTML(ctx context.Context) (string, error)
 	UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error)
 	ApplyCreate(ctx context.Context, builder *ent.PermissionGroupCreate, input PermissionGroupCreateInput) error
@@ -284,8 +288,8 @@ func NewPermissionGroupNameField(client *ent.Client) PermissionGroupNameField {
 	return PermissionGroupNameField{client: client}
 }
 
-func (f PermissionGroupNameField) ListCell(e *ent.PermissionGroup) string {
-	return vent.FormatFormValue(e.Name)
+func (f PermissionGroupNameField) ListCell(ctx context.Context, e *ent.PermissionGroup) string {
+	return MustAdmin(ctx).PermissionGroup().Name(e)
 }
 
 func (f PermissionGroupNameField) CreateHTML(ctx context.Context) (string, error) {
@@ -326,8 +330,18 @@ func NewPermissionGroupPermissionsField(client *ent.Client) PermissionGroupPermi
 	return PermissionGroupPermissionsField{client: client}
 }
 
-func (f PermissionGroupPermissionsField) ListCell(e *ent.PermissionGroup) string {
-	return fmt.Sprintf("%v", e.Edges.Permissions)
+func (f PermissionGroupPermissionsField) ListCell(ctx context.Context, e *ent.PermissionGroup) string {
+	if len(e.Edges.Permissions) == 0 {
+		return ""
+	}
+	var labels strings.Builder
+	for i, related := range e.Edges.Permissions {
+		if i > 0 {
+			labels.WriteString(", ")
+		}
+		labels.WriteString(MustAdmin(ctx).Permission().Name(related))
+	}
+	return labels.String()
 }
 
 func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
@@ -389,7 +403,7 @@ func (f PermissionGroupPermissionsField) loadPermissionsOptions(ctx context.Cont
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: permissionLabel(entity.Name),
+			Label: MustAdmin(ctx).Permission().Name(entity),
 		}
 	}
 	sort.Slice(options, func(i, j int) bool {
@@ -415,7 +429,7 @@ func (f PermissionGroupPermissionsField) loadPermissionsOptionsWithSelection(ctx
 
 // UserField is the typed admin field contract for User.
 type UserField interface {
-	ListCell(e *ent.User) string
+	ListCell(ctx context.Context, e *ent.User) string
 	CreateHTML(ctx context.Context) (string, error)
 	UpdateHTML(ctx context.Context, e *ent.User) (string, error)
 	ApplyCreate(ctx context.Context, builder *ent.UserCreate, input UserCreateInput) error
@@ -523,7 +537,7 @@ func NewUserIdField(client *ent.Client) UserIdField {
 	return UserIdField{client: client}
 }
 
-func (f UserIdField) ListCell(e *ent.User) string {
+func (f UserIdField) ListCell(ctx context.Context, e *ent.User) string {
 	return fmt.Sprintf("%d", e.ID)
 }
 
@@ -557,7 +571,7 @@ func NewUserEmailField(client *ent.Client) UserEmailField {
 	return UserEmailField{client: client}
 }
 
-func (f UserEmailField) ListCell(e *ent.User) string {
+func (f UserEmailField) ListCell(ctx context.Context, e *ent.User) string {
 	return vent.FormatFormValue(e.Email)
 }
 
@@ -599,7 +613,7 @@ func NewUserPasswordField(client *ent.Client) UserPasswordField {
 	return UserPasswordField{client: client}
 }
 
-func (f UserPasswordField) ListCell(e *ent.User) string {
+func (f UserPasswordField) ListCell(ctx context.Context, e *ent.User) string {
 	return ""
 }
 
@@ -645,7 +659,7 @@ func NewUserIsStaffField(client *ent.Client) UserIsStaffField {
 	return UserIsStaffField{client: client}
 }
 
-func (f UserIsStaffField) ListCell(e *ent.User) string {
+func (f UserIsStaffField) ListCell(ctx context.Context, e *ent.User) string {
 	return vent.FormatFormValue(e.IsStaff)
 }
 
@@ -690,7 +704,7 @@ func NewUserIsSuperuserField(client *ent.Client) UserIsSuperuserField {
 	return UserIsSuperuserField{client: client}
 }
 
-func (f UserIsSuperuserField) ListCell(e *ent.User) string {
+func (f UserIsSuperuserField) ListCell(ctx context.Context, e *ent.User) string {
 	return vent.FormatFormValue(e.IsSuperuser)
 }
 
@@ -735,7 +749,7 @@ func NewUserIsActiveField(client *ent.Client) UserIsActiveField {
 	return UserIsActiveField{client: client}
 }
 
-func (f UserIsActiveField) ListCell(e *ent.User) string {
+func (f UserIsActiveField) ListCell(ctx context.Context, e *ent.User) string {
 	return vent.FormatFormValue(e.IsActive)
 }
 
@@ -784,8 +798,18 @@ func NewUserGroupsField(client *ent.Client) UserGroupsField {
 	return UserGroupsField{client: client}
 }
 
-func (f UserGroupsField) ListCell(e *ent.User) string {
-	return fmt.Sprintf("%v", e.Edges.Groups)
+func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
+	if len(e.Edges.Groups) == 0 {
+		return ""
+	}
+	var labels strings.Builder
+	for i, related := range e.Edges.Groups {
+		if i > 0 {
+			labels.WriteString(", ")
+		}
+		labels.WriteString(MustAdmin(ctx).PermissionGroup().Name(related))
+	}
+	return labels.String()
 }
 
 func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
@@ -847,9 +871,12 @@ func (f UserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOpt
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: DefaultPermissionGroupAdmin{}.Name(entity),
+			Label: MustAdmin(ctx).PermissionGroup().Name(entity),
 		}
 	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
 	return options, nil
 }
 
@@ -877,7 +904,7 @@ func NewUserLastLoginField(client *ent.Client) UserLastLoginField {
 	return UserLastLoginField{client: client}
 }
 
-func (f UserLastLoginField) ListCell(e *ent.User) string {
+func (f UserLastLoginField) ListCell(ctx context.Context, e *ent.User) string {
 	return vent.FormatFormValue(e.LastLogin)
 }
 

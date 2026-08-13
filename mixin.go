@@ -132,6 +132,7 @@ func (PermissionMixin) Annotations() []schema.Annotation {
 			ReadOnlyFields: []string{"name"},
 			TableColumns: []string{
 				"name",
+				"groups",
 			},
 			FieldSets: []FieldSet{
 				{

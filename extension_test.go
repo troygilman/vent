@@ -217,6 +217,42 @@ func TestDuplicateCustomFieldValidation(t *testing.T) {
 	}
 }
 
+func TestTableColumnAllowsEdges(t *testing.T) {
+	node := &gen.Type{
+		Name: "Permission",
+		Fields: []*gen.Field{
+			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+		},
+		Edges: []*gen.Edge{
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
+		},
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				TableColumns: []string{"name", "groups"},
+			},
+		},
+	}
+	if errs := validateVentSchemaAnnotation(node); len(errs) > 0 {
+		t.Fatalf("validateVentSchemaAnnotation(edge table column) = %v", errs)
+	}
+
+	missing := &gen.Type{
+		Name: "Permission",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				TableColumns: []string{"missing"},
+			},
+		},
+	}
+	errs := validateVentSchemaAnnotation(missing)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(missing table column) returned no errors")
+	}
+	if !strings.Contains(errs[0], `table column "missing" does not exist`) {
+		t.Fatalf("validateVentSchemaAnnotation(missing table column) = %v", errs)
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",
