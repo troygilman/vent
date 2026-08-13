@@ -3,53 +3,53 @@
 package ent
 
 import (
-	"github.com/troygilman/vent/examples/basic/ent/authgroup"
-	"github.com/troygilman/vent/examples/basic/ent/authpermission"
-	"github.com/troygilman/vent/examples/basic/ent/authuser"
+	"github.com/troygilman/vent/examples/basic/ent/permission"
+	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
 	"github.com/troygilman/vent/examples/basic/ent/schema"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	authgroupMixin := schema.AuthGroup{}.Mixin()
-	authgroupMixinFields0 := authgroupMixin[0].Fields()
-	_ = authgroupMixinFields0
-	authgroupFields := schema.AuthGroup{}.Fields()
-	_ = authgroupFields
-	// authgroupDescName is the schema descriptor for name field.
-	authgroupDescName := authgroupMixinFields0[0].Descriptor()
-	// authgroup.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	authgroup.NameValidator = authgroupDescName.Validators[0].(func(string) error)
-	authpermissionMixin := schema.AuthPermission{}.Mixin()
-	authpermissionMixinFields0 := authpermissionMixin[0].Fields()
-	_ = authpermissionMixinFields0
-	authpermissionFields := schema.AuthPermission{}.Fields()
-	_ = authpermissionFields
-	// authpermissionDescName is the schema descriptor for name field.
-	authpermissionDescName := authpermissionMixinFields0[0].Descriptor()
-	// authpermission.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	authpermission.NameValidator = authpermissionDescName.Validators[0].(func(string) error)
-	authuserMixin := schema.AuthUser{}.Mixin()
-	authuserMixinFields0 := authuserMixin[0].Fields()
-	_ = authuserMixinFields0
-	authuserFields := schema.AuthUser{}.Fields()
-	_ = authuserFields
-	// authuserDescEmail is the schema descriptor for email field.
-	authuserDescEmail := authuserMixinFields0[0].Descriptor()
-	// authuser.EmailValidator is a validator for the "email" field. It is called by the builders before save.
-	authuser.EmailValidator = authuserDescEmail.Validators[0].(func(string) error)
-	// authuserDescIsStaff is the schema descriptor for is_staff field.
-	authuserDescIsStaff := authuserMixinFields0[2].Descriptor()
-	// authuser.DefaultIsStaff holds the default value on creation for the is_staff field.
-	authuser.DefaultIsStaff = authuserDescIsStaff.Default.(bool)
-	// authuserDescIsSuperuser is the schema descriptor for is_superuser field.
-	authuserDescIsSuperuser := authuserMixinFields0[3].Descriptor()
-	// authuser.DefaultIsSuperuser holds the default value on creation for the is_superuser field.
-	authuser.DefaultIsSuperuser = authuserDescIsSuperuser.Default.(bool)
-	// authuserDescIsActive is the schema descriptor for is_active field.
-	authuserDescIsActive := authuserMixinFields0[4].Descriptor()
-	// authuser.DefaultIsActive holds the default value on creation for the is_active field.
-	authuser.DefaultIsActive = authuserDescIsActive.Default.(bool)
+	permissionMixin := schema.Permission{}.Mixin()
+	permissionMixinFields0 := permissionMixin[0].Fields()
+	_ = permissionMixinFields0
+	permissionFields := schema.Permission{}.Fields()
+	_ = permissionFields
+	// permissionDescName is the schema descriptor for name field.
+	permissionDescName := permissionMixinFields0[0].Descriptor()
+	// permission.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	permission.NameValidator = permissionDescName.Validators[0].(func(string) error)
+	permissiongroupMixin := schema.PermissionGroup{}.Mixin()
+	permissiongroupMixinFields0 := permissiongroupMixin[0].Fields()
+	_ = permissiongroupMixinFields0
+	permissiongroupFields := schema.PermissionGroup{}.Fields()
+	_ = permissiongroupFields
+	// permissiongroupDescName is the schema descriptor for name field.
+	permissiongroupDescName := permissiongroupMixinFields0[0].Descriptor()
+	// permissiongroup.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	permissiongroup.NameValidator = permissiongroupDescName.Validators[0].(func(string) error)
+	userMixin := schema.User{}.Mixin()
+	userMixinFields0 := userMixin[0].Fields()
+	_ = userMixinFields0
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescEmail is the schema descriptor for email field.
+	userDescEmail := userMixinFields0[0].Descriptor()
+	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
+	// userDescIsStaff is the schema descriptor for is_staff field.
+	userDescIsStaff := userMixinFields0[2].Descriptor()
+	// user.DefaultIsStaff holds the default value on creation for the is_staff field.
+	user.DefaultIsStaff = userDescIsStaff.Default.(bool)
+	// userDescIsSuperuser is the schema descriptor for is_superuser field.
+	userDescIsSuperuser := userMixinFields0[3].Descriptor()
+	// user.DefaultIsSuperuser holds the default value on creation for the is_superuser field.
+	user.DefaultIsSuperuser = userDescIsSuperuser.Default.(bool)
+	// userDescIsActive is the schema descriptor for is_active field.
+	userDescIsActive := userMixinFields0[4].Descriptor()
+	// user.DefaultIsActive holds the default value on creation for the is_active field.
+	user.DefaultIsActive = userDescIsActive.Default.(bool)
 }

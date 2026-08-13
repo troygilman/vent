@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	"github.com/troygilman/vent"
-	"github.com/troygilman/vent/examples/basic/ent/authgroup"
-	"github.com/troygilman/vent/examples/basic/ent/authuser"
+	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
 
@@ -18,26 +18,26 @@ import (
 )
 
 // ============================================================================
-// AuthGroup Handlers
+// PermissionGroup Handlers
 // ============================================================================
 
-// AuthGroupCreateInput is the typed input for creating a AuthGroup
-type AuthGroupCreateInput struct {
+// PermissionGroupCreateInput is the typed input for creating a PermissionGroup
+type PermissionGroupCreateInput struct {
 	Name        string   `json:"name"`
 	Permissions []string `json:"permissions"`
 }
 
-// AuthGroupUpdateInput is the typed input for updating a AuthGroup
-type AuthGroupUpdateInput struct {
+// PermissionGroupUpdateInput is the typed input for updating a PermissionGroup
+type PermissionGroupUpdateInput struct {
 	Name        *string   `json:"name"`
 	Permissions *[]string `json:"permissions"`
 }
 
-// getAuthGroupListHandler returns the handler for GET /admin/authgroups/
-func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
+// getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
+func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.client.AuthGroup.Query().
-			Order(authgroup.ByID()).
+		entities, err := h.client.PermissionGroup.Query().
+			Order(permissiongroup.ByID()).
 			All(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
@@ -46,18 +46,18 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 
 		rows := make([]gui.SchemaTableRow, len(entities))
 		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.authGroupFields.listColumns))
-			for j, field := range h.authGroupFields.listColumns {
+			cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
+			for j, field := range h.permissionGroupFields.listColumns {
 				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
 				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%sauth_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
 				cells[j] = cell
 			}
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
-		canCreate, err := h.schemas.AuthGroup.CanCreate(r.Context())
+		canCreate, err := h.schemas.PermissionGroup.CanCreate(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
 			return
@@ -67,10 +67,10 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 		}
 
 		props := gui.SchemaTableProps{
-			LayoutProps:         h.buildLayoutProps(r.Context(), "AuthGroup", gui.SchemaListBreadcrumbs("AuthGroups")),
-			RouteName:           "auth_groups",
-			SingularDisplayName: "AuthGroup",
-			PluralDisplayName:   "AuthGroups",
+			LayoutProps:         h.buildLayoutProps(r.Context(), "PermissionGroup", gui.SchemaListBreadcrumbs("PermissionGroups")),
+			RouteName:           "permission_groups",
+			SingularDisplayName: "PermissionGroup",
+			PluralDisplayName:   "PermissionGroups",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
@@ -84,9 +84,9 @@ func (h *AdminHandler) getAuthGroupListHandler() http.Handler {
 	})
 }
 
-// buildAuthGroupAddPageProps builds the add page props for AuthGroup.
-func (h *AdminHandler) buildAuthGroupAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
-	canCreate, err := h.schemas.AuthGroup.CanCreate(ctx)
+// buildPermissionGroupAddPageProps builds the add page props for PermissionGroup.
+func (h *AdminHandler) buildPermissionGroupAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.PermissionGroup.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityAddProps{}, err
 	}
@@ -97,7 +97,7 @@ func (h *AdminHandler) buildAuthGroupAddPageProps(ctx context.Context, errorMess
 
 	fields := []gui.SchemaEntityFieldProps{}
 
-	for _, field := range h.authGroupFields.createFormFields {
+	for _, field := range h.permissionGroupFields.createFormFields {
 		html, err := field.CreateHTML(ctx)
 		if err != nil {
 			return gui.SchemaEntityAddProps{}, err
@@ -108,21 +108,21 @@ func (h *AdminHandler) buildAuthGroupAddPageProps(ctx context.Context, errorMess
 	}
 
 	return gui.SchemaEntityAddProps{
-		LayoutProps: h.buildLayoutProps(ctx, "AuthGroup", gui.SchemaAddBreadcrumbs(
+		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaAddBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"auth_groups",
-			"AuthGroups",
-			"AuthGroup",
+			"permission_groups",
+			"PermissionGroups",
+			"PermissionGroup",
 		)),
-		RouteName:           "auth_groups",
-		SingularDisplayName: "AuthGroup",
+		RouteName:           "permission_groups",
+		SingularDisplayName: "PermissionGroup",
 		ErrorMessage:        errorMessage,
 		Fields:              fields,
 	}, nil
 }
 
-func (h *AdminHandler) patchAuthGroupAddPageError(w http.ResponseWriter, r *http.Request, err error) {
-	props, buildErr := h.buildAuthGroupAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+func (h *AdminHandler) patchPermissionGroupAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildPermissionGroupAddPageProps(r.Context(), normalizeError(err).PublicMessage())
 	if buildErr != nil {
 		vent.HandleError(w, r, normalizeError(buildErr))
 		return
@@ -133,10 +133,10 @@ func (h *AdminHandler) patchAuthGroupAddPageError(w http.ResponseWriter, r *http
 	}
 }
 
-// getAuthGroupAddHandler returns the handler for GET /admin/authgroups/add/
-func (h *AdminHandler) getAuthGroupAddHandler() http.Handler {
+// getPermissionGroupAddHandler returns the handler for GET /admin/permissiongroups/add/
+func (h *AdminHandler) getPermissionGroupAddHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		props, err := h.buildAuthGroupAddPageProps(r.Context(), "")
+		props, err := h.buildPermissionGroupAddPageProps(r.Context(), "")
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -148,27 +148,27 @@ func (h *AdminHandler) getAuthGroupAddHandler() http.Handler {
 	})
 }
 
-// buildAuthGroupPageProps builds the edit page props for AuthGroup.
-func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.authGroupFields.eagerLoadQuery(h.client.AuthGroup.Query().
-		Where(authgroup.IDEQ(id))).
+// buildPermissionGroupPageProps builds the edit page props for PermissionGroup.
+func (h *AdminHandler) buildPermissionGroupPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query().
+		Where(permissiongroup.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
-	if err := denyIfCannot(h.schemas.AuthGroup.CanRead(ctx, e)); err != nil {
+	if err := denyIfCannot(h.schemas.PermissionGroup.CanRead(ctx, e)); err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canCreate, err := h.schemas.AuthGroup.CanCreate(ctx)
+	canCreate, err := h.schemas.PermissionGroup.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canUpdate, err := h.schemas.AuthGroup.CanUpdate(ctx, e)
+	canUpdate, err := h.schemas.PermissionGroup.CanUpdate(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canDelete, err := h.schemas.AuthGroup.CanDelete(ctx, e)
+	canDelete, err := h.schemas.PermissionGroup.CanDelete(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
@@ -181,7 +181,7 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 
 	fields := []gui.SchemaEntityFieldProps{}
 
-	for _, field := range h.authGroupFields.updateFormFields {
+	for _, field := range h.permissionGroupFields.updateFormFields {
 		html, err := field.UpdateHTML(ctx, e)
 		if err != nil {
 			return gui.SchemaEntityChangeProps{}, err
@@ -191,15 +191,15 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 		}
 	}
 
-	entityDisplay := h.schemas.AuthGroup.Name(e)
+	entityDisplay := h.schemas.PermissionGroup.Name(e)
 	props := gui.SchemaEntityChangeProps{
-		LayoutProps: h.buildLayoutProps(ctx, "AuthGroup", gui.SchemaEntityBreadcrumbs(
+		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"auth_groups",
-			"AuthGroups",
+			"permission_groups",
+			"PermissionGroups",
 			entityDisplay,
 		)),
-		RouteName:     "auth_groups",
+		RouteName:     "permission_groups",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
@@ -209,8 +209,8 @@ func (h *AdminHandler) buildAuthGroupPageProps(ctx context.Context, id int, erro
 	return props, nil
 }
 
-func (h *AdminHandler) patchAuthGroupPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.buildAuthGroupPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+func (h *AdminHandler) patchPermissionGroupPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildPermissionGroupPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
 		vent.HandleError(w, r, normalizeError(buildErr))
 		return
@@ -221,8 +221,8 @@ func (h *AdminHandler) patchAuthGroupPageError(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// getAuthGroupHandler returns the handler for GET /admin/authgroups/{id}/
-func (h *AdminHandler) getAuthGroupHandler() http.Handler {
+// getPermissionGroupHandler returns the handler for GET /admin/permissiongroups/{id}/
+func (h *AdminHandler) getPermissionGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -230,7 +230,7 @@ func (h *AdminHandler) getAuthGroupHandler() http.Handler {
 			return
 		}
 
-		props, err := h.buildAuthGroupPageProps(r.Context(), id, "")
+		props, err := h.buildPermissionGroupPageProps(r.Context(), id, "")
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -242,44 +242,44 @@ func (h *AdminHandler) getAuthGroupHandler() http.Handler {
 	})
 }
 
-// postAuthGroupHandler returns the handler for POST /admin/authgroups/
-func (h *AdminHandler) postAuthGroupHandler() http.Handler {
+// postPermissionGroupHandler returns the handler for POST /admin/permissiongroups/
+func (h *AdminHandler) postPermissionGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var signals struct {
-			Entity AuthGroupCreateInput `json:"entity"`
+			Entity PermissionGroupCreateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthGroupAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			h.patchPermissionGroupAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
 
-		if err := h.schemas.AuthGroup.ValidateCreate(r.Context(), input); err != nil {
-			h.patchAuthGroupAddPageError(w, r, err)
+		if err := h.schemas.PermissionGroup.ValidateCreate(r.Context(), input); err != nil {
+			h.patchPermissionGroupAddPageError(w, r, err)
 			return
 		}
 
-		builder := h.client.AuthGroup.Create()
+		builder := h.client.PermissionGroup.Create()
 
-		for _, field := range h.authGroupFields.createBindFields {
+		for _, field := range h.permissionGroupFields.createBindFields {
 			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
-				h.patchAuthGroupAddPageError(w, r, err)
+				h.patchPermissionGroupAddPageError(w, r, err)
 				return
 			}
 		}
 
 		if _, err := builder.Save(r.Context()); err != nil {
-			h.patchAuthGroupAddPageError(w, r, err)
+			h.patchPermissionGroupAddPageError(w, r, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
 	})
 }
 
-// patchAuthGroupHandler returns the handler for PATCH /admin/authgroups/{id}/
-func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
+// patchPermissionGroupHandler returns the handler for PATCH /admin/permissiongroups/{id}/
+func (h *AdminHandler) patchPermissionGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -287,51 +287,51 @@ func (h *AdminHandler) patchAuthGroupHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthGroup.Get(r.Context(), id)
+		e, err := h.client.PermissionGroup.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthGroup.CanUpdate(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.PermissionGroup.CanUpdate(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
 
 		var signals struct {
-			Entity AuthGroupUpdateInput `json:"entity"`
+			Entity PermissionGroupUpdateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthGroupPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			h.patchPermissionGroupPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
 
-		if err := h.schemas.AuthGroup.ValidateUpdate(r.Context(), id, input); err != nil {
-			h.patchAuthGroupPageError(w, r, id, err)
+		if err := h.schemas.PermissionGroup.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchPermissionGroupPageError(w, r, id, err)
 			return
 		}
 
-		builder := h.client.AuthGroup.UpdateOneID(id)
+		builder := h.client.PermissionGroup.UpdateOneID(id)
 
-		for _, field := range h.authGroupFields.updateBindFields {
+		for _, field := range h.permissionGroupFields.updateBindFields {
 			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
-				h.patchAuthGroupPageError(w, r, id, err)
+				h.patchPermissionGroupPageError(w, r, id, err)
 				return
 			}
 		}
 
 		if err := builder.Exec(r.Context()); err != nil {
-			h.patchAuthGroupPageError(w, r, id, err)
+			h.patchPermissionGroupPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
 	})
 }
 
-// deleteAuthGroupHandler returns the handler for DELETE /admin/authgroups/{id}/
-func (h *AdminHandler) deleteAuthGroupHandler() http.Handler {
+// deletePermissionGroupHandler returns the handler for DELETE /admin/permissiongroups/{id}/
+func (h *AdminHandler) deletePermissionGroupHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -339,37 +339,37 @@ func (h *AdminHandler) deleteAuthGroupHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthGroup.Get(r.Context(), id)
+		e, err := h.client.PermissionGroup.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthGroup.CanDelete(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.PermissionGroup.CanDelete(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
 
-		if err := h.schemas.AuthGroup.ValidateDelete(r.Context(), id); err != nil {
-			h.patchAuthGroupPageError(w, r, id, err)
+		if err := h.schemas.PermissionGroup.ValidateDelete(r.Context(), id); err != nil {
+			h.patchPermissionGroupPageError(w, r, id, err)
 			return
 		}
 
-		if err := h.client.AuthGroup.DeleteOneID(id).Exec(r.Context()); err != nil {
-			h.patchAuthGroupPageError(w, r, id, err)
+		if err := h.client.PermissionGroup.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchPermissionGroupPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
 	})
 }
 
 // ============================================================================
-// AuthUser Handlers
+// User Handlers
 // ============================================================================
 
-// AuthUserCreateInput is the typed input for creating a AuthUser
-type AuthUserCreateInput struct {
+// UserCreateInput is the typed input for creating a User
+type UserCreateInput struct {
 	Email       string   `json:"email"`
 	IsStaff     *bool    `json:"is_staff"`
 	IsSuperuser *bool    `json:"is_superuser"`
@@ -378,8 +378,8 @@ type AuthUserCreateInput struct {
 	LastLogin   *string  `json:"last_login"`
 }
 
-// AuthUserUpdateInput is the typed input for updating a AuthUser
-type AuthUserUpdateInput struct {
+// UserUpdateInput is the typed input for updating a User
+type UserUpdateInput struct {
 	Email       *string   `json:"email"`
 	IsStaff     *bool     `json:"is_staff"`
 	IsSuperuser *bool     `json:"is_superuser"`
@@ -388,11 +388,11 @@ type AuthUserUpdateInput struct {
 	LastLogin   *string   `json:"last_login"`
 }
 
-// getAuthUserListHandler returns the handler for GET /admin/authusers/
-func (h *AdminHandler) getAuthUserListHandler() http.Handler {
+// getUserListHandler returns the handler for GET /admin/users/
+func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.client.AuthUser.Query().
-			Order(authuser.ByID()).
+		entities, err := h.client.User.Query().
+			Order(user.ByID()).
 			All(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
@@ -401,18 +401,18 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 
 		rows := make([]gui.SchemaTableRow, len(entities))
 		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.authUserFields.listColumns))
-			for j, field := range h.authUserFields.listColumns {
+			cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
+			for j, field := range h.userFields.listColumns {
 				cell := gui.SchemaTableCell{Display: field.ListCell(e)}
 				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%sauth_users/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
 				cells[j] = cell
 			}
 			rows[i] = gui.SchemaTableRow{Cells: cells}
 		}
 
-		canCreate, err := h.schemas.AuthUser.CanCreate(r.Context())
+		canCreate, err := h.schemas.User.CanCreate(r.Context())
 		if err != nil {
 			vent.HandleError(w, r, err)
 			return
@@ -422,10 +422,10 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 		}
 
 		props := gui.SchemaTableProps{
-			LayoutProps:         h.buildLayoutProps(r.Context(), "AuthUser", gui.SchemaListBreadcrumbs("AuthUsers")),
-			RouteName:           "auth_users",
-			SingularDisplayName: "AuthUser",
-			PluralDisplayName:   "AuthUsers",
+			LayoutProps:         h.buildLayoutProps(r.Context(), "User", gui.SchemaListBreadcrumbs("Users")),
+			RouteName:           "users",
+			SingularDisplayName: "User",
+			PluralDisplayName:   "Users",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "email", Label: "Email", Type: "string"},
 				{Name: "is_staff", Label: "IsStaff", Type: "bool"},
@@ -443,9 +443,9 @@ func (h *AdminHandler) getAuthUserListHandler() http.Handler {
 	})
 }
 
-// buildAuthUserAddPageProps builds the add page props for AuthUser.
-func (h *AdminHandler) buildAuthUserAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
-	canCreate, err := h.schemas.AuthUser.CanCreate(ctx)
+// buildUserAddPageProps builds the add page props for User.
+func (h *AdminHandler) buildUserAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
+	canCreate, err := h.schemas.User.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityAddProps{}, err
 	}
@@ -456,7 +456,7 @@ func (h *AdminHandler) buildAuthUserAddPageProps(ctx context.Context, errorMessa
 
 	fields := []gui.SchemaEntityFieldProps{}
 
-	for _, field := range h.authUserFields.createFormFields {
+	for _, field := range h.userFields.createFormFields {
 		html, err := field.CreateHTML(ctx)
 		if err != nil {
 			return gui.SchemaEntityAddProps{}, err
@@ -467,21 +467,21 @@ func (h *AdminHandler) buildAuthUserAddPageProps(ctx context.Context, errorMessa
 	}
 
 	return gui.SchemaEntityAddProps{
-		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaAddBreadcrumbs(
+		LayoutProps: h.buildLayoutProps(ctx, "User", gui.SchemaAddBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"auth_users",
-			"AuthUsers",
-			"AuthUser",
+			"users",
+			"Users",
+			"User",
 		)),
-		RouteName:           "auth_users",
-		SingularDisplayName: "AuthUser",
+		RouteName:           "users",
+		SingularDisplayName: "User",
 		ErrorMessage:        errorMessage,
 		Fields:              fields,
 	}, nil
 }
 
-func (h *AdminHandler) patchAuthUserAddPageError(w http.ResponseWriter, r *http.Request, err error) {
-	props, buildErr := h.buildAuthUserAddPageProps(r.Context(), normalizeError(err).PublicMessage())
+func (h *AdminHandler) patchUserAddPageError(w http.ResponseWriter, r *http.Request, err error) {
+	props, buildErr := h.buildUserAddPageProps(r.Context(), normalizeError(err).PublicMessage())
 	if buildErr != nil {
 		vent.HandleError(w, r, normalizeError(buildErr))
 		return
@@ -492,10 +492,10 @@ func (h *AdminHandler) patchAuthUserAddPageError(w http.ResponseWriter, r *http.
 	}
 }
 
-// getAuthUserAddHandler returns the handler for GET /admin/authusers/add/
-func (h *AdminHandler) getAuthUserAddHandler() http.Handler {
+// getUserAddHandler returns the handler for GET /admin/users/add/
+func (h *AdminHandler) getUserAddHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		props, err := h.buildAuthUserAddPageProps(r.Context(), "")
+		props, err := h.buildUserAddPageProps(r.Context(), "")
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -507,27 +507,27 @@ func (h *AdminHandler) getAuthUserAddHandler() http.Handler {
 	})
 }
 
-// buildAuthUserPageProps builds the edit page props for AuthUser.
-func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.authUserFields.eagerLoadQuery(h.client.AuthUser.Query().
-		Where(authuser.IDEQ(id))).
+// buildUserPageProps builds the edit page props for User.
+func (h *AdminHandler) buildUserPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
+	e, err := h.userFields.eagerLoadQuery(h.client.User.Query().
+		Where(user.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
 
-	if err := denyIfCannot(h.schemas.AuthUser.CanRead(ctx, e)); err != nil {
+	if err := denyIfCannot(h.schemas.User.CanRead(ctx, e)); err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canCreate, err := h.schemas.AuthUser.CanCreate(ctx)
+	canCreate, err := h.schemas.User.CanCreate(ctx)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx, e)
+	canUpdate, err := h.schemas.User.CanUpdate(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
-	canDelete, err := h.schemas.AuthUser.CanDelete(ctx, e)
+	canDelete, err := h.schemas.User.CanDelete(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityChangeProps{}, err
 	}
@@ -540,7 +540,7 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 
 	fields := []gui.SchemaEntityFieldProps{}
 
-	for _, field := range h.authUserFields.updateFormFields {
+	for _, field := range h.userFields.updateFormFields {
 		html, err := field.UpdateHTML(ctx, e)
 		if err != nil {
 			return gui.SchemaEntityChangeProps{}, err
@@ -550,15 +550,15 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 		}
 	}
 
-	entityDisplay := h.schemas.AuthUser.Name(e)
+	entityDisplay := h.schemas.User.Name(e)
 	props := gui.SchemaEntityChangeProps{
-		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaEntityBreadcrumbs(
+		LayoutProps: h.buildLayoutProps(ctx, "User", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"auth_users",
-			"AuthUsers",
+			"users",
+			"Users",
 			entityDisplay,
 		)),
-		RouteName:     "auth_users",
+		RouteName:     "users",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
@@ -568,8 +568,8 @@ func (h *AdminHandler) buildAuthUserPageProps(ctx context.Context, id int, error
 	return props, nil
 }
 
-func (h *AdminHandler) patchAuthUserPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.buildAuthUserPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+func (h *AdminHandler) patchUserPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildUserPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
 		vent.HandleError(w, r, normalizeError(buildErr))
 		return
@@ -580,8 +580,8 @@ func (h *AdminHandler) patchAuthUserPageError(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// getAuthUserHandler returns the handler for GET /admin/authusers/{id}/
-func (h *AdminHandler) getAuthUserHandler() http.Handler {
+// getUserHandler returns the handler for GET /admin/users/{id}/
+func (h *AdminHandler) getUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -589,7 +589,7 @@ func (h *AdminHandler) getAuthUserHandler() http.Handler {
 			return
 		}
 
-		props, err := h.buildAuthUserPageProps(r.Context(), id, "")
+		props, err := h.buildUserPageProps(r.Context(), id, "")
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -601,44 +601,44 @@ func (h *AdminHandler) getAuthUserHandler() http.Handler {
 	})
 }
 
-// postAuthUserHandler returns the handler for POST /admin/authusers/
-func (h *AdminHandler) postAuthUserHandler() http.Handler {
+// postUserHandler returns the handler for POST /admin/users/
+func (h *AdminHandler) postUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var signals struct {
-			Entity AuthUserCreateInput `json:"entity"`
+			Entity UserCreateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
+			h.patchUserAddPageError(w, r, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
 
-		if err := h.schemas.AuthUser.ValidateCreate(r.Context(), input); err != nil {
-			h.patchAuthUserAddPageError(w, r, err)
+		if err := h.schemas.User.ValidateCreate(r.Context(), input); err != nil {
+			h.patchUserAddPageError(w, r, err)
 			return
 		}
 
-		builder := h.client.AuthUser.Create()
+		builder := h.client.User.Create()
 
-		for _, field := range h.authUserFields.createBindFields {
+		for _, field := range h.userFields.createBindFields {
 			if err := field.ApplyCreate(r.Context(), builder, input); err != nil {
-				h.patchAuthUserAddPageError(w, r, err)
+				h.patchUserAddPageError(w, r, err)
 				return
 			}
 		}
 
 		if _, err := builder.Save(r.Context()); err != nil {
-			h.patchAuthUserAddPageError(w, r, err)
+			h.patchUserAddPageError(w, r, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_users/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "users/")
 	})
 }
 
-// patchAuthUserHandler returns the handler for PATCH /admin/authusers/{id}/
-func (h *AdminHandler) patchAuthUserHandler() http.Handler {
+// patchUserHandler returns the handler for PATCH /admin/users/{id}/
+func (h *AdminHandler) patchUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -646,81 +646,81 @@ func (h *AdminHandler) patchAuthUserHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthUser.Get(r.Context(), id)
+		e, err := h.client.User.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.User.CanUpdate(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
 
 		var signals struct {
-			Entity AuthUserUpdateInput `json:"entity"`
+			Entity UserUpdateInput `json:"entity"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			h.patchUserPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Entity
 
-		if err := h.schemas.AuthUser.ValidateUpdate(r.Context(), id, input); err != nil {
-			h.patchAuthUserPageError(w, r, id, err)
+		if err := h.schemas.User.ValidateUpdate(r.Context(), id, input); err != nil {
+			h.patchUserPageError(w, r, id, err)
 			return
 		}
 
-		builder := h.client.AuthUser.UpdateOneID(id)
+		builder := h.client.User.UpdateOneID(id)
 
-		for _, field := range h.authUserFields.updateBindFields {
+		for _, field := range h.userFields.updateBindFields {
 			if err := field.ApplyUpdate(r.Context(), builder, input); err != nil {
-				h.patchAuthUserPageError(w, r, id, err)
+				h.patchUserPageError(w, r, id, err)
 				return
 			}
 		}
 
 		if err := builder.Exec(r.Context()); err != nil {
-			h.patchAuthUserPageError(w, r, id, err)
+			h.patchUserPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_users/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "users/")
 	})
 }
 
-type AuthUserPasswordInput struct {
+type UserPasswordInput struct {
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmPassword"`
 }
 
-// buildAuthUserPasswordPageProps builds the manage password page props for AuthUser.
-func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityPasswordProps, error) {
-	e, err := h.client.AuthUser.Query().
-		Where(authuser.IDEQ(id)).
+// buildUserPasswordPageProps builds the manage password page props for User.
+func (h *AdminHandler) buildUserPasswordPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityPasswordProps, error) {
+	e, err := h.client.User.Query().
+		Where(user.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
-	if err := denyIfCannot(h.schemas.AuthUser.CanRead(ctx, e)); err != nil {
+	if err := denyIfCannot(h.schemas.User.CanRead(ctx, e)); err != nil {
 		return gui.SchemaEntityPasswordProps{}, err
 	}
-	canUpdate, err := h.schemas.AuthUser.CanUpdate(ctx, e)
+	canUpdate, err := h.schemas.User.CanUpdate(ctx, e)
 	if err != nil {
 		return gui.SchemaEntityPasswordProps{}, err
 	}
 
-	entityDisplay := h.schemas.AuthUser.Name(e)
+	entityDisplay := h.schemas.User.Name(e)
 	return gui.SchemaEntityPasswordProps{
-		LayoutProps: h.buildLayoutProps(ctx, "AuthUser", gui.SchemaPasswordBreadcrumbs(
+		LayoutProps: h.buildLayoutProps(ctx, "User", gui.SchemaPasswordBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"auth_users",
-			"AuthUsers",
+			"users",
+			"Users",
 			entityDisplay,
 			id,
 		)),
-		RouteName:     "auth_users",
+		RouteName:     "users",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		PasswordSet:   vent.PasswordHashIsSet(e.PasswordHash),
@@ -729,8 +729,8 @@ func (h *AdminHandler) buildAuthUserPasswordPageProps(ctx context.Context, id in
 	}, nil
 }
 
-func (h *AdminHandler) patchAuthUserPasswordPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
-	props, buildErr := h.buildAuthUserPasswordPageProps(r.Context(), id, normalizeError(err).PublicMessage())
+func (h *AdminHandler) patchUserPasswordPageError(w http.ResponseWriter, r *http.Request, id int, err error) {
+	props, buildErr := h.buildUserPasswordPageProps(r.Context(), id, normalizeError(err).PublicMessage())
 	if buildErr != nil {
 		vent.HandleError(w, r, normalizeError(buildErr))
 		return
@@ -741,8 +741,8 @@ func (h *AdminHandler) patchAuthUserPasswordPageError(w http.ResponseWriter, r *
 	}
 }
 
-// getAuthUserPasswordHandler returns the handler for GET /admin/auth_users/{id}/password/.
-func (h *AdminHandler) getAuthUserPasswordHandler() http.Handler {
+// getUserPasswordHandler returns the handler for GET /admin/users/{id}/password/.
+func (h *AdminHandler) getUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -750,7 +750,7 @@ func (h *AdminHandler) getAuthUserPasswordHandler() http.Handler {
 			return
 		}
 
-		props, err := h.buildAuthUserPasswordPageProps(r.Context(), id, "")
+		props, err := h.buildUserPasswordPageProps(r.Context(), id, "")
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -762,8 +762,8 @@ func (h *AdminHandler) getAuthUserPasswordHandler() http.Handler {
 	})
 }
 
-// putAuthUserPasswordHandler returns the handler for PUT /admin/auth_users/{id}/password/.
-func (h *AdminHandler) putAuthUserPasswordHandler() http.Handler {
+// putUserPasswordHandler returns the handler for PUT /admin/users/{id}/password/.
+func (h *AdminHandler) putUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -771,50 +771,50 @@ func (h *AdminHandler) putAuthUserPasswordHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthUser.Get(r.Context(), id)
+		e, err := h.client.User.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.User.CanUpdate(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
 
 		var signals struct {
-			Password AuthUserPasswordInput `json:"password"`
+			Password UserPasswordInput `json:"password"`
 		}
 		if err := datastar.ReadSignals(r, &signals); err != nil {
-			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
+			h.patchUserPasswordPageError(w, r, id, vent.BadRequest("invalid form data").WithCause(err))
 			return
 		}
 		input := signals.Password
 		if input.Password == "" {
-			h.patchAuthUserPasswordPageError(w, r, id, vent.BadRequest("password is required"))
+			h.patchUserPasswordPageError(w, r, id, vent.BadRequest("password is required"))
 			return
 		}
 		if input.Password != input.ConfirmPassword {
-			h.patchAuthUserPasswordPageError(w, r, id, vent.ErrPasswordMismatch)
+			h.patchUserPasswordPageError(w, r, id, vent.ErrPasswordMismatch)
 			return
 		}
 
 		hash, err := h.credentialGenerator.Generate(input.Password)
 		if err != nil {
-			h.patchAuthUserPasswordPageError(w, r, id, err)
+			h.patchUserPasswordPageError(w, r, id, err)
 			return
 		}
-		if err := h.client.AuthUser.UpdateOneID(id).SetPasswordHash(hash).Exec(r.Context()); err != nil {
-			h.patchAuthUserPasswordPageError(w, r, id, err)
+		if err := h.client.User.UpdateOneID(id).SetPasswordHash(hash).Exec(r.Context()); err != nil {
+			h.patchUserPasswordPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(fmt.Sprintf("%sauth_users/%d/", requestctx.MustAdminPath(r.Context()), id))
+		sse.Redirect(fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), id))
 	})
 }
 
-// deleteAuthUserPasswordHandler returns the handler for DELETE /admin/auth_users/{id}/password/.
-func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
+// deleteUserPasswordHandler returns the handler for DELETE /admin/users/{id}/password/.
+func (h *AdminHandler) deleteUserPasswordHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -822,12 +822,12 @@ func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthUser.Get(r.Context(), id)
+		e, err := h.client.User.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthUser.CanUpdate(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.User.CanUpdate(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
@@ -838,22 +838,22 @@ func (h *AdminHandler) deleteAuthUserPasswordHandler() http.Handler {
 			return
 		}
 		if currentUser.ID == id {
-			h.patchAuthUserPasswordPageError(w, r, id, vent.ErrCannotRemoveOwnPassword)
+			h.patchUserPasswordPageError(w, r, id, vent.ErrCannotRemoveOwnPassword)
 			return
 		}
 
-		if err := h.client.AuthUser.UpdateOneID(id).ClearPasswordHash().Exec(r.Context()); err != nil {
-			h.patchAuthUserPasswordPageError(w, r, id, err)
+		if err := h.client.User.UpdateOneID(id).ClearPasswordHash().Exec(r.Context()); err != nil {
+			h.patchUserPasswordPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(fmt.Sprintf("%sauth_users/%d/", requestctx.MustAdminPath(r.Context()), id))
+		sse.Redirect(fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), id))
 	})
 }
 
-// deleteAuthUserHandler returns the handler for DELETE /admin/authusers/{id}/
-func (h *AdminHandler) deleteAuthUserHandler() http.Handler {
+// deleteUserHandler returns the handler for DELETE /admin/users/{id}/
+func (h *AdminHandler) deleteUserHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -861,27 +861,27 @@ func (h *AdminHandler) deleteAuthUserHandler() http.Handler {
 			return
 		}
 
-		e, err := h.client.AuthUser.Get(r.Context(), id)
+		e, err := h.client.User.Get(r.Context(), id)
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
-		if err := denyIfCannot(h.schemas.AuthUser.CanDelete(r.Context(), e)); err != nil {
+		if err := denyIfCannot(h.schemas.User.CanDelete(r.Context(), e)); err != nil {
 			vent.HandleError(w, r, err)
 			return
 		}
 
-		if err := h.schemas.AuthUser.ValidateDelete(r.Context(), id); err != nil {
-			h.patchAuthUserPageError(w, r, id, err)
+		if err := h.schemas.User.ValidateDelete(r.Context(), id); err != nil {
+			h.patchUserPageError(w, r, id, err)
 			return
 		}
 
-		if err := h.client.AuthUser.DeleteOneID(id).Exec(r.Context()); err != nil {
-			h.patchAuthUserPageError(w, r, id, err)
+		if err := h.client.User.DeleteOneID(id).Exec(r.Context()); err != nil {
+			h.patchUserPageError(w, r, id, err)
 			return
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "auth_users/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "users/")
 	})
 }

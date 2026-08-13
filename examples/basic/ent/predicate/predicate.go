@@ -6,11 +6,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
-// AuthGroup is the predicate function for authgroup builders.
-type AuthGroup func(*sql.Selector)
+// Permission is the predicate function for permission builders.
+type Permission func(*sql.Selector)
 
-// AuthPermission is the predicate function for authpermission builders.
-type AuthPermission func(*sql.Selector)
+// PermissionGroup is the predicate function for permissiongroup builders.
+type PermissionGroup func(*sql.Selector)
 
-// AuthUser is the predicate function for authuser builders.
-type AuthUser func(*sql.Selector)
+// User is the predicate function for user builders.
+type User func(*sql.Selector)

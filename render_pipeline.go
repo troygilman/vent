@@ -35,7 +35,7 @@ type SchemaMeta struct {
 	Permissions       []Permission
 	IsAuthUserSchema  bool
 	HasPasswordRoutes bool
-	// PackageDir is the Ent-generated schema package directory (e.g. "authuser").
+	// PackageDir is the Ent-generated schema package directory (e.g. "user").
 	PackageDir string
 }
 

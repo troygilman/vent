@@ -9,16 +9,16 @@ import (
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
-	"github.com/troygilman/vent/examples/basic/ent/authgroup"
-	"github.com/troygilman/vent/examples/basic/ent/authuser"
+	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
 )
 
 // Keep schema packages imported even when no field references a default var.
 var (
-	_ = authgroup.Label
-	_ = authuser.Label
+	_ = permissiongroup.Label
+	_ = user.Label
 )
 
 func permissionSchema(name string) string {
@@ -34,75 +34,75 @@ func permissionLabel(name string) string {
 	return vent.FormatPermissionSelectLabel(permissionSchema(name), name)
 }
 
-// AuthGroupField is the typed admin field contract for AuthGroup.
-type AuthGroupField interface {
-	ListCell(e *ent.AuthGroup) string
+// PermissionGroupField is the typed admin field contract for PermissionGroup.
+type PermissionGroupField interface {
+	ListCell(e *ent.PermissionGroup) string
 	CreateHTML(ctx context.Context) (string, error)
-	UpdateHTML(ctx context.Context, e *ent.AuthGroup) (string, error)
-	ApplyCreate(ctx context.Context, builder *ent.AuthGroupCreate, input AuthGroupCreateInput) error
-	ApplyUpdate(ctx context.Context, builder *ent.AuthGroupUpdateOne, input AuthGroupUpdateInput) error
+	UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error)
+	ApplyCreate(ctx context.Context, builder *ent.PermissionGroupCreate, input PermissionGroupCreateInput) error
+	ApplyUpdate(ctx context.Context, builder *ent.PermissionGroupUpdateOne, input PermissionGroupUpdateInput) error
 }
 
-// AuthGroupFields holds the resolved admin field implementations for AuthGroup.
-type AuthGroupFields struct {
-	listColumns      []AuthGroupField
-	createFormFields []AuthGroupField
-	updateFormFields []AuthGroupField
-	createBindFields []AuthGroupField
-	updateBindFields []AuthGroupField
+// PermissionGroupFields holds the resolved admin field implementations for PermissionGroup.
+type PermissionGroupFields struct {
+	listColumns      []PermissionGroupField
+	createFormFields []PermissionGroupField
+	updateFormFields []PermissionGroupField
+	createBindFields []PermissionGroupField
+	updateBindFields []PermissionGroupField
 }
 
-func newAuthGroupFields(schemaAdmin AuthGroupAdmin) (AuthGroupFields, error) {
-	f := AuthGroupFields{}
+func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroupFields, error) {
+	f := PermissionGroupFields{}
 	NameField := schemaAdmin.FieldName()
 	if NameField == nil {
-		return AuthGroupFields{}, fmt.Errorf("AuthGroupAdmin.FieldName() returned nil")
+		return PermissionGroupFields{}, fmt.Errorf("PermissionGroupAdmin.FieldName() returned nil")
 	}
 	PermissionsField := schemaAdmin.FieldPermissions()
 	if PermissionsField == nil {
-		return AuthGroupFields{}, fmt.Errorf("AuthGroupAdmin.FieldPermissions() returned nil")
+		return PermissionGroupFields{}, fmt.Errorf("PermissionGroupAdmin.FieldPermissions() returned nil")
 	}
-	f.listColumns = []AuthGroupField{
+	f.listColumns = []PermissionGroupField{
 		NameField,
 	}
-	f.createFormFields = []AuthGroupField{
-		NameField,
-		PermissionsField,
-	}
-	f.updateFormFields = []AuthGroupField{
+	f.createFormFields = []PermissionGroupField{
 		NameField,
 		PermissionsField,
 	}
-	f.createBindFields = []AuthGroupField{
+	f.updateFormFields = []PermissionGroupField{
 		NameField,
 		PermissionsField,
 	}
-	f.updateBindFields = []AuthGroupField{
+	f.createBindFields = []PermissionGroupField{
+		NameField,
+		PermissionsField,
+	}
+	f.updateBindFields = []PermissionGroupField{
 		NameField,
 		PermissionsField,
 	}
 	return f, nil
 }
 
-func (f AuthGroupFields) eagerLoadQuery(q *ent.AuthGroupQuery) *ent.AuthGroupQuery {
+func (f PermissionGroupFields) eagerLoadQuery(q *ent.PermissionGroupQuery) *ent.PermissionGroupQuery {
 	q = q.WithPermissions()
 	return q
 }
 
-type AuthGroupNameField struct {
+type PermissionGroupNameField struct {
 	client *ent.Client
 }
 
-// NewAuthGroupNameField returns the generated default implementation for name.
-func NewAuthGroupNameField(client *ent.Client) AuthGroupNameField {
-	return AuthGroupNameField{client: client}
+// NewPermissionGroupNameField returns the generated default implementation for name.
+func NewPermissionGroupNameField(client *ent.Client) PermissionGroupNameField {
+	return PermissionGroupNameField{client: client}
 }
 
-func (f AuthGroupNameField) ListCell(e *ent.AuthGroup) string {
+func (f PermissionGroupNameField) ListCell(e *ent.PermissionGroup) string {
 	return vent.FormatFormValue(e.Name)
 }
 
-func (f AuthGroupNameField) CreateHTML(ctx context.Context) (string, error) {
+func (f PermissionGroupNameField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "name",
 		Label:    "Name",
@@ -110,7 +110,7 @@ func (f AuthGroupNameField) CreateHTML(ctx context.Context) (string, error) {
 	})
 }
 
-func (f AuthGroupNameField) UpdateHTML(ctx context.Context, e *ent.AuthGroup) (string, error) {
+func (f PermissionGroupNameField) UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "name",
 		Label:    "Name",
@@ -119,32 +119,32 @@ func (f AuthGroupNameField) UpdateHTML(ctx context.Context, e *ent.AuthGroup) (s
 	})
 }
 
-func (f AuthGroupNameField) ApplyCreate(_ context.Context, builder *ent.AuthGroupCreate, input AuthGroupCreateInput) error {
+func (f PermissionGroupNameField) ApplyCreate(_ context.Context, builder *ent.PermissionGroupCreate, input PermissionGroupCreateInput) error {
 	builder.SetName(input.Name)
 	return nil
 }
 
-func (f AuthGroupNameField) ApplyUpdate(_ context.Context, builder *ent.AuthGroupUpdateOne, input AuthGroupUpdateInput) error {
+func (f PermissionGroupNameField) ApplyUpdate(_ context.Context, builder *ent.PermissionGroupUpdateOne, input PermissionGroupUpdateInput) error {
 	if input.Name != nil {
 		builder.SetName(*input.Name)
 	}
 	return nil
 }
 
-type AuthGroupPermissionsField struct {
+type PermissionGroupPermissionsField struct {
 	client *ent.Client
 }
 
-// NewAuthGroupPermissionsField returns the generated default implementation for permissions.
-func NewAuthGroupPermissionsField(client *ent.Client) AuthGroupPermissionsField {
-	return AuthGroupPermissionsField{client: client}
+// NewPermissionGroupPermissionsField returns the generated default implementation for permissions.
+func NewPermissionGroupPermissionsField(client *ent.Client) PermissionGroupPermissionsField {
+	return PermissionGroupPermissionsField{client: client}
 }
 
-func (f AuthGroupPermissionsField) ListCell(e *ent.AuthGroup) string {
+func (f PermissionGroupPermissionsField) ListCell(e *ent.PermissionGroup) string {
 	return fmt.Sprintf("%v", e.Edges.Permissions)
 }
 
-func (f AuthGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
+func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
 	options, err := f.loadPermissionsOptions(ctx)
 	if err != nil {
 		return "", err
@@ -157,7 +157,7 @@ func (f AuthGroupPermissionsField) CreateHTML(ctx context.Context) (string, erro
 	})
 }
 
-func (f AuthGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.AuthGroup) (string, error) {
+func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error) {
 	options, err := f.loadPermissionsOptionsWithSelection(ctx, e)
 	if err != nil {
 		return "", err
@@ -170,7 +170,7 @@ func (f AuthGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.AuthGr
 	})
 }
 
-func (f AuthGroupPermissionsField) ApplyCreate(_ context.Context, builder *ent.AuthGroupCreate, input AuthGroupCreateInput) error {
+func (f PermissionGroupPermissionsField) ApplyCreate(_ context.Context, builder *ent.PermissionGroupCreate, input PermissionGroupCreateInput) error {
 	if len(input.Permissions) > 0 {
 		ids, err := parseIDList(input.Permissions, "permissions")
 		if err != nil {
@@ -181,7 +181,7 @@ func (f AuthGroupPermissionsField) ApplyCreate(_ context.Context, builder *ent.A
 	return nil
 }
 
-func (f AuthGroupPermissionsField) ApplyUpdate(_ context.Context, builder *ent.AuthGroupUpdateOne, input AuthGroupUpdateInput) error {
+func (f PermissionGroupPermissionsField) ApplyUpdate(_ context.Context, builder *ent.PermissionGroupUpdateOne, input PermissionGroupUpdateInput) error {
 	if input.Permissions != nil {
 		builder.ClearPermissions()
 		if len(*input.Permissions) > 0 {
@@ -194,8 +194,8 @@ func (f AuthGroupPermissionsField) ApplyUpdate(_ context.Context, builder *ent.A
 	}
 	return nil
 }
-func (f AuthGroupPermissionsField) loadPermissionsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.AuthPermission.Query().All(ctx)
+func (f PermissionGroupPermissionsField) loadPermissionsOptions(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.Permission.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (f AuthGroupPermissionsField) loadPermissionsOptions(ctx context.Context) (
 	return options, nil
 }
 
-func (f AuthGroupPermissionsField) loadPermissionsOptionsWithSelection(ctx context.Context, e *ent.AuthGroup) ([]gui.SelectOption, error) {
+func (f PermissionGroupPermissionsField) loadPermissionsOptionsWithSelection(ctx context.Context, e *ent.PermissionGroup) ([]gui.SelectOption, error) {
 	options, err := f.loadPermissionsOptions(ctx)
 	if err != nil {
 		return nil, err
@@ -227,66 +227,66 @@ func (f AuthGroupPermissionsField) loadPermissionsOptionsWithSelection(ctx conte
 	return options, nil
 }
 
-// AuthUserField is the typed admin field contract for AuthUser.
-type AuthUserField interface {
-	ListCell(e *ent.AuthUser) string
+// UserField is the typed admin field contract for User.
+type UserField interface {
+	ListCell(e *ent.User) string
 	CreateHTML(ctx context.Context) (string, error)
-	UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error)
-	ApplyCreate(ctx context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error
-	ApplyUpdate(ctx context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error
+	UpdateHTML(ctx context.Context, e *ent.User) (string, error)
+	ApplyCreate(ctx context.Context, builder *ent.UserCreate, input UserCreateInput) error
+	ApplyUpdate(ctx context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error
 }
 
-// AuthUserFields holds the resolved admin field implementations for AuthUser.
-type AuthUserFields struct {
-	listColumns      []AuthUserField
-	createFormFields []AuthUserField
-	updateFormFields []AuthUserField
-	createBindFields []AuthUserField
-	updateBindFields []AuthUserField
+// UserFields holds the resolved admin field implementations for User.
+type UserFields struct {
+	listColumns      []UserField
+	createFormFields []UserField
+	updateFormFields []UserField
+	createBindFields []UserField
+	updateBindFields []UserField
 }
 
-func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
-	f := AuthUserFields{}
+func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
+	f := UserFields{}
 	IdField := schemaAdmin.FieldID()
 	if IdField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldID() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldID() returned nil")
 	}
 	EmailField := schemaAdmin.FieldEmail()
 	if EmailField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldEmail() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldEmail() returned nil")
 	}
 	PasswordField := schemaAdmin.FieldPassword()
 	if PasswordField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldPassword() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldPassword() returned nil")
 	}
 	IsStaffField := schemaAdmin.FieldIsStaff()
 	if IsStaffField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsStaff() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldIsStaff() returned nil")
 	}
 	IsSuperuserField := schemaAdmin.FieldIsSuperuser()
 	if IsSuperuserField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsSuperuser() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldIsSuperuser() returned nil")
 	}
 	IsActiveField := schemaAdmin.FieldIsActive()
 	if IsActiveField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldIsActive() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldIsActive() returned nil")
 	}
 	GroupsField := schemaAdmin.FieldGroups()
 	if GroupsField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldGroups() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldGroups() returned nil")
 	}
 	LastLoginField := schemaAdmin.FieldLastLogin()
 	if LastLoginField == nil {
-		return AuthUserFields{}, fmt.Errorf("AuthUserAdmin.FieldLastLogin() returned nil")
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldLastLogin() returned nil")
 	}
-	f.listColumns = []AuthUserField{
+	f.listColumns = []UserField{
 		EmailField,
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
 		LastLoginField,
 	}
-	f.createFormFields = []AuthUserField{
+	f.createFormFields = []UserField{
 		EmailField,
 		IsStaffField,
 		IsSuperuserField,
@@ -294,7 +294,7 @@ func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
 		GroupsField,
 		LastLoginField,
 	}
-	f.updateFormFields = []AuthUserField{
+	f.updateFormFields = []UserField{
 		IdField,
 		EmailField,
 		PasswordField,
@@ -304,7 +304,7 @@ func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
 		GroupsField,
 		LastLoginField,
 	}
-	f.createBindFields = []AuthUserField{
+	f.createBindFields = []UserField{
 		EmailField,
 		IsStaffField,
 		IsSuperuserField,
@@ -312,7 +312,7 @@ func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
 		GroupsField,
 		LastLoginField,
 	}
-	f.updateBindFields = []AuthUserField{
+	f.updateBindFields = []UserField{
 		EmailField,
 		IsStaffField,
 		IsSuperuserField,
@@ -323,29 +323,29 @@ func newAuthUserFields(schemaAdmin AuthUserAdmin) (AuthUserFields, error) {
 	return f, nil
 }
 
-func (f AuthUserFields) eagerLoadQuery(q *ent.AuthUserQuery) *ent.AuthUserQuery {
+func (f UserFields) eagerLoadQuery(q *ent.UserQuery) *ent.UserQuery {
 	q = q.WithGroups()
 	return q
 }
 
-type AuthUserIdField struct {
+type UserIdField struct {
 	client *ent.Client
 }
 
-// NewAuthUserIdField returns the generated default implementation for id.
-func NewAuthUserIdField(client *ent.Client) AuthUserIdField {
-	return AuthUserIdField{client: client}
+// NewUserIdField returns the generated default implementation for id.
+func NewUserIdField(client *ent.Client) UserIdField {
+	return UserIdField{client: client}
 }
 
-func (f AuthUserIdField) ListCell(e *ent.AuthUser) string {
+func (f UserIdField) ListCell(e *ent.User) string {
 	return fmt.Sprintf("%d", e.ID)
 }
 
-func (f AuthUserIdField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserIdField) CreateHTML(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (f AuthUserIdField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserIdField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderIntFieldHTML(ctx, gui.SchemaEntityIntFieldProps{
 		Name:     "id",
 		Label:    "ID",
@@ -354,28 +354,28 @@ func (f AuthUserIdField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (strin
 	})
 }
 
-func (f AuthUserIdField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserIdField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	return nil
 }
 
-func (f AuthUserIdField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserIdField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	return nil
 }
 
-type AuthUserEmailField struct {
+type UserEmailField struct {
 	client *ent.Client
 }
 
-// NewAuthUserEmailField returns the generated default implementation for email.
-func NewAuthUserEmailField(client *ent.Client) AuthUserEmailField {
-	return AuthUserEmailField{client: client}
+// NewUserEmailField returns the generated default implementation for email.
+func NewUserEmailField(client *ent.Client) UserEmailField {
+	return UserEmailField{client: client}
 }
 
-func (f AuthUserEmailField) ListCell(e *ent.AuthUser) string {
+func (f UserEmailField) ListCell(e *ent.User) string {
 	return vent.FormatFormValue(e.Email)
 }
 
-func (f AuthUserEmailField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserEmailField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "email",
 		Label:    "Email",
@@ -383,7 +383,7 @@ func (f AuthUserEmailField) CreateHTML(ctx context.Context) (string, error) {
 	})
 }
 
-func (f AuthUserEmailField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserEmailField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "email",
 		Label:    "Email",
@@ -392,36 +392,36 @@ func (f AuthUserEmailField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (st
 	})
 }
 
-func (f AuthUserEmailField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserEmailField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	builder.SetEmail(input.Email)
 	return nil
 }
 
-func (f AuthUserEmailField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserEmailField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.Email != nil {
 		builder.SetEmail(*input.Email)
 	}
 	return nil
 }
 
-type AuthUserPasswordField struct {
+type UserPasswordField struct {
 	client *ent.Client
 }
 
-// NewAuthUserPasswordField returns the generated default implementation for password.
-func NewAuthUserPasswordField(client *ent.Client) AuthUserPasswordField {
-	return AuthUserPasswordField{client: client}
+// NewUserPasswordField returns the generated default implementation for password.
+func NewUserPasswordField(client *ent.Client) UserPasswordField {
+	return UserPasswordField{client: client}
 }
 
-func (f AuthUserPasswordField) ListCell(e *ent.AuthUser) string {
+func (f UserPasswordField) ListCell(e *ent.User) string {
 	return ""
 }
 
-func (f AuthUserPasswordField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserPasswordField) CreateHTML(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (f AuthUserPasswordField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserPasswordField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	status := "Not set"
 	if vent.PasswordHashIsSet(e.PasswordHash) {
 		status = "Set"
@@ -430,7 +430,7 @@ func (f AuthUserPasswordField) UpdateHTML(ctx context.Context, e *ent.AuthUser) 
 	actionURL := ""
 	if gui.MustRenderContext(ctx).CanUpdate {
 		actionLabel = "Manage Password"
-		actionURL = fmt.Sprintf("%sauth_users/%d/password/", requestctx.MustAdminPath(ctx), e.ID)
+		actionURL = fmt.Sprintf("%susers/%d/password/", requestctx.MustAdminPath(ctx), e.ID)
 	}
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:        "password",
@@ -442,37 +442,37 @@ func (f AuthUserPasswordField) UpdateHTML(ctx context.Context, e *ent.AuthUser) 
 	})
 }
 
-func (f AuthUserPasswordField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserPasswordField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	return nil
 }
 
-func (f AuthUserPasswordField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserPasswordField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	return nil
 }
 
-type AuthUserIsStaffField struct {
+type UserIsStaffField struct {
 	client *ent.Client
 }
 
-// NewAuthUserIsStaffField returns the generated default implementation for is_staff.
-func NewAuthUserIsStaffField(client *ent.Client) AuthUserIsStaffField {
-	return AuthUserIsStaffField{client: client}
+// NewUserIsStaffField returns the generated default implementation for is_staff.
+func NewUserIsStaffField(client *ent.Client) UserIsStaffField {
+	return UserIsStaffField{client: client}
 }
 
-func (f AuthUserIsStaffField) ListCell(e *ent.AuthUser) string {
+func (f UserIsStaffField) ListCell(e *ent.User) string {
 	return vent.FormatFormValue(e.IsStaff)
 }
 
-func (f AuthUserIsStaffField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserIsStaffField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_staff",
 		Label:    "IsStaff",
-		Value:    vent.FormatFormValue(authuser.DefaultIsStaff),
+		Value:    vent.FormatFormValue(user.DefaultIsStaff),
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f AuthUserIsStaffField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserIsStaffField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_staff",
 		Label:    "IsStaff",
@@ -481,43 +481,43 @@ func (f AuthUserIsStaffField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (
 	})
 }
 
-func (f AuthUserIsStaffField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserIsStaffField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	if input.IsStaff != nil {
 		builder.SetIsStaff(*input.IsStaff)
 	}
 	return nil
 }
 
-func (f AuthUserIsStaffField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserIsStaffField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.IsStaff != nil {
 		builder.SetIsStaff(*input.IsStaff)
 	}
 	return nil
 }
 
-type AuthUserIsSuperuserField struct {
+type UserIsSuperuserField struct {
 	client *ent.Client
 }
 
-// NewAuthUserIsSuperuserField returns the generated default implementation for is_superuser.
-func NewAuthUserIsSuperuserField(client *ent.Client) AuthUserIsSuperuserField {
-	return AuthUserIsSuperuserField{client: client}
+// NewUserIsSuperuserField returns the generated default implementation for is_superuser.
+func NewUserIsSuperuserField(client *ent.Client) UserIsSuperuserField {
+	return UserIsSuperuserField{client: client}
 }
 
-func (f AuthUserIsSuperuserField) ListCell(e *ent.AuthUser) string {
+func (f UserIsSuperuserField) ListCell(e *ent.User) string {
 	return vent.FormatFormValue(e.IsSuperuser)
 }
 
-func (f AuthUserIsSuperuserField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserIsSuperuserField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
-		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
+		Value:    vent.FormatFormValue(user.DefaultIsSuperuser),
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f AuthUserIsSuperuserField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserIsSuperuserField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
@@ -526,43 +526,43 @@ func (f AuthUserIsSuperuserField) UpdateHTML(ctx context.Context, e *ent.AuthUse
 	})
 }
 
-func (f AuthUserIsSuperuserField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserIsSuperuserField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	if input.IsSuperuser != nil {
 		builder.SetIsSuperuser(*input.IsSuperuser)
 	}
 	return nil
 }
 
-func (f AuthUserIsSuperuserField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserIsSuperuserField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.IsSuperuser != nil {
 		builder.SetIsSuperuser(*input.IsSuperuser)
 	}
 	return nil
 }
 
-type AuthUserIsActiveField struct {
+type UserIsActiveField struct {
 	client *ent.Client
 }
 
-// NewAuthUserIsActiveField returns the generated default implementation for is_active.
-func NewAuthUserIsActiveField(client *ent.Client) AuthUserIsActiveField {
-	return AuthUserIsActiveField{client: client}
+// NewUserIsActiveField returns the generated default implementation for is_active.
+func NewUserIsActiveField(client *ent.Client) UserIsActiveField {
+	return UserIsActiveField{client: client}
 }
 
-func (f AuthUserIsActiveField) ListCell(e *ent.AuthUser) string {
+func (f UserIsActiveField) ListCell(e *ent.User) string {
 	return vent.FormatFormValue(e.IsActive)
 }
 
-func (f AuthUserIsActiveField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserIsActiveField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_active",
 		Label:    "IsActive",
-		Value:    vent.FormatFormValue(authuser.DefaultIsActive),
+		Value:    vent.FormatFormValue(user.DefaultIsActive),
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f AuthUserIsActiveField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserIsActiveField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	editable := gui.MustRenderContext(ctx).CanUpdate
 	if currentUser, err := GetUser(ctx); err == nil && currentUser.ID == e.ID {
 		editable = false
@@ -575,34 +575,34 @@ func (f AuthUserIsActiveField) UpdateHTML(ctx context.Context, e *ent.AuthUser) 
 	})
 }
 
-func (f AuthUserIsActiveField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserIsActiveField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	if input.IsActive != nil {
 		builder.SetIsActive(*input.IsActive)
 	}
 	return nil
 }
 
-func (f AuthUserIsActiveField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserIsActiveField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.IsActive != nil {
 		builder.SetIsActive(*input.IsActive)
 	}
 	return nil
 }
 
-type AuthUserGroupsField struct {
+type UserGroupsField struct {
 	client *ent.Client
 }
 
-// NewAuthUserGroupsField returns the generated default implementation for groups.
-func NewAuthUserGroupsField(client *ent.Client) AuthUserGroupsField {
-	return AuthUserGroupsField{client: client}
+// NewUserGroupsField returns the generated default implementation for groups.
+func NewUserGroupsField(client *ent.Client) UserGroupsField {
+	return UserGroupsField{client: client}
 }
 
-func (f AuthUserGroupsField) ListCell(e *ent.AuthUser) string {
+func (f UserGroupsField) ListCell(e *ent.User) string {
 	return fmt.Sprintf("%v", e.Edges.Groups)
 }
 
-func (f AuthUserGroupsField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
 	options, err := f.loadGroupsOptions(ctx)
 	if err != nil {
 		return "", err
@@ -615,7 +615,7 @@ func (f AuthUserGroupsField) CreateHTML(ctx context.Context) (string, error) {
 	})
 }
 
-func (f AuthUserGroupsField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	options, err := f.loadGroupsOptionsWithSelection(ctx, e)
 	if err != nil {
 		return "", err
@@ -628,7 +628,7 @@ func (f AuthUserGroupsField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (s
 	})
 }
 
-func (f AuthUserGroupsField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserGroupsField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	if len(input.Groups) > 0 {
 		ids, err := parseIDList(input.Groups, "groups")
 		if err != nil {
@@ -639,7 +639,7 @@ func (f AuthUserGroupsField) ApplyCreate(_ context.Context, builder *ent.AuthUse
 	return nil
 }
 
-func (f AuthUserGroupsField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.Groups != nil {
 		builder.ClearGroups()
 		if len(*input.Groups) > 0 {
@@ -652,8 +652,8 @@ func (f AuthUserGroupsField) ApplyUpdate(_ context.Context, builder *ent.AuthUse
 	}
 	return nil
 }
-func (f AuthUserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.AuthGroup.Query().All(ctx)
+func (f UserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.PermissionGroup.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -661,13 +661,13 @@ func (f AuthUserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.Selec
 	for i, entity := range entities {
 		options[i] = gui.SelectOption{
 			Value: entity.ID,
-			Label: DefaultAuthGroupAdmin{}.Name(entity),
+			Label: DefaultPermissionGroupAdmin{}.Name(entity),
 		}
 	}
 	return options, nil
 }
 
-func (f AuthUserGroupsField) loadGroupsOptionsWithSelection(ctx context.Context, e *ent.AuthUser) ([]gui.SelectOption, error) {
+func (f UserGroupsField) loadGroupsOptionsWithSelection(ctx context.Context, e *ent.User) ([]gui.SelectOption, error) {
 	options, err := f.loadGroupsOptions(ctx)
 	if err != nil {
 		return nil, err
@@ -682,20 +682,20 @@ func (f AuthUserGroupsField) loadGroupsOptionsWithSelection(ctx context.Context,
 	return options, nil
 }
 
-type AuthUserLastLoginField struct {
+type UserLastLoginField struct {
 	client *ent.Client
 }
 
-// NewAuthUserLastLoginField returns the generated default implementation for last_login.
-func NewAuthUserLastLoginField(client *ent.Client) AuthUserLastLoginField {
-	return AuthUserLastLoginField{client: client}
+// NewUserLastLoginField returns the generated default implementation for last_login.
+func NewUserLastLoginField(client *ent.Client) UserLastLoginField {
+	return UserLastLoginField{client: client}
 }
 
-func (f AuthUserLastLoginField) ListCell(e *ent.AuthUser) string {
+func (f UserLastLoginField) ListCell(e *ent.User) string {
 	return vent.FormatFormValue(e.LastLogin)
 }
 
-func (f AuthUserLastLoginField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserLastLoginField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
 		Name:     "last_login",
 		Label:    "LastLogin",
@@ -703,7 +703,7 @@ func (f AuthUserLastLoginField) CreateHTML(ctx context.Context) (string, error) 
 	})
 }
 
-func (f AuthUserLastLoginField) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f UserLastLoginField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
 		Name:     "last_login",
 		Label:    "LastLogin",
@@ -712,7 +712,7 @@ func (f AuthUserLastLoginField) UpdateHTML(ctx context.Context, e *ent.AuthUser)
 	})
 }
 
-func (f AuthUserLastLoginField) ApplyCreate(_ context.Context, builder *ent.AuthUserCreate, input AuthUserCreateInput) error {
+func (f UserLastLoginField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
 	if input.LastLogin != nil {
 		if *input.LastLogin != "" {
 			value, err := vent.ParseDateTimeLocal(*input.LastLogin)
@@ -725,7 +725,7 @@ func (f AuthUserLastLoginField) ApplyCreate(_ context.Context, builder *ent.Auth
 	return nil
 }
 
-func (f AuthUserLastLoginField) ApplyUpdate(_ context.Context, builder *ent.AuthUserUpdateOne, input AuthUserUpdateInput) error {
+func (f UserLastLoginField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
 	if input.LastLogin != nil {
 		value, err := vent.ParseDateTimeLocal(*input.LastLogin)
 		if err != nil {

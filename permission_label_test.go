@@ -8,11 +8,11 @@ func TestFormatPermissionSelectLabel(t *testing.T) {
 		name   string
 		want   string
 	}{
-		{schema: "AuthGroup", name: "create_auth_group", want: "AuthGroup | create_auth_group"},
-		{schema: "AuthUser", name: "read_auth_user", want: "AuthUser | read_auth_user"},
-		{schema: "AuthGroup", name: "export_users", want: "AuthGroup | export_users"},
-		{schema: "AuthUser", name: "impersonate", want: "AuthUser | impersonate"},
-		{schema: "", name: "create_auth_group", want: "create_auth_group"},
+		{schema: "PermissionGroup", name: "create_permission_group", want: "PermissionGroup | create_permission_group"},
+		{schema: "User", name: "read_user", want: "User | read_user"},
+		{schema: "PermissionGroup", name: "export_users", want: "PermissionGroup | export_users"},
+		{schema: "User", name: "impersonate", want: "User | impersonate"},
+		{schema: "", name: "create_permission_group", want: "create_permission_group"},
 	}
 
 	for _, tt := range tests {

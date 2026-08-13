@@ -8,12 +8,12 @@ import (
 	"entgo.io/ent/schema/mixin"
 )
 
-type AuthUserMixin struct {
+type UserMixin struct {
 	mixin.Schema
 	GroupSchemaType any
 }
 
-func (AuthUserMixin) Fields() []ent.Field {
+func (UserMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("email").NotEmpty().Unique(),
 		field.String("password_hash").Optional().Nillable().Sensitive(),
@@ -23,7 +23,7 @@ func (AuthUserMixin) Fields() []ent.Field {
 	}
 }
 
-func (m AuthUserMixin) Edges() []ent.Edge {
+func (m UserMixin) Edges() []ent.Edge {
 	if m.GroupSchemaType == nil {
 		panic("GroupSchemaType cannot be nil")
 	}
@@ -32,7 +32,7 @@ func (m AuthUserMixin) Edges() []ent.Edge {
 	}
 }
 
-func (AuthUserMixin) Annotations() []schema.Annotation {
+func (UserMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRoleUser},
 		VentSchemaAnnotation{
@@ -59,19 +59,19 @@ func (AuthUserMixin) Annotations() []schema.Annotation {
 	}
 }
 
-type AuthGroupMixin struct {
+type PermissionGroupMixin struct {
 	mixin.Schema
 	UserSchemaType       any
 	PermissionSchemaType any
 }
 
-func (AuthGroupMixin) Fields() []ent.Field {
+func (PermissionGroupMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").NotEmpty().Unique(),
 	}
 }
 
-func (m AuthGroupMixin) Edges() []ent.Edge {
+func (m PermissionGroupMixin) Edges() []ent.Edge {
 	if m.PermissionSchemaType == nil {
 		panic("PermissionSchemaType cannot be nil")
 	}
@@ -84,7 +84,7 @@ func (m AuthGroupMixin) Edges() []ent.Edge {
 	}
 }
 
-func (AuthGroupMixin) Annotations() []schema.Annotation {
+func (PermissionGroupMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRoleGroup},
 		VentSchemaAnnotation{
@@ -103,18 +103,18 @@ func (AuthGroupMixin) Annotations() []schema.Annotation {
 	}
 }
 
-type AuthPermissionMixin struct {
+type PermissionMixin struct {
 	mixin.Schema
 	GroupSchemaType any
 }
 
-func (AuthPermissionMixin) Fields() []ent.Field {
+func (PermissionMixin) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").NotEmpty().Unique(),
 	}
 }
 
-func (m AuthPermissionMixin) Edges() []ent.Edge {
+func (m PermissionMixin) Edges() []ent.Edge {
 	if m.GroupSchemaType == nil {
 		panic("GroupSchemaType cannot be nil")
 	}
@@ -123,7 +123,7 @@ func (m AuthPermissionMixin) Edges() []ent.Edge {
 	}
 }
 
-func (AuthPermissionMixin) Annotations() []schema.Annotation {
+func (PermissionMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		VentAuthMixinAnnotation{Role: AuthRolePermission},
 		VentSchemaAnnotation{

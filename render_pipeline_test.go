@@ -56,8 +56,8 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 	if !hasGeneratedFieldDefault(isSuperuser) {
 		t.Fatal("is_superuser hasGeneratedFieldDefault = false, want true")
 	}
-	if rc.PackageDir != "authuser" {
-		t.Fatalf("PackageDir = %q, want authuser", rc.PackageDir)
+	if rc.PackageDir != "user" {
+		t.Fatalf("PackageDir = %q, want user", rc.PackageDir)
 	}
 	if !isSuperuser.HasDefaultValue || isSuperuser.DefaultValueName != "DefaultIsSuperuser" {
 		t.Fatalf("is_superuser default = has %v name %q, want true/DefaultIsSuperuser", isSuperuser.HasDefaultValue, isSuperuser.DefaultValueName)
@@ -213,7 +213,7 @@ func TestBuildProjectedRenderConfigBuiltinCustomOnNonAuthUserFails(t *testing.T)
 
 func TestBuildProjectedRenderConfigDisabledAdmin(t *testing.T) {
 	node := &gen.Type{
-		Name: "AuthPermission",
+		Name: "Permission",
 		Annotations: gen.Annotations{
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
 				DisableAdmin: true,
@@ -251,7 +251,7 @@ func TestBuildProjectedRenderConfigKeepsDeclaredPermissions(t *testing.T) {
 
 func authUserLikeNode() *gen.Type {
 	return &gen.Type{
-		Name: "AuthUser",
+		Name: "User",
 		Annotations: gen.Annotations{
 			VentAuthMixinAnnotation{}.Name(): VentAuthMixinAnnotation{Role: AuthRoleUser},
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
@@ -270,7 +270,7 @@ func authUserLikeNode() *gen.Type {
 			fieldWithConstantDefault("is_active", schemafield.TypeBool),
 		},
 		Edges: []*gen.Edge{
-			{Name: "groups", Type: &gen.Type{Name: "AuthGroup"}},
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
 		},
 	}
 }

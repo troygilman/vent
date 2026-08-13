@@ -8,30 +8,30 @@ import (
 )
 
 var (
-	// AuthGroupsColumns holds the columns for the "auth_groups" table.
-	AuthGroupsColumns = []*schema.Column{
+	// PermissionsColumns holds the columns for the "permissions" table.
+	PermissionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
 	}
-	// AuthGroupsTable holds the schema information for the "auth_groups" table.
-	AuthGroupsTable = &schema.Table{
-		Name:       "auth_groups",
-		Columns:    AuthGroupsColumns,
-		PrimaryKey: []*schema.Column{AuthGroupsColumns[0]},
+	// PermissionsTable holds the schema information for the "permissions" table.
+	PermissionsTable = &schema.Table{
+		Name:       "permissions",
+		Columns:    PermissionsColumns,
+		PrimaryKey: []*schema.Column{PermissionsColumns[0]},
 	}
-	// AuthPermissionsColumns holds the columns for the "auth_permissions" table.
-	AuthPermissionsColumns = []*schema.Column{
+	// PermissionGroupsColumns holds the columns for the "permission_groups" table.
+	PermissionGroupsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
 	}
-	// AuthPermissionsTable holds the schema information for the "auth_permissions" table.
-	AuthPermissionsTable = &schema.Table{
-		Name:       "auth_permissions",
-		Columns:    AuthPermissionsColumns,
-		PrimaryKey: []*schema.Column{AuthPermissionsColumns[0]},
+	// PermissionGroupsTable holds the schema information for the "permission_groups" table.
+	PermissionGroupsTable = &schema.Table{
+		Name:       "permission_groups",
+		Columns:    PermissionGroupsColumns,
+		PrimaryKey: []*schema.Column{PermissionGroupsColumns[0]},
 	}
-	// AuthUsersColumns holds the columns for the "auth_users" table.
-	AuthUsersColumns = []*schema.Column{
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "password_hash", Type: field.TypeString, Nullable: true},
@@ -40,75 +40,75 @@ var (
 		{Name: "is_active", Type: field.TypeBool, Default: true},
 		{Name: "last_login", Type: field.TypeTime, Nullable: true},
 	}
-	// AuthUsersTable holds the schema information for the "auth_users" table.
-	AuthUsersTable = &schema.Table{
-		Name:       "auth_users",
-		Columns:    AuthUsersColumns,
-		PrimaryKey: []*schema.Column{AuthUsersColumns[0]},
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
-	// AuthGroupPermissionsColumns holds the columns for the "auth_group_permissions" table.
-	AuthGroupPermissionsColumns = []*schema.Column{
-		{Name: "auth_group_id", Type: field.TypeInt},
-		{Name: "auth_permission_id", Type: field.TypeInt},
+	// PermissionGroupPermissionsColumns holds the columns for the "permission_group_permissions" table.
+	PermissionGroupPermissionsColumns = []*schema.Column{
+		{Name: "permission_group_id", Type: field.TypeInt},
+		{Name: "permission_id", Type: field.TypeInt},
 	}
-	// AuthGroupPermissionsTable holds the schema information for the "auth_group_permissions" table.
-	AuthGroupPermissionsTable = &schema.Table{
-		Name:       "auth_group_permissions",
-		Columns:    AuthGroupPermissionsColumns,
-		PrimaryKey: []*schema.Column{AuthGroupPermissionsColumns[0], AuthGroupPermissionsColumns[1]},
+	// PermissionGroupPermissionsTable holds the schema information for the "permission_group_permissions" table.
+	PermissionGroupPermissionsTable = &schema.Table{
+		Name:       "permission_group_permissions",
+		Columns:    PermissionGroupPermissionsColumns,
+		PrimaryKey: []*schema.Column{PermissionGroupPermissionsColumns[0], PermissionGroupPermissionsColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "auth_group_permissions_auth_group_id",
-				Columns:    []*schema.Column{AuthGroupPermissionsColumns[0]},
-				RefColumns: []*schema.Column{AuthGroupsColumns[0]},
+				Symbol:     "permission_group_permissions_permission_group_id",
+				Columns:    []*schema.Column{PermissionGroupPermissionsColumns[0]},
+				RefColumns: []*schema.Column{PermissionGroupsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "auth_group_permissions_auth_permission_id",
-				Columns:    []*schema.Column{AuthGroupPermissionsColumns[1]},
-				RefColumns: []*schema.Column{AuthPermissionsColumns[0]},
+				Symbol:     "permission_group_permissions_permission_id",
+				Columns:    []*schema.Column{PermissionGroupPermissionsColumns[1]},
+				RefColumns: []*schema.Column{PermissionsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 		},
 	}
-	// AuthUserGroupsColumns holds the columns for the "auth_user_groups" table.
-	AuthUserGroupsColumns = []*schema.Column{
-		{Name: "auth_user_id", Type: field.TypeInt},
-		{Name: "auth_group_id", Type: field.TypeInt},
+	// UserGroupsColumns holds the columns for the "user_groups" table.
+	UserGroupsColumns = []*schema.Column{
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "permission_group_id", Type: field.TypeInt},
 	}
-	// AuthUserGroupsTable holds the schema information for the "auth_user_groups" table.
-	AuthUserGroupsTable = &schema.Table{
-		Name:       "auth_user_groups",
-		Columns:    AuthUserGroupsColumns,
-		PrimaryKey: []*schema.Column{AuthUserGroupsColumns[0], AuthUserGroupsColumns[1]},
+	// UserGroupsTable holds the schema information for the "user_groups" table.
+	UserGroupsTable = &schema.Table{
+		Name:       "user_groups",
+		Columns:    UserGroupsColumns,
+		PrimaryKey: []*schema.Column{UserGroupsColumns[0], UserGroupsColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "auth_user_groups_auth_user_id",
-				Columns:    []*schema.Column{AuthUserGroupsColumns[0]},
-				RefColumns: []*schema.Column{AuthUsersColumns[0]},
+				Symbol:     "user_groups_user_id",
+				Columns:    []*schema.Column{UserGroupsColumns[0]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "auth_user_groups_auth_group_id",
-				Columns:    []*schema.Column{AuthUserGroupsColumns[1]},
-				RefColumns: []*schema.Column{AuthGroupsColumns[0]},
+				Symbol:     "user_groups_permission_group_id",
+				Columns:    []*schema.Column{UserGroupsColumns[1]},
+				RefColumns: []*schema.Column{PermissionGroupsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		AuthGroupsTable,
-		AuthPermissionsTable,
-		AuthUsersTable,
-		AuthGroupPermissionsTable,
-		AuthUserGroupsTable,
+		PermissionsTable,
+		PermissionGroupsTable,
+		UsersTable,
+		PermissionGroupPermissionsTable,
+		UserGroupsTable,
 	}
 )
 
 func init() {
-	AuthGroupPermissionsTable.ForeignKeys[0].RefTable = AuthGroupsTable
-	AuthGroupPermissionsTable.ForeignKeys[1].RefTable = AuthPermissionsTable
-	AuthUserGroupsTable.ForeignKeys[0].RefTable = AuthUsersTable
-	AuthUserGroupsTable.ForeignKeys[1].RefTable = AuthGroupsTable
+	PermissionGroupPermissionsTable.ForeignKeys[0].RefTable = PermissionGroupsTable
+	PermissionGroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
+	UserGroupsTable.ForeignKeys[0].RefTable = UsersTable
+	UserGroupsTable.ForeignKeys[1].RefTable = PermissionGroupsTable
 }

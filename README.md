@@ -33,12 +33,12 @@ A lightweight, type-safe admin panel and CRUD framework for Go. Vent generates a
     go run ./cmd/vent init --schema ./ent/schema
     ```
 
-    This writes `auth_user.go`, `auth_group.go`, and `auth_permission.go` into your schema directory. Each schema uses the corresponding Vent mixin:
+    This writes `user.go`, `permission_group.go`, and `permission.go` into your schema directory. Each schema uses the corresponding Vent mixin:
 
     ```go
-    func (AuthUser) Mixin() []ent.Mixin {
+    func (User) Mixin() []ent.Mixin {
         return []ent.Mixin{
-            vent.AuthUserMixin{GroupSchemaType: AuthGroup.Type},
+            vent.UserMixin{GroupSchemaType: PermissionGroup.Type},
         }
     }
     ```
@@ -77,24 +77,24 @@ Each schema admin owns:
 Embed the default and override only what you need:
 
 ```go
-type AuthUserAdmin struct {
-    admin.DefaultAuthUserAdmin
+type UserAdmin struct {
+    admin.DefaultUserAdmin
 }
 
-func (a AuthUserAdmin) FieldIsSuperuser() admin.AuthUserField {
+func (a UserAdmin) FieldIsSuperuser() admin.UserField {
     return SuperuserOnlyIsSuperuser{
-        AuthUserIsSuperuserField: admin.NewAuthUserIsSuperuserField(a.Client),
+        UserIsSuperuserField: admin.NewUserIsSuperuserField(a.Client),
     }
 }
 
-// other Field* + Validate* inherited from DefaultAuthUserAdmin
+// other Field* + Validate* inherited from DefaultUserAdmin
 
 adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
     Client: client,
     // ...auth deps...
     Schemas: admin.SchemaAdmins{
-        AuthUser: AuthUserAdmin{
-            DefaultAuthUserAdmin: admin.NewDefaultAuthUserAdmin(client),
+        User: UserAdmin{
+            DefaultUserAdmin: admin.NewDefaultUserAdmin(client),
         },
     },
 })
@@ -103,8 +103,8 @@ adminHandler, err := admin.NewAdminHandler(admin.AdminConfig{
 To layer validation on the default policy:
 
 ```go
-func (a AuthUserAdmin) ValidateUpdate(ctx context.Context, id int, in admin.AuthUserUpdateInput) error {
-    if err := a.DefaultAuthUserAdmin.ValidateUpdate(ctx, id, in); err != nil {
+func (a UserAdmin) ValidateUpdate(ctx context.Context, id int, in admin.UserUpdateInput) error {
+    if err := a.DefaultUserAdmin.ValidateUpdate(ctx, id, in); err != nil {
         return err
     }
     // additional checks...
@@ -116,7 +116,7 @@ Declare virtual custom fields on the schema with `VentSchemaAnnotation.CustomFie
 
 Keep app types **outside** `ent/admin` — that package is regenerated and non-keep files are removed.
 
-See [`examples/basic/cmd/server/auth_user_admin.go`](examples/basic/cmd/server/auth_user_admin.go) and [`superuser_field.go`](examples/basic/cmd/server/superuser_field.go).
+See [`examples/basic/cmd/server/user_admin.go`](examples/basic/cmd/server/user_admin.go) and [`superuser_field.go`](examples/basic/cmd/server/superuser_field.go).
 
 ## Example
 

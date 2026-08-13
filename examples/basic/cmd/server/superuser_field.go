@@ -6,14 +6,14 @@ import (
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/examples/basic/ent"
 	"github.com/troygilman/vent/examples/basic/ent/admin"
-	"github.com/troygilman/vent/examples/basic/ent/authuser"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/templates/gui"
 )
 
 // SuperuserOnlyIsSuperuser restricts is_superuser changes to superusers.
 // It embeds the generated default so list behavior stays unchanged.
 type SuperuserOnlyIsSuperuser struct {
-	admin.AuthUserIsSuperuserField
+	admin.UserIsSuperuserField
 }
 
 func (f SuperuserOnlyIsSuperuser) CreateHTML(ctx context.Context) (string, error) {
@@ -24,12 +24,12 @@ func (f SuperuserOnlyIsSuperuser) CreateHTML(ctx context.Context) (string, error
 	return gui.RenderBoolFieldHTML(ctx, gui.SchemaEntityBoolFieldProps{
 		Name:     "is_superuser",
 		Label:    "IsSuperuser",
-		Value:    vent.FormatFormValue(authuser.DefaultIsSuperuser),
+		Value:    vent.FormatFormValue(user.DefaultIsSuperuser),
 		Editable: editable && gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f SuperuserOnlyIsSuperuser) UpdateHTML(ctx context.Context, e *ent.AuthUser) (string, error) {
+func (f SuperuserOnlyIsSuperuser) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	editable, err := currentUserIsSuperuser(ctx)
 	if err != nil {
 		return "", err
@@ -42,18 +42,18 @@ func (f SuperuserOnlyIsSuperuser) UpdateHTML(ctx context.Context, e *ent.AuthUse
 	})
 }
 
-func (f SuperuserOnlyIsSuperuser) ApplyCreate(ctx context.Context, builder *ent.AuthUserCreate, input admin.AuthUserCreateInput) error {
+func (f SuperuserOnlyIsSuperuser) ApplyCreate(ctx context.Context, builder *ent.UserCreate, input admin.UserCreateInput) error {
 	if err := requireSuperuserForSuperuserFlag(ctx, input.IsSuperuser != nil); err != nil {
 		return err
 	}
-	return f.AuthUserIsSuperuserField.ApplyCreate(ctx, builder, input)
+	return f.UserIsSuperuserField.ApplyCreate(ctx, builder, input)
 }
 
-func (f SuperuserOnlyIsSuperuser) ApplyUpdate(ctx context.Context, builder *ent.AuthUserUpdateOne, input admin.AuthUserUpdateInput) error {
+func (f SuperuserOnlyIsSuperuser) ApplyUpdate(ctx context.Context, builder *ent.UserUpdateOne, input admin.UserUpdateInput) error {
 	if err := requireSuperuserForSuperuserFlag(ctx, input.IsSuperuser != nil); err != nil {
 		return err
 	}
-	return f.AuthUserIsSuperuserField.ApplyUpdate(ctx, builder, input)
+	return f.UserIsSuperuserField.ApplyUpdate(ctx, builder, input)
 }
 
 func currentUserIsSuperuser(ctx context.Context) (bool, error) {

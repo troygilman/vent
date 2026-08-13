@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = client.AuthUser.Create().
+	_, err = client.User.Create().
 		SetEmail("admin@vent.com").
 		SetPasswordHash(passwordHash).
 		SetIsStaff(true).
@@ -46,8 +46,8 @@ func main() {
 		CredentialGenerator:     credentialGenerator,
 		CredentialAuthenticator: auth.NewBCryptCredentialAuthenticator(),
 		Schemas: admin.SchemaAdmins{
-			AuthUser: AuthUserAdmin{
-				DefaultAuthUserAdmin: admin.NewDefaultAuthUserAdmin(client),
+			User: UserAdmin{
+				DefaultUserAdmin: admin.NewDefaultUserAdmin(client),
 			},
 		},
 	})

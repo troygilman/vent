@@ -27,9 +27,9 @@ func NewAdminExtension(opts ...VentExtensionConfigOption) entc.Extension {
 	config := VentExtensionConfig{
 		AdminPath: "/admin/",
 		AuthSchemas: AuthSchemaNames{
-			User:       "AuthUser",
-			Group:      "AuthGroup",
-			Permission: "AuthPermission",
+			User:       "User",
+			Group:      "PermissionGroup",
+			Permission: "Permission",
 		},
 	}
 	for _, opt := range opts {

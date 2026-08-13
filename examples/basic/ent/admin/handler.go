@@ -24,7 +24,7 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 
 	ent "github.com/troygilman/vent/examples/basic/ent"
-	"github.com/troygilman/vent/examples/basic/ent/authuser"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // AdminConfig contains configuration for the admin handler.
@@ -48,9 +48,9 @@ type AdminHandler struct {
 	secureCookies           bool
 	schemas                 SchemaAdmins
 
-	authGroupFields AuthGroupFields
+	permissionGroupFields PermissionGroupFields
 
-	authUserFields AuthUserFields
+	userFields UserFields
 }
 
 const adminBasePath = "/admin/"
@@ -63,12 +63,12 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 
 	schemas := config.Schemas
 
-	if schemas.AuthGroup == nil {
-		schemas.AuthGroup = NewDefaultAuthGroupAdmin(config.Client)
+	if schemas.PermissionGroup == nil {
+		schemas.PermissionGroup = NewDefaultPermissionGroupAdmin(config.Client)
 	}
 
-	if schemas.AuthUser == nil {
-		schemas.AuthUser = NewDefaultAuthUserAdmin(config.Client)
+	if schemas.User == nil {
+		schemas.User = NewDefaultUserAdmin(config.Client)
 	}
 
 	h := &AdminHandler{
@@ -81,19 +81,19 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	}
 
 	{
-		fields, err := newAuthGroupFields(schemas.AuthGroup)
+		fields, err := newPermissionGroupFields(schemas.PermissionGroup)
 		if err != nil {
 			return nil, err
 		}
-		h.authGroupFields = fields
+		h.permissionGroupFields = fields
 	}
 
 	{
-		fields, err := newAuthUserFields(schemas.AuthUser)
+		fields, err := newUserFields(schemas.User)
 		if err != nil {
 			return nil, err
 		}
-		h.authUserFields = fields
+		h.userFields = fields
 	}
 
 	routes, err := h.registerRoutes(config.SecretProvider)
@@ -135,25 +135,25 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/command_palette/", h.getCommandPaletteHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
-			authed.Group("auth_groups", func(schema *route.Router) {
-				schema.GET("/", h.getAuthGroupListHandler(), h.authorizePermission("read_auth_group"))
-				schema.POST("/", h.postAuthGroupHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
-				schema.GET("/add/{$}", h.getAuthGroupAddHandler(), h.authorize(h.schemas.AuthGroup.CanCreate))
-				schema.GET("/{id}/", h.getAuthGroupHandler(), h.authorizePermission("read_auth_group"))
-				schema.PATCH("/{id}/", h.patchAuthGroupHandler(), h.authorizePermission("update_auth_group"))
-				schema.DELETE("/{id}/", h.deleteAuthGroupHandler(), h.authorizePermission("delete_auth_group"))
+			authed.Group("permission_groups", func(schema *route.Router) {
+				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
+				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
+				schema.GET("/add/{$}", h.getPermissionGroupAddHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
+				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
+				schema.PATCH("/{id}/", h.patchPermissionGroupHandler(), h.authorizePermission("update_permission_group"))
+				schema.DELETE("/{id}/", h.deletePermissionGroupHandler(), h.authorizePermission("delete_permission_group"))
 			})
 
-			authed.Group("auth_users", func(schema *route.Router) {
-				schema.GET("/", h.getAuthUserListHandler(), h.authorizePermission("read_auth_user"))
-				schema.POST("/", h.postAuthUserHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
-				schema.GET("/add/{$}", h.getAuthUserAddHandler(), h.authorize(h.schemas.AuthUser.CanCreate))
-				schema.GET("/{id}/", h.getAuthUserHandler(), h.authorizePermission("read_auth_user"))
-				schema.PATCH("/{id}/", h.patchAuthUserHandler(), h.authorizePermission("update_auth_user"))
-				schema.DELETE("/{id}/", h.deleteAuthUserHandler(), h.authorizePermission("delete_auth_user"))
-				schema.GET("/{id}/password/", h.getAuthUserPasswordHandler(), h.authorizePermission("read_auth_user"))
-				schema.PUT("/{id}/password/", h.putAuthUserPasswordHandler(), h.authorizePermission("update_auth_user"))
-				schema.DELETE("/{id}/password/", h.deleteAuthUserPasswordHandler(), h.authorizePermission("update_auth_user"))
+			authed.Group("users", func(schema *route.Router) {
+				schema.GET("/", h.getUserListHandler(), h.authorizePermission("read_user"))
+				schema.POST("/", h.postUserHandler(), h.authorize(h.schemas.User.CanCreate))
+				schema.GET("/add/{$}", h.getUserAddHandler(), h.authorize(h.schemas.User.CanCreate))
+				schema.GET("/{id}/", h.getUserHandler(), h.authorizePermission("read_user"))
+				schema.PATCH("/{id}/", h.patchUserHandler(), h.authorizePermission("update_user"))
+				schema.DELETE("/{id}/", h.deleteUserHandler(), h.authorizePermission("delete_user"))
+				schema.GET("/{id}/password/", h.getUserPasswordHandler(), h.authorizePermission("read_user"))
+				schema.PUT("/{id}/password/", h.putUserPasswordHandler(), h.authorizePermission("update_user"))
+				schema.DELETE("/{id}/password/", h.deleteUserPasswordHandler(), h.authorizePermission("update_user"))
 			})
 
 		})
@@ -202,24 +202,24 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 	schemas := make([]gui.SchemaMetadata, 0)
 	query := strings.ToLower(strings.TrimSpace(schemaSearch))
 
-	if ok, err := defaultCan(ctx, "read_auth_group"); err == nil && ok {
-		displayName := "AuthGroups"
-		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("AuthGroup"), query) {
+	if ok, err := defaultCan(ctx, "read_permission_group"); err == nil && ok {
+		displayName := "PermissionGroups"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("PermissionGroup"), query) {
 			schemas = append(schemas, gui.SchemaMetadata{
-				Name:        "AuthGroup",
+				Name:        "PermissionGroup",
 				DisplayName: displayName,
-				Path:        requestctx.MustAdminPath(ctx) + "auth_groups/",
+				Path:        requestctx.MustAdminPath(ctx) + "permission_groups/",
 			})
 		}
 	}
 
-	if ok, err := defaultCan(ctx, "read_auth_user"); err == nil && ok {
-		displayName := "AuthUsers"
-		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("AuthUser"), query) {
+	if ok, err := defaultCan(ctx, "read_user"); err == nil && ok {
+		displayName := "Users"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("User"), query) {
 			schemas = append(schemas, gui.SchemaMetadata{
-				Name:        "AuthUser",
+				Name:        "User",
 				DisplayName: displayName,
-				Path:        requestctx.MustAdminPath(ctx) + "auth_users/",
+				Path:        requestctx.MustAdminPath(ctx) + "users/",
 			})
 		}
 	}
@@ -348,8 +348,8 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 		err := func() error {
 			invalidCredentials := errors.New("invalid credentials")
 
-			user, err := h.client.AuthUser.Query().
-				Where(authuser.EmailEQ(signals.Login.Email)).
+			user, err := h.client.User.Query().
+				Where(user.EmailEQ(signals.Login.Email)).
 				Only(r.Context())
 			if err != nil {
 				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
@@ -468,8 +468,8 @@ func parseIDList(values []string, label string) ([]int, error) {
 	return ids, nil
 }
 
-func GetUser(ctx context.Context) (*ent.AuthUser, error) {
-	user, ok := ctx.Value(userContextKey{}).(*ent.AuthUser)
+func GetUser(ctx context.Context) (*ent.User, error) {
+	user, ok := ctx.Value(userContextKey{}).(*ent.User)
 	if !ok {
 		return nil, vent.Internal(errors.New("user not found in context"))
 	}
@@ -536,9 +536,9 @@ func NewUserMiddleware(client *ent.Client, secureCookies bool) func(http.Handler
 				return
 			}
 
-			user, err := client.AuthUser.Query().
-				Where(authuser.IDEQ(userID)).
-				WithGroups(func(q *ent.AuthGroupQuery) {
+			user, err := client.User.Query().
+				Where(user.IDEQ(userID)).
+				WithGroups(func(q *ent.PermissionGroupQuery) {
 					q.WithPermissions()
 				}).
 				Only(r.Context())
@@ -604,7 +604,7 @@ func (h *AdminHandler) authorize(check func(context.Context) (bool, error)) func
 // UserHasPermission reports whether user has the named permission.
 // Superusers always return true. If groups or nested permissions are not
 // already eager-loaded on user, they are queried and cached on user.Edges.Groups.
-func UserHasPermission(ctx context.Context, user *ent.AuthUser, permission string) (bool, error) {
+func UserHasPermission(ctx context.Context, user *ent.User, permission string) (bool, error) {
 	if user.IsSuperuser {
 		return true, nil
 	}
@@ -628,7 +628,7 @@ func UserHasPermission(ctx context.Context, user *ent.AuthUser, permission strin
 //
 // Ent represents an unloaded edge as nil and a loaded-empty edge as a non-nil
 // empty slice, so a nil check is enough to detect whether edges are available.
-func userGroupsWithPermissions(ctx context.Context, user *ent.AuthUser) ([]*ent.AuthGroup, error) {
+func userGroupsWithPermissions(ctx context.Context, user *ent.User) ([]*ent.PermissionGroup, error) {
 	if user.Edges.Groups != nil {
 		allPermsLoaded := true
 		for _, g := range user.Edges.Groups {

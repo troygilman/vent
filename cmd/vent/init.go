@@ -31,9 +31,9 @@ var initCmd = &cobra.Command{
 		}
 
 		files := map[string]string{
-			"auth_user.go":       authUserSchemaSource,
-			"auth_group.go":      authGroupSchemaSource,
-			"auth_permission.go": authPermissionSchemaSource,
+			"user.go":             userSchemaSource,
+			"permission_group.go": permissionGroupSchemaSource,
+			"permission.go":       permissionSchemaSource,
 		}
 		for name, source := range files {
 			if err := writeSchemaFile(filepath.Join(schemaDirPath, name), []byte(source), force); err != nil {
@@ -57,62 +57,62 @@ func writeSchemaFile(path string, contents []byte, force bool) error {
 	return nil
 }
 
-const authUserSchemaSource = `package schema
+const userSchemaSource = `package schema
 
 import (
 	"entgo.io/ent"
 	"github.com/troygilman/vent"
 )
 
-type AuthUser struct {
+type User struct {
 	ent.Schema
 }
 
-func (AuthUser) Mixin() []ent.Mixin {
+func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
-		vent.AuthUserMixin{
-			GroupSchemaType: AuthGroup.Type,
+		vent.UserMixin{
+			GroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }
 `
 
-const authGroupSchemaSource = `package schema
+const permissionGroupSchemaSource = `package schema
 
 import (
 	"entgo.io/ent"
 	"github.com/troygilman/vent"
 )
 
-type AuthGroup struct {
+type PermissionGroup struct {
 	ent.Schema
 }
 
-func (AuthGroup) Mixin() []ent.Mixin {
+func (PermissionGroup) Mixin() []ent.Mixin {
 	return []ent.Mixin{
-		vent.AuthGroupMixin{
-			UserSchemaType:       AuthUser.Type,
-			PermissionSchemaType: AuthPermission.Type,
+		vent.PermissionGroupMixin{
+			UserSchemaType:       User.Type,
+			PermissionSchemaType: Permission.Type,
 		},
 	}
 }
 `
 
-const authPermissionSchemaSource = `package schema
+const permissionSchemaSource = `package schema
 
 import (
 	"entgo.io/ent"
 	"github.com/troygilman/vent"
 )
 
-type AuthPermission struct {
+type Permission struct {
 	ent.Schema
 }
 
-func (AuthPermission) Mixin() []ent.Mixin {
+func (Permission) Mixin() []ent.Mixin {
 	return []ent.Mixin{
-		vent.AuthPermissionMixin{
-			GroupSchemaType: AuthGroup.Type,
+		vent.PermissionMixin{
+			GroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }

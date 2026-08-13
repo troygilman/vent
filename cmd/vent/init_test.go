@@ -8,7 +8,7 @@ import (
 
 func TestWriteSchemaFileRefusesOverwrite(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "auth_user.go")
+	path := filepath.Join(dir, "user.go")
 	if err := os.WriteFile(path, []byte("existing"), 0644); err != nil {
 		t.Fatalf("write existing file: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestWriteSchemaFileRefusesOverwrite(t *testing.T) {
 
 func TestWriteSchemaFileForceOverwrite(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "auth_user.go")
+	path := filepath.Join(dir, "user.go")
 	if err := os.WriteFile(path, []byte("existing"), 0644); err != nil {
 		t.Fatalf("write existing file: %v", err)
 	}

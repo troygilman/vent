@@ -21,15 +21,15 @@ var permissions = []struct {
 	Name   string
 	Schema string
 }{
-	{Name: "create_auth_group", Schema: "AuthGroup"},
-	{Name: "read_auth_group", Schema: "AuthGroup"},
-	{Name: "update_auth_group", Schema: "AuthGroup"},
-	{Name: "delete_auth_group", Schema: "AuthGroup"},
-	{Name: "create_auth_user", Schema: "AuthUser"},
-	{Name: "read_auth_user", Schema: "AuthUser"},
-	{Name: "update_auth_user", Schema: "AuthUser"},
-	{Name: "delete_auth_user", Schema: "AuthUser"},
-	{Name: "impersonate", Schema: "AuthUser"},
+	{Name: "create_permission_group", Schema: "PermissionGroup"},
+	{Name: "read_permission_group", Schema: "PermissionGroup"},
+	{Name: "update_permission_group", Schema: "PermissionGroup"},
+	{Name: "delete_permission_group", Schema: "PermissionGroup"},
+	{Name: "create_user", Schema: "User"},
+	{Name: "read_user", Schema: "User"},
+	{Name: "update_user", Schema: "User"},
+	{Name: "delete_user", Schema: "User"},
+	{Name: "impersonate", Schema: "User"},
 }
 
 func Diff(ctx context.Context, u string, dir migrate.Dir, formatter migrate.Formatter) error {
@@ -95,29 +95,29 @@ func (d *Differ) replayMigrations(ctx context.Context) error {
 }
 
 func (d *Differ) diffAuthPermissions(ctx context.Context) error {
-	currentPermissions, err := d.readClient.AuthPermission.Query().All(ctx)
+	currentPermissions, err := d.readClient.Permission.Query().All(ctx)
 	if err != nil {
 		return err
 	}
 
-	currentPermissionsMap := make(map[string]*ent.AuthPermission)
+	currentPermissionsMap := make(map[string]*ent.Permission)
 	for _, permission := range currentPermissions {
 		currentPermissionsMap[permission.Name] = permission
 	}
 
-	permissionBuilders := []*ent.AuthPermissionCreate{}
+	permissionBuilders := []*ent.PermissionCreate{}
 	for _, permission := range permissions {
 		if _, ok := currentPermissionsMap[permission.Name]; ok {
 			continue
 		}
-		permissionBuilders = append(permissionBuilders, d.writeClient.AuthPermission.Create().SetName(permission.Name))
+		permissionBuilders = append(permissionBuilders, d.writeClient.Permission.Create().SetName(permission.Name))
 	}
 
 	if len(permissionBuilders) == 0 {
 		return nil
 	}
 
-	created, err := d.writeClient.AuthPermission.CreateBulk(permissionBuilders...).Save(ctx)
+	created, err := d.writeClient.Permission.CreateBulk(permissionBuilders...).Save(ctx)
 	if err != nil {
 		return err
 	}

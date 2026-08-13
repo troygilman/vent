@@ -13,170 +13,170 @@ import (
 // SchemaAdmins holds per-schema admin surface implementations.
 // A nil slot uses the generated Default*Admin for that schema.
 type SchemaAdmins struct {
-	AuthGroup AuthGroupAdmin
+	PermissionGroup PermissionGroupAdmin
 
-	AuthUser AuthUserAdmin
+	User UserAdmin
 }
 
-// AuthGroupAdmin is the customizable admin surface for AuthGroup.
-// Embed DefaultAuthGroupAdmin and override only the methods you need.
+// PermissionGroupAdmin is the customizable admin surface for PermissionGroup.
+// Embed DefaultPermissionGroupAdmin and override only the methods you need.
 //
 // Field* methods supply field implementations. Validate* methods own mutation
 // policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
 // schema CRUD permissions (read_/create_/...) own schema-level access for
 // routes, menu visibility, and create.
-type AuthGroupAdmin interface {
-	FieldName() AuthGroupField
-	FieldPermissions() AuthGroupField
-	Name(e *ent.AuthGroup) string
-	ValidateCreate(ctx context.Context, input AuthGroupCreateInput) error
-	ValidateUpdate(ctx context.Context, id int, input AuthGroupUpdateInput) error
+type PermissionGroupAdmin interface {
+	FieldName() PermissionGroupField
+	FieldPermissions() PermissionGroupField
+	Name(e *ent.PermissionGroup) string
+	ValidateCreate(ctx context.Context, input PermissionGroupCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input PermissionGroupUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
-	CanRead(ctx context.Context, e *ent.AuthGroup) (bool, error)
+	CanRead(ctx context.Context, e *ent.PermissionGroup) (bool, error)
 	CanCreate(ctx context.Context) (bool, error)
-	CanUpdate(ctx context.Context, e *ent.AuthGroup) (bool, error)
-	CanDelete(ctx context.Context, e *ent.AuthGroup) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.PermissionGroup) (bool, error)
+	CanDelete(ctx context.Context, e *ent.PermissionGroup) (bool, error)
 }
 
-// DefaultAuthGroupAdmin is the generated default AuthGroup admin surface.
+// DefaultPermissionGroupAdmin is the generated default PermissionGroup admin surface.
 // Embed it to keep defaults while overriding individual methods.
 // Client is required for default field implementations.
-type DefaultAuthGroupAdmin struct {
+type DefaultPermissionGroupAdmin struct {
 	Client *ent.Client
 }
 
-// NewDefaultAuthGroupAdmin returns a default AuthGroup admin using client.
-func NewDefaultAuthGroupAdmin(client *ent.Client) DefaultAuthGroupAdmin {
-	return DefaultAuthGroupAdmin{Client: client}
+// NewDefaultPermissionGroupAdmin returns a default PermissionGroup admin using client.
+func NewDefaultPermissionGroupAdmin(client *ent.Client) DefaultPermissionGroupAdmin {
+	return DefaultPermissionGroupAdmin{Client: client}
 }
 
-func (DefaultAuthGroupAdmin) Name(e *ent.AuthGroup) string {
+func (DefaultPermissionGroupAdmin) Name(e *ent.PermissionGroup) string {
 	return fmt.Sprintf("%v", e.Name)
 }
 
-func (a DefaultAuthGroupAdmin) FieldName() AuthGroupField {
-	return NewAuthGroupNameField(a.Client)
+func (a DefaultPermissionGroupAdmin) FieldName() PermissionGroupField {
+	return NewPermissionGroupNameField(a.Client)
 }
 
-func (a DefaultAuthGroupAdmin) FieldPermissions() AuthGroupField {
-	return NewAuthGroupPermissionsField(a.Client)
+func (a DefaultPermissionGroupAdmin) FieldPermissions() PermissionGroupField {
+	return NewPermissionGroupPermissionsField(a.Client)
 }
 
-func (DefaultAuthGroupAdmin) ValidateCreate(context.Context, AuthGroupCreateInput) error {
+func (DefaultPermissionGroupAdmin) ValidateCreate(context.Context, PermissionGroupCreateInput) error {
 	return nil
 }
 
-func (DefaultAuthGroupAdmin) ValidateUpdate(ctx context.Context, id int, input AuthGroupUpdateInput) error {
+func (DefaultPermissionGroupAdmin) ValidateUpdate(ctx context.Context, id int, input PermissionGroupUpdateInput) error {
 	return nil
 }
 
-func (DefaultAuthGroupAdmin) ValidateDelete(ctx context.Context, id int) error {
+func (DefaultPermissionGroupAdmin) ValidateDelete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (DefaultAuthGroupAdmin) CanRead(ctx context.Context, _ *ent.AuthGroup) (bool, error) {
-	return defaultCan(ctx, "read_auth_group")
+func (DefaultPermissionGroupAdmin) CanRead(ctx context.Context, _ *ent.PermissionGroup) (bool, error) {
+	return defaultCan(ctx, "read_permission_group")
 }
 
-func (DefaultAuthGroupAdmin) CanCreate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "create_auth_group")
+func (DefaultPermissionGroupAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_permission_group")
 }
 
-func (DefaultAuthGroupAdmin) CanUpdate(ctx context.Context, e *ent.AuthGroup) (bool, error) {
-	ok, err := defaultCan(ctx, "update_auth_group")
+func (DefaultPermissionGroupAdmin) CanUpdate(ctx context.Context, e *ent.PermissionGroup) (bool, error) {
+	ok, err := defaultCan(ctx, "update_permission_group")
 	if err != nil || !ok {
 		return ok, err
 	}
 	return true, nil
 }
 
-func (DefaultAuthGroupAdmin) CanDelete(ctx context.Context, e *ent.AuthGroup) (bool, error) {
-	ok, err := defaultCan(ctx, "delete_auth_group")
+func (DefaultPermissionGroupAdmin) CanDelete(ctx context.Context, e *ent.PermissionGroup) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_permission_group")
 	if err != nil || !ok {
 		return ok, err
 	}
 	return true, nil
 }
 
-// AuthUserAdmin is the customizable admin surface for AuthUser.
-// Embed DefaultAuthUserAdmin and override only the methods you need.
+// UserAdmin is the customizable admin surface for User.
+// Embed DefaultUserAdmin and override only the methods you need.
 //
 // Field* methods supply field implementations. Validate* methods own mutation
 // policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
 // schema CRUD permissions (read_/create_/...) own schema-level access for
 // routes, menu visibility, and create.
-type AuthUserAdmin interface {
-	FieldID() AuthUserField
-	FieldEmail() AuthUserField
-	FieldPassword() AuthUserField
-	FieldIsStaff() AuthUserField
-	FieldIsSuperuser() AuthUserField
-	FieldIsActive() AuthUserField
-	FieldGroups() AuthUserField
-	FieldLastLogin() AuthUserField
-	Name(e *ent.AuthUser) string
-	ValidateCreate(ctx context.Context, input AuthUserCreateInput) error
-	ValidateUpdate(ctx context.Context, id int, input AuthUserUpdateInput) error
+type UserAdmin interface {
+	FieldID() UserField
+	FieldEmail() UserField
+	FieldPassword() UserField
+	FieldIsStaff() UserField
+	FieldIsSuperuser() UserField
+	FieldIsActive() UserField
+	FieldGroups() UserField
+	FieldLastLogin() UserField
+	Name(e *ent.User) string
+	ValidateCreate(ctx context.Context, input UserCreateInput) error
+	ValidateUpdate(ctx context.Context, id int, input UserUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
-	CanRead(ctx context.Context, e *ent.AuthUser) (bool, error)
+	CanRead(ctx context.Context, e *ent.User) (bool, error)
 	CanCreate(ctx context.Context) (bool, error)
-	CanUpdate(ctx context.Context, e *ent.AuthUser) (bool, error)
-	CanDelete(ctx context.Context, e *ent.AuthUser) (bool, error)
+	CanUpdate(ctx context.Context, e *ent.User) (bool, error)
+	CanDelete(ctx context.Context, e *ent.User) (bool, error)
 }
 
-// DefaultAuthUserAdmin is the generated default AuthUser admin surface.
+// DefaultUserAdmin is the generated default User admin surface.
 // Embed it to keep defaults while overriding individual methods.
 // Client is required for default field implementations.
-type DefaultAuthUserAdmin struct {
+type DefaultUserAdmin struct {
 	Client *ent.Client
 }
 
-// NewDefaultAuthUserAdmin returns a default AuthUser admin using client.
-func NewDefaultAuthUserAdmin(client *ent.Client) DefaultAuthUserAdmin {
-	return DefaultAuthUserAdmin{Client: client}
+// NewDefaultUserAdmin returns a default User admin using client.
+func NewDefaultUserAdmin(client *ent.Client) DefaultUserAdmin {
+	return DefaultUserAdmin{Client: client}
 }
 
-func (DefaultAuthUserAdmin) Name(e *ent.AuthUser) string {
+func (DefaultUserAdmin) Name(e *ent.User) string {
 	return fmt.Sprintf("%v", e.ID)
 }
 
-func (a DefaultAuthUserAdmin) FieldID() AuthUserField {
-	return NewAuthUserIdField(a.Client)
+func (a DefaultUserAdmin) FieldID() UserField {
+	return NewUserIdField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldEmail() AuthUserField {
-	return NewAuthUserEmailField(a.Client)
+func (a DefaultUserAdmin) FieldEmail() UserField {
+	return NewUserEmailField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldPassword() AuthUserField {
-	return NewAuthUserPasswordField(a.Client)
+func (a DefaultUserAdmin) FieldPassword() UserField {
+	return NewUserPasswordField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldIsStaff() AuthUserField {
-	return NewAuthUserIsStaffField(a.Client)
+func (a DefaultUserAdmin) FieldIsStaff() UserField {
+	return NewUserIsStaffField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldIsSuperuser() AuthUserField {
-	return NewAuthUserIsSuperuserField(a.Client)
+func (a DefaultUserAdmin) FieldIsSuperuser() UserField {
+	return NewUserIsSuperuserField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldIsActive() AuthUserField {
-	return NewAuthUserIsActiveField(a.Client)
+func (a DefaultUserAdmin) FieldIsActive() UserField {
+	return NewUserIsActiveField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldGroups() AuthUserField {
-	return NewAuthUserGroupsField(a.Client)
+func (a DefaultUserAdmin) FieldGroups() UserField {
+	return NewUserGroupsField(a.Client)
 }
 
-func (a DefaultAuthUserAdmin) FieldLastLogin() AuthUserField {
-	return NewAuthUserLastLoginField(a.Client)
+func (a DefaultUserAdmin) FieldLastLogin() UserField {
+	return NewUserLastLoginField(a.Client)
 }
 
-func (DefaultAuthUserAdmin) ValidateCreate(context.Context, AuthUserCreateInput) error {
+func (DefaultUserAdmin) ValidateCreate(context.Context, UserCreateInput) error {
 	return nil
 }
 
-func (DefaultAuthUserAdmin) ValidateUpdate(ctx context.Context, id int, input AuthUserUpdateInput) error {
+func (DefaultUserAdmin) ValidateUpdate(ctx context.Context, id int, input UserUpdateInput) error {
 	if input.IsActive != nil && !*input.IsActive {
 		currentUser, err := GetUser(ctx)
 		if err != nil {
@@ -189,7 +189,7 @@ func (DefaultAuthUserAdmin) ValidateUpdate(ctx context.Context, id int, input Au
 	return nil
 }
 
-func (DefaultAuthUserAdmin) ValidateDelete(ctx context.Context, id int) error {
+func (DefaultUserAdmin) ValidateDelete(ctx context.Context, id int) error {
 	currentUser, err := GetUser(ctx)
 	if err != nil {
 		return err
@@ -200,24 +200,24 @@ func (DefaultAuthUserAdmin) ValidateDelete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (DefaultAuthUserAdmin) CanRead(ctx context.Context, _ *ent.AuthUser) (bool, error) {
-	return defaultCan(ctx, "read_auth_user")
+func (DefaultUserAdmin) CanRead(ctx context.Context, _ *ent.User) (bool, error) {
+	return defaultCan(ctx, "read_user")
 }
 
-func (DefaultAuthUserAdmin) CanCreate(ctx context.Context) (bool, error) {
-	return defaultCan(ctx, "create_auth_user")
+func (DefaultUserAdmin) CanCreate(ctx context.Context) (bool, error) {
+	return defaultCan(ctx, "create_user")
 }
 
-func (DefaultAuthUserAdmin) CanUpdate(ctx context.Context, e *ent.AuthUser) (bool, error) {
-	ok, err := defaultCan(ctx, "update_auth_user")
+func (DefaultUserAdmin) CanUpdate(ctx context.Context, e *ent.User) (bool, error) {
+	ok, err := defaultCan(ctx, "update_user")
 	if err != nil || !ok {
 		return ok, err
 	}
 	return allowSuperuserMutation(ctx, e)
 }
 
-func (DefaultAuthUserAdmin) CanDelete(ctx context.Context, e *ent.AuthUser) (bool, error) {
-	ok, err := defaultCan(ctx, "delete_auth_user")
+func (DefaultUserAdmin) CanDelete(ctx context.Context, e *ent.User) (bool, error) {
+	ok, err := defaultCan(ctx, "delete_user")
 	if err != nil || !ok {
 		return ok, err
 	}
@@ -249,7 +249,7 @@ func denyIfCannot(ok bool, err error) error {
 	return nil
 }
 
-func allowSuperuserMutation(ctx context.Context, target *ent.AuthUser) (bool, error) {
+func allowSuperuserMutation(ctx context.Context, target *ent.User) (bool, error) {
 	currentUser, err := GetUser(ctx)
 	if err != nil {
 		return false, err

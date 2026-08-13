@@ -9,40 +9,40 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent"
 )
 
-// The AuthGroupFunc type is an adapter to allow the use of ordinary
-// function as AuthGroup mutator.
-type AuthGroupFunc func(context.Context, *ent.AuthGroupMutation) (ent.Value, error)
+// The PermissionFunc type is an adapter to allow the use of ordinary
+// function as Permission mutator.
+type PermissionFunc func(context.Context, *ent.PermissionMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f AuthGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AuthGroupMutation); ok {
+func (f PermissionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PermissionMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthGroupMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PermissionMutation", m)
 }
 
-// The AuthPermissionFunc type is an adapter to allow the use of ordinary
-// function as AuthPermission mutator.
-type AuthPermissionFunc func(context.Context, *ent.AuthPermissionMutation) (ent.Value, error)
+// The PermissionGroupFunc type is an adapter to allow the use of ordinary
+// function as PermissionGroup mutator.
+type PermissionGroupFunc func(context.Context, *ent.PermissionGroupMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f AuthPermissionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AuthPermissionMutation); ok {
+func (f PermissionGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PermissionGroupMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthPermissionMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PermissionGroupMutation", m)
 }
 
-// The AuthUserFunc type is an adapter to allow the use of ordinary
-// function as AuthUser mutator.
-type AuthUserFunc func(context.Context, *ent.AuthUserMutation) (ent.Value, error)
+// The UserFunc type is an adapter to allow the use of ordinary
+// function as User mutator.
+type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f AuthUserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AuthUserMutation); ok {
+func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthUserMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
 }
 
 // Condition is a hook condition function.

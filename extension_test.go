@@ -269,7 +269,7 @@ func TestNormalizeAdminPath(t *testing.T) {
 
 func TestPluralDisplayName(t *testing.T) {
 	tests := map[string]string{
-		"AuthUser": "AuthUsers",
+		"User":     "Users",
 		"Category": "Categories",
 		"Status":   "Statuses",
 		"Box":      "Boxes",
@@ -285,7 +285,7 @@ func TestPluralDisplayName(t *testing.T) {
 
 func TestPluralResourceName(t *testing.T) {
 	tests := map[string]string{
-		"AuthUser": "auth_users",
+		"User":     "users",
 		"Category": "categories",
 		"Status":   "statuses",
 		"Box":      "boxes",
@@ -301,14 +301,14 @@ func TestPluralResourceName(t *testing.T) {
 
 func TestDefaultNameField(t *testing.T) {
 	nameNode := &gen.Type{
-		Name:   "AuthGroup",
+		Name:   "PermissionGroup",
 		Fields: []*gen.Field{{Name: "name"}},
 	}
 	if got := defaultNameField(nameNode); got != "Name" {
 		t.Fatalf("defaultNameField(name) = %q, want Name", got)
 	}
 
-	idNode := &gen.Type{Name: "AuthUser"}
+	idNode := &gen.Type{Name: "User"}
 	if got := defaultNameField(idNode); got != "ID" {
 		t.Fatalf("defaultNameField(empty) = %q, want ID", got)
 	}
@@ -316,8 +316,8 @@ func TestDefaultNameField(t *testing.T) {
 
 func TestResourceName(t *testing.T) {
 	tests := map[string]string{
-		"AuthUser":        "auth_user",
-		"AuthGroup":       "auth_group",
+		"User":            "user",
+		"PermissionGroup": "permission_group",
 		"BlogPost":        "blog_post",
 		"APIKey":          "api_key",
 		"UserAPIKey":      "user_api_key",

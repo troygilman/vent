@@ -1,6 +1,8 @@
-h1:0vgz4rFzGoehxVZdw2b30FWNUgYmC7cKMLfnSTrKCHc=
+h1:FA9vIrP1dzSPaN88LJt7EROLPzau78Bb9H8zzt7+AqQ=
 0000_init.sql h1:SHyIZcCjApXlkYtZn9bGU4O+KwJ2wkZpnEkeNn6Le1Y=
 0001_update_auth_permissions.sql h1:Dur8v7A9k2DLyxsHD73g9RoDpLUdOoGDZpIp0hjJmu0=
 0002_null_password_hash.sql h1:P5GtEdBs2ptFIDOxtchSJ2FYQ74xuCUDggcppFp8hYQ=
 0003_create_users.sql h1:3Qcu0lyG78zmsjeEJTg2t15KEfyus9AylVA7EF5X8r0=
 0004_update_auth_permissions.sql h1:OKtJn+0FNKDkfrPuSij8Vm1St1L7hJ8Fc/nEhKFPsNY=
+0005_rename_auth_schemas.sql h1:AVdckB1GYFnr4CJAl8RLpYhP3uUt0rf/Qw9aDm+zJIQ=
+0006_update_auth_permissions.sql h1:3NR7gFNvk0Puvp36MH7oHw4UuPlSjcgGaT4SoKxjuM0=
