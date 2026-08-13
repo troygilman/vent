@@ -210,11 +210,15 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // buildLayoutProps creates LayoutProps with schema metadata visible to the current user.
 func (h *AdminHandler) buildLayoutProps(ctx context.Context, activeSchemaName string, breadcrumbs []gui.BreadcrumbItem) gui.LayoutProps {
-	return gui.LayoutProps{
+	props := gui.LayoutProps{
 		Schemas:          h.listVisibleSchemas(ctx, ""),
 		ActiveSchemaName: activeSchemaName,
 		Breadcrumbs:      breadcrumbs,
 	}
+	if user, err := GetUser(ctx); err == nil {
+		props.CurrentUserName = h.schemas.User.Name(user)
+	}
+	return props
 }
 
 // listVisibleSchemas returns schemas the current user can read, optionally filtered by search.

@@ -10,6 +10,7 @@ type LayoutProps struct {
 	Schemas          []SchemaMetadata
 	ActiveSchemaName string
 	Breadcrumbs      []BreadcrumbItem
+	CurrentUserName  string
 }
 
 type SchemaMetadata struct {
@@ -153,10 +154,19 @@ templ Layout(props LayoutProps) {
 			</ul>
 		</div>
 		<div class="content-area">
-			if len(props.Breadcrumbs) > 0 {
+			if len(props.Breadcrumbs) > 0 || props.CurrentUserName != "" {
 				<div class="content-chrome">
 					<div class="content-chrome-inner">
-						@Breadcrumbs(props.Breadcrumbs)
+						if len(props.Breadcrumbs) > 0 {
+							@Breadcrumbs(props.Breadcrumbs)
+						} else {
+							<div></div>
+						}
+						if props.CurrentUserName != "" {
+							<div class="current-user" title={ props.CurrentUserName }>
+								{ props.CurrentUserName }
+							</div>
+						}
 					</div>
 				</div>
 			}
