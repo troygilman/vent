@@ -25,67 +25,13 @@ A lightweight, type-safe admin panel and CRUD framework for Go. Vent turns your 
 
 ## How it works
 
-Vent sits on top of Ent’s codegen pipeline. At generation time it inspects your graph, builds an admin “render config” per schema, and emits a small `ent/admin` package your app mounts as an HTTP handler.
+Vent extends Ent’s codegen. You describe your models as Ent schemas (plus Vent mixins and annotations); Vent generates an `ent/admin` package with HTTP handlers, form fields, and permission metadata. You mount that handler in your server and get a working admin UI.
 
 ```text
-Ent schemas (+ Vent mixins / annotations)
-        │
-        ▼
-  vent.NewAdminExtension  ──►  catalog → layout → surface members
-        │
-        ▼
-  Generated ent/admin/
-    handler.go          HTTP tree, auth middleware, login/logout
-    schema_handlers.go  CRUD handlers per schema
-    schemas.go          *Admin interfaces + Default*Admin
-    fields.go           Field contracts + default field impls
-    migrate.go          Permission rows for Atlas diffs
-        │
-        ▼
-  Your server mounts NewAdminHandler(...) under /admin/
+Ent schemas  →  vent gen  →  ent/admin  →  mount under /admin/
 ```
 
-### Render pipeline
-
-For each Ent node that is not `DisableAdmin`, Vent:
-
-1. **Catalogs** members — supported Ent fields, edges, and `CustomFields` (plus the built-in `password` member on the auth user schema).
-2. **Applies layout** — `FieldSets` order the form; `TableColumns` choose list columns (defaults are derived when omitted).
-3. **Projects** a surface — each member becomes a typed `FieldX()` slot with list/create/update HTML and create/update bind methods.
-
-Sensitive Ent fields are skipped. Unsupported field types are omitted from forms unless you expose them via `CustomFields`.
-
-### Request path
-
-At runtime, `NewAdminHandler` wires:
-
-1. **Static assets** under `{adminPath}/static/`
-2. **CSRF** middleware (cookie + `X-CSRF-Token` header on mutating methods)
-3. **Login / logout** (JWT cookie; bcrypt verify)
-4. **Authenticated staff zone** — JWT auth → load user → require `is_staff`
-5. **Per-schema routes** — CRUD gated by generated permissions (`read_user`, `create_user`, …) and by your `Can*` overrides
-
-UI updates use Datastar SSE redirects after mutations. Theme preference is stored in a long-lived cookie (`system` / `light` / `dark`).
-
-### Auth and permissions
-
-Vent expects three auth schemas (defaults: `User`, `PermissionGroup`, `Permission`) that use the corresponding mixins. Access is layered:
-
-| Gate | Behavior |
-| ---- | -------- |
-| Session | Valid JWT; user must be `is_active` |
-| Staff | `is_staff` required for the admin UI |
-| Schema CRUD | Permissions named `read_<resource>`, `create_<resource>`, `update_<resource>`, `delete_<resource>` |
-| Superuser | `is_superuser` bypasses permission checks; only superusers may mutate other superusers |
-| Entity `Can*` | Optional per-row policy on top of schema permissions |
-
-Permissions are granted through **permission groups**. Custom names declared in `VentSchemaAnnotation.Permissions` are inserted by the permission migrator (they are data you can assign to groups; wire them into route middleware yourself if you need enforcement beyond the default CRUD set).
-
-Built-in safety on the auth user schema:
-
-- Users cannot delete or deactivate themselves
-- Clearing your own password is rejected
-- Non-superusers cannot update or delete superusers
+Customization stays in your app code: annotate schemas for layout and labels, or embed the generated `Default*Admin` types to override fields, validation, and permissions. Auth is built in — staff users sign in with JWT sessions, and access is controlled through permission groups (with superuser bypass).
 
 ---
 
@@ -191,6 +137,30 @@ Then open `http://localhost:8080/admin/`.
 - Enable `SecureCookies` behind HTTPS
 - Prefer bcrypt (or your own `Credential*` implementations) for password hashing
 - Treat client-facing errors as public messages only; use `vent.HttpError` / `vent.HandleError` so internal causes stay in logs
+
+---
+
+## Auth and permissions
+
+Vent expects three auth schemas (defaults: `User`, `PermissionGroup`, `Permission`) that use the corresponding mixins. Access is layered:
+
+| Gate | Behavior |
+| ---- | -------- |
+| Session | Valid JWT; user must be `is_active` |
+| Staff | `is_staff` required for the admin UI |
+| Schema CRUD | Permissions named `read_<resource>`, `create_<resource>`, `update_<resource>`, `delete_<resource>` |
+| Superuser | `is_superuser` bypasses permission checks; only superusers may mutate other superusers |
+| Entity `Can*` | Optional per-row policy on top of schema permissions |
+
+Permissions are granted through **permission groups**. Custom names declared in `VentSchemaAnnotation.Permissions` are inserted by the permission migrator (they are data you can assign to groups; wire them into route middleware yourself if you need enforcement beyond the default CRUD set).
+
+Built-in safety on the auth user schema:
+
+- Users cannot delete or deactivate themselves
+- Clearing your own password is rejected
+- Non-superusers cannot update or delete superusers
+
+Mutating requests are CSRF-protected (cookie + `X-CSRF-Token` header). Theme preference is stored separately (`system` / `light` / `dark`).
 
 ---
 
