@@ -197,7 +197,7 @@ func (Book) Annotations() []schema.Annotation {
 | `ReadOnly` | Disable create, update, and delete |
 | `DisableCreate` / `DisableDelete` | Turn off individual mutation routes |
 | `ReadOnlyFields` | Show on forms but do not bind on create/update |
-| `RouteName` | URL segment (default: pluralized resource name) |
+| `RouteName` | URL segment (default: pluralized resource name; must match `[a-z][a-z0-9_]*`) |
 | `SingularDisplayName` / `PluralDisplayName` | Nav and page titles |
 | `TableColumns` | List-view columns (fields or edges) |
 | `FieldSets` | Form field order (first set is used; multi-set UI is incomplete) |
