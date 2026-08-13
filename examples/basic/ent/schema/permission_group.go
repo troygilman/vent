@@ -24,7 +24,7 @@ func (PermissionGroup) Annotations() []schema.Annotation {
 		vent.VentSchemaAnnotation{
 			SingularDisplayName: "Permission Group",
 			PluralDisplayName:   "Permission Groups",
-			RouteName:           "permission_groups",
+			RouteName:           "permission-groups",
 			TableColumns:        []string{"name"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"name", "permissions"},

@@ -23,9 +23,10 @@ func TestNormalizeSegment(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects hyphens", func(t *testing.T) {
-		if _, err := NormalizeSegment("audit-events"); err == nil {
-			t.Fatal("expected error for hyphenated segment")
+	t.Run("accepts hyphens", func(t *testing.T) {
+		got, err := NormalizeSegment("audit-events")
+		if err != nil || got != "audit-events" {
+			t.Fatalf("NormalizeSegment(audit-events) = (%q, %v)", got, err)
 		}
 	})
 

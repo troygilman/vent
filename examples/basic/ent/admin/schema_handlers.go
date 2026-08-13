@@ -53,7 +53,7 @@ func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 			for j, field := range h.auditEventFields.listColumns {
 				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%saudit_events/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					cell.LinkURL = fmt.Sprintf("%saudit-events/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
 				cells[j] = cell
 			}
@@ -71,7 +71,7 @@ func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 
 		props := gui.SchemaTableProps{
 			LayoutProps:         h.buildLayoutProps(r.Context(), "AuditEvent", gui.SchemaListBreadcrumbs("Audit Events")),
-			RouteName:           "audit_events",
+			RouteName:           "audit-events",
 			SingularDisplayName: "Audit Event",
 			PluralDisplayName:   "Audit Events",
 			Columns: []gui.SchemaTableColumn{
@@ -136,11 +136,11 @@ func (h *AdminHandler) buildAuditEventPageProps(ctx context.Context, id int, err
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "AuditEvent", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"audit_events",
+			"audit-events",
 			"Audit Events",
 			entityDisplay,
 		)),
-		RouteName:     "audit_events",
+		RouteName:     "audit-events",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
@@ -1478,7 +1478,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			for j, field := range h.permissionGroupFields.listColumns {
 				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
 				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					cell.LinkURL = fmt.Sprintf("%spermission-groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
 				}
 				cells[j] = cell
 			}
@@ -1496,7 +1496,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 
 		props := gui.SchemaTableProps{
 			LayoutProps:         h.buildLayoutProps(r.Context(), "PermissionGroup", gui.SchemaListBreadcrumbs("Permission Groups")),
-			RouteName:           "permission_groups",
+			RouteName:           "permission-groups",
 			SingularDisplayName: "Permission Group",
 			PluralDisplayName:   "Permission Groups",
 			Columns: []gui.SchemaTableColumn{
@@ -1538,11 +1538,11 @@ func (h *AdminHandler) buildPermissionGroupAddPageProps(ctx context.Context, err
 	return gui.SchemaEntityAddProps{
 		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaAddBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"permission_groups",
+			"permission-groups",
 			"Permission Groups",
 			"Permission Group",
 		)),
-		RouteName:           "permission_groups",
+		RouteName:           "permission-groups",
 		SingularDisplayName: "Permission Group",
 		ErrorMessage:        errorMessage,
 		Fields:              fields,
@@ -1623,11 +1623,11 @@ func (h *AdminHandler) buildPermissionGroupPageProps(ctx context.Context, id int
 	props := gui.SchemaEntityChangeProps{
 		LayoutProps: h.buildLayoutProps(ctx, "PermissionGroup", gui.SchemaEntityBreadcrumbs(
 			requestctx.MustAdminPath(ctx),
-			"permission_groups",
+			"permission-groups",
 			"Permission Groups",
 			entityDisplay,
 		)),
-		RouteName:     "permission_groups",
+		RouteName:     "permission-groups",
 		EntityID:      id,
 		EntityDisplay: entityDisplay,
 		ErrorMessage:  errorMessage,
@@ -1701,7 +1701,7 @@ func (h *AdminHandler) postPermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
 	})
 }
 
@@ -1753,7 +1753,7 @@ func (h *AdminHandler) patchPermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
 	})
 }
 
@@ -1787,7 +1787,7 @@ func (h *AdminHandler) deletePermissionGroupHandler() http.Handler {
 		}
 
 		sse := datastar.NewSSE(w, r)
-		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission_groups/")
+		sse.Redirect(requestctx.MustAdminPath(r.Context()) + "permission-groups/")
 	})
 }
 

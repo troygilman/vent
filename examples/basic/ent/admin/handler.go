@@ -233,7 +233,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/command_palette/", h.getCommandPaletteHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
-			authed.Group("audit_events", func(schema *route.Router) {
+			authed.Group("audit-events", func(schema *route.Router) {
 				schema.GET("/", h.getAuditEventListHandler(), h.authorizePermission("read_audit_event"))
 				schema.GET("/{id}/", h.getAuditEventHandler(), h.authorizePermission("read_audit_event"))
 			})
@@ -271,7 +271,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 				schema.PATCH("/{id}/", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
 			})
 
-			authed.Group("permission_groups", func(schema *route.Router) {
+			authed.Group("permission-groups", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
 				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
 				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
@@ -365,7 +365,7 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 			schemas = append(schemas, gui.SchemaMetadata{
 				Name:        "AuditEvent",
 				DisplayName: displayName,
-				Path:        requestctx.MustAdminPath(ctx) + "audit_events/",
+				Path:        requestctx.MustAdminPath(ctx) + "audit-events/",
 			})
 		}
 	}
@@ -420,7 +420,7 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 			schemas = append(schemas, gui.SchemaMetadata{
 				Name:        "PermissionGroup",
 				DisplayName: displayName,
-				Path:        requestctx.MustAdminPath(ctx) + "permission_groups/",
+				Path:        requestctx.MustAdminPath(ctx) + "permission-groups/",
 			})
 		}
 	}

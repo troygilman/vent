@@ -487,7 +487,7 @@ func validateRouteNames(configs []NodeRenderConfig) error {
 			continue
 		}
 		if _, err := route.NormalizeSegment(rc.RouteName); err != nil {
-			errs = append(errs, fmt.Sprintf("schema %q route name %q is invalid: must match [a-z][a-z0-9_]*", node.Name, rc.RouteName))
+			errs = append(errs, fmt.Sprintf("schema %q route name %q is invalid: must match [a-z][a-z0-9_-]*", node.Name, rc.RouteName))
 		}
 		if existing, ok := seen[rc.RouteName]; ok {
 			errs = append(errs, fmt.Sprintf("schema %q route name %q conflicts with schema %q", node.Name, rc.RouteName, existing))

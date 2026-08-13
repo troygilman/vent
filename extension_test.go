@@ -290,21 +290,21 @@ func testField(fieldType schemafield.Type) *gen.Field {
 func TestValidateRouteNames(t *testing.T) {
 	ok := []NodeRenderConfig{
 		{Node: &gen.Type{Name: "Book"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "books"}}},
-		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "audit_events"}}},
+		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "audit-events"}}},
 	}
 	if err := validateRouteNames(ok); err != nil {
 		t.Fatalf("validateRouteNames(valid) = %v", err)
 	}
 
 	bad := []NodeRenderConfig{
-		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "audit-events"}}},
+		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "AuditEvents"}}},
 	}
 	err := validateRouteNames(bad)
 	if err == nil {
-		t.Fatal("validateRouteNames(hyphen) = nil, want error")
+		t.Fatal("validateRouteNames(uppercase) = nil, want error")
 	}
-	if !strings.Contains(err.Error(), `route name "audit-events" is invalid`) {
-		t.Fatalf("validateRouteNames(hyphen) = %v", err)
+	if !strings.Contains(err.Error(), `route name "AuditEvents" is invalid`) {
+		t.Fatalf("validateRouteNames(uppercase) = %v", err)
 	}
 }
 

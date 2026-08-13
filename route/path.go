@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var segmentPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+var segmentPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 
 // NormalizeSegment validates a relative group segment (no slashes).
 // An empty segment is allowed for middleware-only groups.
@@ -19,7 +19,7 @@ func NormalizeSegment(segment string) (string, error) {
 		return "", nil
 	}
 	if !segmentPattern.MatchString(segment) {
-		return "", fmt.Errorf("route: invalid segment %q: must match [a-z][a-z0-9_]*", segment)
+		return "", fmt.Errorf("route: invalid segment %q: must match [a-z][a-z0-9_-]*", segment)
 	}
 	return segment, nil
 }
@@ -66,7 +66,7 @@ func validatePatternSegments(pattern string) error {
 			continue
 		}
 		if !segmentPattern.MatchString(part) {
-			return fmt.Errorf("route: invalid path segment %q: must match [a-z][a-z0-9_]*", part)
+			return fmt.Errorf("route: invalid path segment %q: must match [a-z][a-z0-9_-]*", part)
 		}
 	}
 	return nil
