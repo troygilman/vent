@@ -30,6 +30,7 @@ func TestBoolFilterBool(t *testing.T) {
 		{BoolFilterFalse, false, true},
 		{BoolFilterAll, false, false},
 		{"", false, false},
+		{"all", false, false},
 	}
 	for _, tc := range cases {
 		got, ok := tc.in.Bool()
@@ -49,8 +50,8 @@ func TestBoolFilterNormalize(t *testing.T) {
 	if got := BoolFilter("").Normalize(); got != BoolFilterAll {
 		t.Fatalf("empty = %q, want all", got)
 	}
-	if got := BoolFilterAll.Normalize(); got != BoolFilterAll {
-		t.Fatalf("all = %q", got)
+	if got := BoolFilter("all").Normalize(); got != BoolFilterAll {
+		t.Fatalf("legacy all = %q, want empty", got)
 	}
 }
 
