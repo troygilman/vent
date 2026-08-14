@@ -73,12 +73,9 @@ templ SchemaTablePage(props SchemaTableProps) {
 			if len(props.FilterableColumns) > 0 {
 				<form
 					class="table-filters"
-					method="get"
-					action={ templ.SafeURL(schemaPath) }
 					data-query-string__history="{include: /^filter\./}"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
-					data-indicator="_indicator"
 					data-indicator="_indicator"
 				>
 					for _, filter := range props.FilterableColumns {
