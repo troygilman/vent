@@ -553,7 +553,10 @@ func NewBookPublishedAtField(client *ent.Client) BookPublishedAtField {
 }
 
 func (f BookPublishedAtField) ListCell(ctx context.Context, e *ent.Book) string {
-	return vent.FormatFormValue(e.PublishedAt)
+	if e.PublishedAt == nil {
+		return ""
+	}
+	return vent.FormatFormValue(*e.PublishedAt)
 }
 
 func (f BookPublishedAtField) CreateHTML(ctx context.Context) (string, error) {
@@ -565,10 +568,14 @@ func (f BookPublishedAtField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f BookPublishedAtField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
+	value := ""
+	if e.PublishedAt != nil {
+		value = vent.FormatFormValue(*e.PublishedAt)
+	}
 	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
 		Name:     "published_at",
 		Label:    "PublishedAt",
-		Value:    vent.FormatFormValue(e.PublishedAt),
+		Value:    value,
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
@@ -1246,7 +1253,10 @@ func NewReviewBodyField(client *ent.Client) ReviewBodyField {
 }
 
 func (f ReviewBodyField) ListCell(ctx context.Context, e *ent.Review) string {
-	return vent.FormatFormValue(e.Body)
+	if e.Body == nil {
+		return ""
+	}
+	return vent.FormatFormValue(*e.Body)
 }
 
 func (f ReviewBodyField) CreateHTML(ctx context.Context) (string, error) {
@@ -1258,10 +1268,14 @@ func (f ReviewBodyField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f ReviewBodyField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
+	value := ""
+	if e.Body != nil {
+		value = vent.FormatFormValue(*e.Body)
+	}
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
 		Name:     "body",
 		Label:    "Body",
-		Value:    vent.FormatFormValue(e.Body),
+		Value:    value,
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }

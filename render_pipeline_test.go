@@ -115,6 +115,13 @@ func TestBuildProjectedRenderConfigDefaultSurface(t *testing.T) {
 	if title.HasDefaultValue || title.DefaultValueName != "" {
 		t.Fatalf("title default = has %v name %q, want false/empty", title.HasDefaultValue, title.DefaultValueName)
 	}
+	if title.Nillable {
+		t.Fatal("title Nillable = true, want false")
+	}
+	nickname := findSurfaceMember(t, rc.AdminSurface, "nickname")
+	if !nickname.Nillable {
+		t.Fatal("nickname Nillable = false, want true")
+	}
 	if rc.PackageDir != "article" {
 		t.Fatalf("PackageDir = %q, want article", rc.PackageDir)
 	}
