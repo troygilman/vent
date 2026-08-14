@@ -836,6 +836,44 @@ a {
     color: var(--color-text-muted);
 }
 
+.table-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+.table-filter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 10rem;
+}
+.table-filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    letter-spacing: 0.01em;
+}
+.table-filters .input,
+.table-filters .select {
+    flex: 0 0 auto;
+    min-width: 12rem;
+}
+.table-filters .select {
+    min-width: 8.5rem;
+}
+.table-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
 /* Entity form grid */
 .entity-form {
     width: 100%;

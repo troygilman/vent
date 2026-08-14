@@ -36,6 +36,9 @@ type PermissionUpdateInput struct {
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
+		if filterVal := r.URL.Query().Get("name"); filterVal != "" {
+			query = query.Where(permission.NameContainsFold(filterVal))
+		}
 
 		entities, err := query.
 			Order(permission.ByID()).
@@ -76,9 +79,11 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: r.URL.Query().Get("name")},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -252,6 +257,9 @@ type PermissionGroupUpdateInput struct {
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
+		if filterVal := r.URL.Query().Get("name"); filterVal != "" {
+			query = query.Where(permissiongroup.NameContainsFold(filterVal))
+		}
 
 		entities, err := query.
 			Order(permissiongroup.ByID()).
@@ -291,9 +299,11 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: r.URL.Query().Get("name")},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -609,7 +619,6 @@ type UserUpdateInput struct {
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.userFields.eagerLoadQuery(h.client.User.Query())
-		// Apply filters from query parameters
 		if filterVal := r.URL.Query().Get("email"); filterVal != "" {
 			query = query.Where(user.EmailContainsFold(filterVal))
 		}
@@ -671,9 +680,9 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "email", Label: "Email", Type: "string"},
-				{Name: "is_staff", Label: "IsStaff", Type: "bool"},
-				{Name: "is_active", Label: "IsActive", Type: "bool"},
+				{Name: "email", Label: "Email", Type: "string", Value: r.URL.Query().Get("email")},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: r.URL.Query().Get("is_staff")},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: r.URL.Query().Get("is_active")},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,

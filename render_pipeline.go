@@ -18,11 +18,12 @@ type RenderConfig struct {
 	UpdateInputFields []InputFieldSpec
 }
 
-// FilterableColumnConfig describes a filterable column for list views.
+// FilterableColumnConfig describes a list-view filter control and its Ent predicate.
 type FilterableColumnConfig struct {
-	Name  string
-	Label string
-	Type  string
+	Name          string
+	Label         string
+	Type          string
+	PredicateName string
 }
 
 // NodeRenderConfig pairs a node with its render config for iteration in templates.
@@ -180,7 +181,12 @@ func buildRenderConfig(node *gen.Type) (RenderConfig, error) {
 		return RenderConfig{}, err
 	}
 
-	return projectRenderConfig(node, meta, applied, annotation, hasAnnotation), nil
+	filterable, err := projectFilterableColumns(node.Name, catalog, annotation, hasAnnotation)
+	if err != nil {
+		return RenderConfig{}, err
+	}
+
+	return projectRenderConfig(meta, applied, filterable), nil
 }
 
 func buildRenderConfigs(nodes []*gen.Type) ([]NodeRenderConfig, error) {
@@ -529,8 +535,11 @@ func isReadOnlyField(meta SchemaMeta, name string) bool {
 	return false
 }
 
-func projectRenderConfig(node *gen.Type, meta SchemaMeta, applied appliedLayout, annotation VentSchemaAnnotation, hasAnnotation bool) RenderConfig {
-	rc := RenderConfig{SchemaMeta: meta}
+func projectRenderConfig(meta SchemaMeta, applied appliedLayout, filterable []FilterableColumnConfig) RenderConfig {
+	rc := RenderConfig{
+		SchemaMeta:        meta,
+		FilterableColumns: filterable,
+	}
 
 	for _, member := range applied.adminSurface {
 		rc.AdminSurface = append(rc.AdminSurface, projectSurfaceMember(member))
@@ -538,17 +547,6 @@ func projectRenderConfig(node *gen.Type, meta SchemaMeta, applied appliedLayout,
 
 	for _, member := range applied.tableColumns {
 		rc.TableColumns = append(rc.TableColumns, projectTableColumn(member))
-	}
-
-	// Project filterable columns from annotation
-	if hasAnnotation {
-		for _, filter := range annotation.FilterableColumns {
-			rc.FilterableColumns = append(rc.FilterableColumns, FilterableColumnConfig{
-				Name:  filter.Name,
-				Label: labelForField(node, filter.Name),
-				Type:  filter.Type,
-			})
-		}
 	}
 
 	for _, member := range applied.adminSurface {
@@ -568,14 +566,62 @@ func projectRenderConfig(node *gen.Type, meta SchemaMeta, applied appliedLayout,
 	return rc
 }
 
-// labelForField returns a label for a field name, using the field's name if found.
-func labelForField(node *gen.Type, fieldName string) string {
-	for _, field := range node.Fields {
-		if field.Name == fieldName {
-			return pascalCase(field.Name)
-		}
+func projectFilterableColumns(schemaName string, catalog memberCatalog, annotation VentSchemaAnnotation, hasAnnotation bool) ([]FilterableColumnConfig, error) {
+	if !hasAnnotation {
+		return nil, nil
 	}
-	return pascalCase(fieldName)
+
+	var columns []FilterableColumnConfig
+	seen := make(map[string]struct{}, len(annotation.FilterableColumns))
+	for _, name := range annotation.FilterableColumns {
+		if _, dup := seen[name]; dup {
+			return nil, fmt.Errorf("schema %q filterable column %q is duplicated", schemaName, name)
+		}
+		seen[name] = struct{}{}
+
+		member, ok := catalog[name]
+		if !ok {
+			return nil, fmt.Errorf("schema %q filterable column %q does not exist", schemaName, name)
+		}
+		filterType, ok := filterTypeForMember(member)
+		if !ok {
+			return nil, fmt.Errorf("schema %q filterable column %q has unsupported type; only string, bool, and int fields are supported", schemaName, name)
+		}
+		columns = append(columns, FilterableColumnConfig{
+			Name:          member.name,
+			Label:         member.label,
+			Type:          filterType,
+			PredicateName: predicateNameForMember(member),
+		})
+	}
+	return columns, nil
+}
+
+func filterTypeForMember(member *catalogMember) (string, bool) {
+	if member == nil || member.kind != MemberEntField {
+		return "", false
+	}
+	return filterTypeForFieldKind(member.fieldKind)
+}
+
+func filterTypeForFieldKind(kind FieldKind) (string, bool) {
+	switch kind {
+	case FieldKindString:
+		return "string", true
+	case FieldKindBool:
+		return "bool", true
+	case FieldKindInt:
+		return "int", true
+	default:
+		return "", false
+	}
+}
+
+func predicateNameForMember(member *catalogMember) string {
+	if member.name == "id" {
+		return "ID"
+	}
+	return pascalCase(member.name)
 }
 
 func projectSurfaceMember(member resolvedMember) SurfaceMember {

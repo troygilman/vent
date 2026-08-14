@@ -65,13 +65,8 @@ type VentSchemaAnnotation struct {
 	CustomFields        []Field
 	FieldSets           []FieldSet
 	TableColumns        []string
-	FilterableColumns   []FilterableColumn
+	FilterableColumns   []string
 	Permissions         []Permission
-}
-
-type FilterableColumn struct {
-	Name string
-	Type string // "string", "int", "bool", "time"
 }
 
 func (VentSchemaAnnotation) Name() string {

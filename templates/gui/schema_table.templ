@@ -36,6 +36,16 @@ type SchemaTableFilterableColumn struct {
 	Name  string
 	Label string
 	Type  string
+	Value string
+}
+
+func hasActiveTableFilters(columns []SchemaTableFilterableColumn) bool {
+	for _, column := range columns {
+		if column.Value != "" {
+			return true
+		}
+	}
+	return false
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -49,48 +59,34 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			if len(props.FilterableColumns) > 0 {
-				<div class="filter-container" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color); border-radius: 0.5rem;">
-					<div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: end;">
-						for _, filter := range props.FilterableColumns {
-							<div style="display: flex; flex-direction: column; gap: 0.25rem;">
-								<label style="font-size: 0.875rem; font-weight: 500;">{ filter.Label }</label>
-								if filter.Type == "string" {
-									<input
-										type="text"
-										name={ "filter_" + filter.Name }
-										placeholder={ "Filter by " + filter.Label }
-										style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; min-width: 200px;"
-										data-model={ "filters." + filter.Name }
-									/>
-								} else if filter.Type == "bool" {
-									<select
-										name={ "filter_" + filter.Name }
-										style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; min-width: 150px;"
-										data-model={ "filters." + filter.Name }
-									>
-										<option value="">All</option>
-										<option value="true">Yes</option>
-										<option value="false">No</option>
-									</select>
-								}
-							</div>
+				<form class="table-filters" method="get" action={ templ.SafeURL(schemaPath) }>
+					for _, filter := range props.FilterableColumns {
+						<label class="table-filter">
+							<span class="table-filter-label">{ filter.Label }</span>
+							if filter.Type == "string" {
+								<div class="input">
+									<input type="text" name={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+								</div>
+							} else if filter.Type == "bool" {
+								<select class="select" name={ filter.Name }>
+									<option value="" selected?={ filter.Value == "" }>All</option>
+									<option value="true" selected?={ filter.Value == "true" }>Yes</option>
+									<option value="false" selected?={ filter.Value == "false" }>No</option>
+								</select>
+							} else if filter.Type == "int" {
+								<div class="input">
+									<input type="number" name={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+								</div>
+							}
+						</label>
+					}
+					<div class="table-filter-actions">
+						<button type="submit" class="btn btn-primary">Filter</button>
+						if hasActiveTableFilters(props.FilterableColumns) {
+							<a class="btn btn-neutral" href={ templ.SafeURL(schemaPath) }>Clear</a>
 						}
-						<button
-							class="btn btn-secondary"
-							style="padding: 0.5rem 1rem;"
-							data-on-click="$$get({ url: window.location.pathname, queries: $filters })"
-						>
-							Apply Filters
-						</button>
-						<button
-							class="btn btn-secondary"
-							style="padding: 0.5rem 1rem;"
-							data-on-click="$filters = {}; $$get({ url: window.location.pathname })"
-						>
-							Clear Filters
-						</button>
 					</div>
-				</div>
+				</form>
 			}
 			<div class="table-container">
 				<table class="data-table">

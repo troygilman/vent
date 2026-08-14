@@ -42,6 +42,11 @@ func (UserMixin) Annotations() []schema.Annotation {
 				"is_superuser",
 				"is_active",
 			},
+			FilterableColumns: []string{
+				"email",
+				"is_staff",
+				"is_active",
+			},
 			FieldSets: []FieldSet{
 				{
 					Fields: []string{
@@ -91,6 +96,9 @@ func (PermissionGroupMixin) Annotations() []schema.Annotation {
 			TableColumns: []string{
 				"name",
 			},
+			FilterableColumns: []string{
+				"name",
+			},
 			FieldSets: []FieldSet{
 				{
 					Fields: []string{
@@ -133,6 +141,9 @@ func (PermissionMixin) Annotations() []schema.Annotation {
 			TableColumns: []string{
 				"name",
 				"groups",
+			},
+			FilterableColumns: []string{
+				"name",
 			},
 			FieldSets: []FieldSet{
 				{

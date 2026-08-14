@@ -534,6 +534,18 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 		}
 	}
 
+	seenFilters := make(map[string]struct{}, len(annotation.FilterableColumns))
+	for _, column := range annotation.FilterableColumns {
+		if _, dup := seenFilters[column]; dup {
+			errs = append(errs, fmt.Sprintf("schema %q filterable column %q is duplicated", node.Name, column))
+			continue
+		}
+		seenFilters[column] = struct{}{}
+		if msg := filterableColumnError(node, column); msg != "" {
+			errs = append(errs, msg)
+		}
+	}
+
 	for _, fieldName := range annotation.ReadOnlyFields {
 		if !hasFieldOrID(node, fieldName) && !hasEdge(node, fieldName) {
 			if _, ok := customFields[fieldName]; !ok && !(fieldName == "password" && isAuthUserNode(node)) {
@@ -567,6 +579,29 @@ func isAuthUserNode(node *gen.Type) bool {
 
 func hasFieldOrID(node *gen.Type, name string) bool {
 	return name == "id" || hasField(node, name)
+}
+
+func filterableColumnError(node *gen.Type, name string) string {
+	if name == "id" {
+		return ""
+	}
+	if field, ok := findField(node, name); ok {
+		if field.Sensitive() {
+			return fmt.Sprintf("schema %q filterable column %q is sensitive", node.Name, name)
+		}
+		kind, ok := fieldKindForEntField(field)
+		if !ok {
+			return fmt.Sprintf("schema %q filterable column %q has unsupported type; only string, bool, and int fields are supported", node.Name, name)
+		}
+		if _, ok := filterTypeForFieldKind(kind); !ok {
+			return fmt.Sprintf("schema %q filterable column %q has unsupported type; only string, bool, and int fields are supported", node.Name, name)
+		}
+		return ""
+	}
+	if hasEdge(node, name) {
+		return fmt.Sprintf("schema %q filterable column %q is an edge; only scalar fields are supported", node.Name, name)
+	}
+	return fmt.Sprintf("schema %q filterable column %q does not exist", node.Name, name)
 }
 
 func hasField(node *gen.Type, name string) bool {

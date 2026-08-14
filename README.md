@@ -176,6 +176,7 @@ func (Book) Annotations() []schema.Annotation {
             SingularDisplayName: "Book",
             PluralDisplayName:   "Books",
             TableColumns:        []string{"title", "author", "published"},
+            FilterableColumns:   []string{"title", "published"},
             FieldSets: []vent.FieldSet{{
                 Fields: []string{"title", "author", "published", "tags"},
             }},
@@ -200,6 +201,7 @@ func (Book) Annotations() []schema.Annotation {
 | `RouteName` | URL segment (default: pluralized resource name) |
 | `SingularDisplayName` / `PluralDisplayName` | Nav and page titles |
 | `TableColumns` | List-view columns (fields or edges) |
+| `FilterableColumns` | List-view filters for string, bool, and int fields |
 | `FieldSets` | Form field order (first set is used; multi-set UI is incomplete) |
 | `CustomFields` | Virtual surface members you implement via `FieldX()` |
 | `Permissions` | Extra permission rows (name + description) for the migrator |

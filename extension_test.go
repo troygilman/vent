@@ -253,6 +253,101 @@ func TestTableColumnAllowsEdges(t *testing.T) {
 	}
 }
 
+func TestFilterableColumnValidation(t *testing.T) {
+	node := &gen.Type{
+		Name: "Article",
+		Fields: []*gen.Field{
+			{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+			{Name: "published", Type: &schemafield.TypeInfo{Type: schemafield.TypeBool}},
+			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
+		},
+		Edges: []*gen.Edge{
+			{Name: "author", Type: &gen.Type{Name: "User"}, Unique: true},
+		},
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				FilterableColumns: []string{"title", "published", "id"},
+			},
+		},
+	}
+	if errs := validateVentSchemaAnnotation(node); len(errs) > 0 {
+		t.Fatalf("validateVentSchemaAnnotation(valid filters) = %v", errs)
+	}
+
+	missing := &gen.Type{
+		Name: "Article",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				FilterableColumns: []string{"missing"},
+			},
+		},
+	}
+	errs := validateVentSchemaAnnotation(missing)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(missing filter) returned no errors")
+	}
+	if !strings.Contains(errs[0], `filterable column "missing" does not exist`) {
+		t.Fatalf("validateVentSchemaAnnotation(missing filter) = %v", errs)
+	}
+
+	edgeNode := &gen.Type{
+		Name: "Article",
+		Edges: []*gen.Edge{
+			{Name: "author", Type: &gen.Type{Name: "User"}, Unique: true},
+		},
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				FilterableColumns: []string{"author"},
+			},
+		},
+	}
+	errs = validateVentSchemaAnnotation(edgeNode)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(edge filter) returned no errors")
+	}
+	if !strings.Contains(errs[0], `filterable column "author" is an edge`) {
+		t.Fatalf("validateVentSchemaAnnotation(edge filter) = %v", errs)
+	}
+
+	timeNode := &gen.Type{
+		Name: "Article",
+		Fields: []*gen.Field{
+			{Name: "starts_at", Type: &schemafield.TypeInfo{Type: schemafield.TypeTime}},
+		},
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				FilterableColumns: []string{"starts_at"},
+			},
+		},
+	}
+	errs = validateVentSchemaAnnotation(timeNode)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(time filter) returned no errors")
+	}
+	if !strings.Contains(errs[0], `filterable column "starts_at" has unsupported type`) {
+		t.Fatalf("validateVentSchemaAnnotation(time filter) = %v", errs)
+	}
+
+	dupNode := &gen.Type{
+		Name: "Article",
+		Fields: []*gen.Field{
+			{Name: "title", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+		},
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				FilterableColumns: []string{"title", "title"},
+			},
+		},
+	}
+	errs = validateVentSchemaAnnotation(dupNode)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(duplicate filter) returned no errors")
+	}
+	if !strings.Contains(errs[0], `filterable column "title" is duplicated`) {
+		t.Fatalf("validateVentSchemaAnnotation(duplicate filter) = %v", errs)
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",
