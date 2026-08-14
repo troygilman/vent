@@ -52,6 +52,7 @@ attribute({
  *
  * After URL params are merged into signals, the element dispatches a bubbling
  * `query-string` event. Use data-on:query-string to fetch or otherwise react.
+ * Falsey signal values are omitted when writing the query string.
  */
 attribute({
   name: "query-string",
