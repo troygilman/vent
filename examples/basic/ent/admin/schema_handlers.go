@@ -93,7 +93,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
@@ -326,7 +326,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
@@ -713,9 +713,9 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "email", Label: "Email", Type: "string"},
-				{Name: "is_staff", Label: "IsStaff", Type: "bool"},
-				{Name: "is_active", Label: "IsActive", Type: "bool"},
+				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: filter.IsStaff.Normalize().String()},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
