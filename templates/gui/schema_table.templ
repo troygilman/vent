@@ -65,15 +65,13 @@ templ SchemaTablePage(props SchemaTableProps) {
 					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
 				}
 			</div>
-			<div
-				class="schema-table"
-				data-on:datastar-ready__document="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-				data-indicator="_indicator"
-			>
+			<div class="schema-table">
 			if len(props.FilterableColumns) > 0 {
 				<form
+					id="schema-table-filters"
 					class="table-filters"
 					data-query-string__history="{include: /^filter\./}"
+					data-init="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
 					data-indicator="_indicator"
