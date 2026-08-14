@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -49,20 +48,6 @@ func (_c *ReviewCreate) SetNillableBody(v *string) *ReviewCreate {
 	return _c
 }
 
-// SetCreatedAt sets the "created_at" field.
-func (_c *ReviewCreate) SetCreatedAt(v time.Time) *ReviewCreate {
-	_c.mutation.SetCreatedAt(v)
-	return _c
-}
-
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (_c *ReviewCreate) SetNillableCreatedAt(v *time.Time) *ReviewCreate {
-	if v != nil {
-		_c.SetCreatedAt(*v)
-	}
-	return _c
-}
-
 // SetBookID sets the "book" edge to the Book entity by ID.
 func (_c *ReviewCreate) SetBookID(id int) *ReviewCreate {
 	_c.mutation.SetBookID(id)
@@ -81,7 +66,6 @@ func (_c *ReviewCreate) Mutation() *ReviewMutation {
 
 // Save creates the Review in the database.
 func (_c *ReviewCreate) Save(ctx context.Context) (*Review, error) {
-	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -107,14 +91,6 @@ func (_c *ReviewCreate) ExecX(ctx context.Context) {
 	}
 }
 
-// defaults sets the default values of the builder before save.
-func (_c *ReviewCreate) defaults() {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		v := review.DefaultCreatedAt()
-		_c.mutation.SetCreatedAt(v)
-	}
-}
-
 // check runs all checks and user-defined validators on the builder.
 func (_c *ReviewCreate) check() error {
 	if _, ok := _c.mutation.Reviewer(); !ok {
@@ -132,9 +108,6 @@ func (_c *ReviewCreate) check() error {
 		if err := review.RatingValidator(v); err != nil {
 			return &ValidationError{Name: "rating", err: fmt.Errorf(`ent: validator failed for field "Review.rating": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Review.created_at"`)}
 	}
 	if len(_c.mutation.BookIDs()) == 0 {
 		return &ValidationError{Name: "book", err: errors.New(`ent: missing required edge "Review.book"`)}
@@ -177,10 +150,6 @@ func (_c *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Body(); ok {
 		_spec.SetField(review.FieldBody, field.TypeString, value)
 		_node.Body = &value
-	}
-	if value, ok := _c.mutation.CreatedAt(); ok {
-		_spec.SetField(review.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
 	}
 	if nodes := _c.mutation.BookIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -309,11 +278,6 @@ func (u *ReviewUpsert) ClearBody() *ReviewUpsert {
 //		Exec(ctx)
 func (u *ReviewUpsertOne) UpdateNewValues() *ReviewUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
-		if _, exists := u.create.mutation.CreatedAt(); exists {
-			s.SetIgnore(review.FieldCreatedAt)
-		}
-	}))
 	return u
 }
 
@@ -452,7 +416,6 @@ func (_c *ReviewCreateBulk) Save(ctx context.Context) ([]*Review, error) {
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*ReviewMutation)
 				if !ok {
@@ -574,13 +537,6 @@ type ReviewUpsertBulk struct {
 //		Exec(ctx)
 func (u *ReviewUpsertBulk) UpdateNewValues() *ReviewUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
-	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
-		for _, b := range u.create.builders {
-			if _, exists := b.mutation.CreatedAt(); exists {
-				s.SetIgnore(review.FieldCreatedAt)
-			}
-		}
-	}))
 	return u
 }
 

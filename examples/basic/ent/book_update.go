@@ -13,10 +13,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
-	"github.com/troygilman/vent/examples/basic/ent/category"
 	"github.com/troygilman/vent/examples/basic/ent/predicate"
 	"github.com/troygilman/vent/examples/basic/ent/review"
-	"github.com/troygilman/vent/examples/basic/ent/tag"
 )
 
 // BookUpdate is the builder for updating Book entities.
@@ -46,26 +44,6 @@ func (_u *BookUpdate) SetNillableTitle(v *string) *BookUpdate {
 	return _u
 }
 
-// SetIsbn sets the "isbn" field.
-func (_u *BookUpdate) SetIsbn(v string) *BookUpdate {
-	_u.mutation.SetIsbn(v)
-	return _u
-}
-
-// SetNillableIsbn sets the "isbn" field if the given value is not nil.
-func (_u *BookUpdate) SetNillableIsbn(v *string) *BookUpdate {
-	if v != nil {
-		_u.SetIsbn(*v)
-	}
-	return _u
-}
-
-// ClearIsbn clears the value of the "isbn" field.
-func (_u *BookUpdate) ClearIsbn() *BookUpdate {
-	_u.mutation.ClearIsbn()
-	return _u
-}
-
 // SetPages sets the "pages" field.
 func (_u *BookUpdate) SetPages(v int) *BookUpdate {
 	_u.mutation.ResetPages()
@@ -84,27 +62,6 @@ func (_u *BookUpdate) SetNillablePages(v *int) *BookUpdate {
 // AddPages adds value to the "pages" field.
 func (_u *BookUpdate) AddPages(v int) *BookUpdate {
 	_u.mutation.AddPages(v)
-	return _u
-}
-
-// SetPrice sets the "price" field.
-func (_u *BookUpdate) SetPrice(v float64) *BookUpdate {
-	_u.mutation.ResetPrice()
-	_u.mutation.SetPrice(v)
-	return _u
-}
-
-// SetNillablePrice sets the "price" field if the given value is not nil.
-func (_u *BookUpdate) SetNillablePrice(v *float64) *BookUpdate {
-	if v != nil {
-		_u.SetPrice(*v)
-	}
-	return _u
-}
-
-// AddPrice adds value to the "price" field.
-func (_u *BookUpdate) AddPrice(v float64) *BookUpdate {
-	_u.mutation.AddPrice(v)
 	return _u
 }
 
@@ -142,27 +99,6 @@ func (_u *BookUpdate) ClearPublishedAt() *BookUpdate {
 	return _u
 }
 
-// SetViewCount sets the "view_count" field.
-func (_u *BookUpdate) SetViewCount(v int) *BookUpdate {
-	_u.mutation.ResetViewCount()
-	_u.mutation.SetViewCount(v)
-	return _u
-}
-
-// SetNillableViewCount sets the "view_count" field if the given value is not nil.
-func (_u *BookUpdate) SetNillableViewCount(v *int) *BookUpdate {
-	if v != nil {
-		_u.SetViewCount(*v)
-	}
-	return _u
-}
-
-// AddViewCount adds value to the "view_count" field.
-func (_u *BookUpdate) AddViewCount(v int) *BookUpdate {
-	_u.mutation.AddViewCount(v)
-	return _u
-}
-
 // SetInternalNotes sets the "internal_notes" field.
 func (_u *BookUpdate) SetInternalNotes(v string) *BookUpdate {
 	_u.mutation.SetInternalNotes(v)
@@ -194,40 +130,6 @@ func (_u *BookUpdate) SetAuthor(v *Author) *BookUpdate {
 	return _u.SetAuthorID(v.ID)
 }
 
-// SetCategoryID sets the "category" edge to the Category entity by ID.
-func (_u *BookUpdate) SetCategoryID(id int) *BookUpdate {
-	_u.mutation.SetCategoryID(id)
-	return _u
-}
-
-// SetNillableCategoryID sets the "category" edge to the Category entity by ID if the given value is not nil.
-func (_u *BookUpdate) SetNillableCategoryID(id *int) *BookUpdate {
-	if id != nil {
-		_u = _u.SetCategoryID(*id)
-	}
-	return _u
-}
-
-// SetCategory sets the "category" edge to the Category entity.
-func (_u *BookUpdate) SetCategory(v *Category) *BookUpdate {
-	return _u.SetCategoryID(v.ID)
-}
-
-// AddTagIDs adds the "tags" edge to the Tag entity by IDs.
-func (_u *BookUpdate) AddTagIDs(ids ...int) *BookUpdate {
-	_u.mutation.AddTagIDs(ids...)
-	return _u
-}
-
-// AddTags adds the "tags" edges to the Tag entity.
-func (_u *BookUpdate) AddTags(v ...*Tag) *BookUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddTagIDs(ids...)
-}
-
 // AddReviewIDs adds the "reviews" edge to the Review entity by IDs.
 func (_u *BookUpdate) AddReviewIDs(ids ...int) *BookUpdate {
 	_u.mutation.AddReviewIDs(ids...)
@@ -252,33 +154,6 @@ func (_u *BookUpdate) Mutation() *BookMutation {
 func (_u *BookUpdate) ClearAuthor() *BookUpdate {
 	_u.mutation.ClearAuthor()
 	return _u
-}
-
-// ClearCategory clears the "category" edge to the Category entity.
-func (_u *BookUpdate) ClearCategory() *BookUpdate {
-	_u.mutation.ClearCategory()
-	return _u
-}
-
-// ClearTags clears all "tags" edges to the Tag entity.
-func (_u *BookUpdate) ClearTags() *BookUpdate {
-	_u.mutation.ClearTags()
-	return _u
-}
-
-// RemoveTagIDs removes the "tags" edge to Tag entities by IDs.
-func (_u *BookUpdate) RemoveTagIDs(ids ...int) *BookUpdate {
-	_u.mutation.RemoveTagIDs(ids...)
-	return _u
-}
-
-// RemoveTags removes "tags" edges to Tag entities.
-func (_u *BookUpdate) RemoveTags(v ...*Tag) *BookUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveTagIDs(ids...)
 }
 
 // ClearReviews clears all "reviews" edges to the Review entity.
@@ -341,16 +216,6 @@ func (_u *BookUpdate) check() error {
 			return &ValidationError{Name: "pages", err: fmt.Errorf(`ent: validator failed for field "Book.pages": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Price(); ok {
-		if err := book.PriceValidator(v); err != nil {
-			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Book.price": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ViewCount(); ok {
-		if err := book.ViewCountValidator(v); err != nil {
-			return &ValidationError{Name: "view_count", err: fmt.Errorf(`ent: validator failed for field "Book.view_count": %w`, err)}
-		}
-	}
 	if _u.mutation.AuthorCleared() && len(_u.mutation.AuthorIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Book.author"`)
 	}
@@ -372,23 +237,11 @@ func (_u *BookUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(book.FieldTitle, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Isbn(); ok {
-		_spec.SetField(book.FieldIsbn, field.TypeString, value)
-	}
-	if _u.mutation.IsbnCleared() {
-		_spec.ClearField(book.FieldIsbn, field.TypeString)
-	}
 	if value, ok := _u.mutation.Pages(); ok {
 		_spec.SetField(book.FieldPages, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AddedPages(); ok {
 		_spec.AddField(book.FieldPages, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Price(); ok {
-		_spec.SetField(book.FieldPrice, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedPrice(); ok {
-		_spec.AddField(book.FieldPrice, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.Published(); ok {
 		_spec.SetField(book.FieldPublished, field.TypeBool, value)
@@ -398,12 +251,6 @@ func (_u *BookUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(book.FieldPublishedAt, field.TypeTime)
-	}
-	if value, ok := _u.mutation.ViewCount(); ok {
-		_spec.SetField(book.FieldViewCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedViewCount(); ok {
-		_spec.AddField(book.FieldViewCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.InternalNotes(); ok {
 		_spec.SetField(book.FieldInternalNotes, field.TypeString, value)
@@ -433,80 +280,6 @@ func (_u *BookUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(author.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.CategoryCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   book.CategoryTable,
-			Columns: []string{book.CategoryColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.CategoryIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   book.CategoryTable,
-			Columns: []string{book.CategoryColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.TagsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedTagsIDs(); len(nodes) > 0 && !_u.mutation.TagsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.TagsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -593,26 +366,6 @@ func (_u *BookUpdateOne) SetNillableTitle(v *string) *BookUpdateOne {
 	return _u
 }
 
-// SetIsbn sets the "isbn" field.
-func (_u *BookUpdateOne) SetIsbn(v string) *BookUpdateOne {
-	_u.mutation.SetIsbn(v)
-	return _u
-}
-
-// SetNillableIsbn sets the "isbn" field if the given value is not nil.
-func (_u *BookUpdateOne) SetNillableIsbn(v *string) *BookUpdateOne {
-	if v != nil {
-		_u.SetIsbn(*v)
-	}
-	return _u
-}
-
-// ClearIsbn clears the value of the "isbn" field.
-func (_u *BookUpdateOne) ClearIsbn() *BookUpdateOne {
-	_u.mutation.ClearIsbn()
-	return _u
-}
-
 // SetPages sets the "pages" field.
 func (_u *BookUpdateOne) SetPages(v int) *BookUpdateOne {
 	_u.mutation.ResetPages()
@@ -631,27 +384,6 @@ func (_u *BookUpdateOne) SetNillablePages(v *int) *BookUpdateOne {
 // AddPages adds value to the "pages" field.
 func (_u *BookUpdateOne) AddPages(v int) *BookUpdateOne {
 	_u.mutation.AddPages(v)
-	return _u
-}
-
-// SetPrice sets the "price" field.
-func (_u *BookUpdateOne) SetPrice(v float64) *BookUpdateOne {
-	_u.mutation.ResetPrice()
-	_u.mutation.SetPrice(v)
-	return _u
-}
-
-// SetNillablePrice sets the "price" field if the given value is not nil.
-func (_u *BookUpdateOne) SetNillablePrice(v *float64) *BookUpdateOne {
-	if v != nil {
-		_u.SetPrice(*v)
-	}
-	return _u
-}
-
-// AddPrice adds value to the "price" field.
-func (_u *BookUpdateOne) AddPrice(v float64) *BookUpdateOne {
-	_u.mutation.AddPrice(v)
 	return _u
 }
 
@@ -689,27 +421,6 @@ func (_u *BookUpdateOne) ClearPublishedAt() *BookUpdateOne {
 	return _u
 }
 
-// SetViewCount sets the "view_count" field.
-func (_u *BookUpdateOne) SetViewCount(v int) *BookUpdateOne {
-	_u.mutation.ResetViewCount()
-	_u.mutation.SetViewCount(v)
-	return _u
-}
-
-// SetNillableViewCount sets the "view_count" field if the given value is not nil.
-func (_u *BookUpdateOne) SetNillableViewCount(v *int) *BookUpdateOne {
-	if v != nil {
-		_u.SetViewCount(*v)
-	}
-	return _u
-}
-
-// AddViewCount adds value to the "view_count" field.
-func (_u *BookUpdateOne) AddViewCount(v int) *BookUpdateOne {
-	_u.mutation.AddViewCount(v)
-	return _u
-}
-
 // SetInternalNotes sets the "internal_notes" field.
 func (_u *BookUpdateOne) SetInternalNotes(v string) *BookUpdateOne {
 	_u.mutation.SetInternalNotes(v)
@@ -741,40 +452,6 @@ func (_u *BookUpdateOne) SetAuthor(v *Author) *BookUpdateOne {
 	return _u.SetAuthorID(v.ID)
 }
 
-// SetCategoryID sets the "category" edge to the Category entity by ID.
-func (_u *BookUpdateOne) SetCategoryID(id int) *BookUpdateOne {
-	_u.mutation.SetCategoryID(id)
-	return _u
-}
-
-// SetNillableCategoryID sets the "category" edge to the Category entity by ID if the given value is not nil.
-func (_u *BookUpdateOne) SetNillableCategoryID(id *int) *BookUpdateOne {
-	if id != nil {
-		_u = _u.SetCategoryID(*id)
-	}
-	return _u
-}
-
-// SetCategory sets the "category" edge to the Category entity.
-func (_u *BookUpdateOne) SetCategory(v *Category) *BookUpdateOne {
-	return _u.SetCategoryID(v.ID)
-}
-
-// AddTagIDs adds the "tags" edge to the Tag entity by IDs.
-func (_u *BookUpdateOne) AddTagIDs(ids ...int) *BookUpdateOne {
-	_u.mutation.AddTagIDs(ids...)
-	return _u
-}
-
-// AddTags adds the "tags" edges to the Tag entity.
-func (_u *BookUpdateOne) AddTags(v ...*Tag) *BookUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddTagIDs(ids...)
-}
-
 // AddReviewIDs adds the "reviews" edge to the Review entity by IDs.
 func (_u *BookUpdateOne) AddReviewIDs(ids ...int) *BookUpdateOne {
 	_u.mutation.AddReviewIDs(ids...)
@@ -799,33 +476,6 @@ func (_u *BookUpdateOne) Mutation() *BookMutation {
 func (_u *BookUpdateOne) ClearAuthor() *BookUpdateOne {
 	_u.mutation.ClearAuthor()
 	return _u
-}
-
-// ClearCategory clears the "category" edge to the Category entity.
-func (_u *BookUpdateOne) ClearCategory() *BookUpdateOne {
-	_u.mutation.ClearCategory()
-	return _u
-}
-
-// ClearTags clears all "tags" edges to the Tag entity.
-func (_u *BookUpdateOne) ClearTags() *BookUpdateOne {
-	_u.mutation.ClearTags()
-	return _u
-}
-
-// RemoveTagIDs removes the "tags" edge to Tag entities by IDs.
-func (_u *BookUpdateOne) RemoveTagIDs(ids ...int) *BookUpdateOne {
-	_u.mutation.RemoveTagIDs(ids...)
-	return _u
-}
-
-// RemoveTags removes "tags" edges to Tag entities.
-func (_u *BookUpdateOne) RemoveTags(v ...*Tag) *BookUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveTagIDs(ids...)
 }
 
 // ClearReviews clears all "reviews" edges to the Review entity.
@@ -901,16 +551,6 @@ func (_u *BookUpdateOne) check() error {
 			return &ValidationError{Name: "pages", err: fmt.Errorf(`ent: validator failed for field "Book.pages": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Price(); ok {
-		if err := book.PriceValidator(v); err != nil {
-			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Book.price": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ViewCount(); ok {
-		if err := book.ViewCountValidator(v); err != nil {
-			return &ValidationError{Name: "view_count", err: fmt.Errorf(`ent: validator failed for field "Book.view_count": %w`, err)}
-		}
-	}
 	if _u.mutation.AuthorCleared() && len(_u.mutation.AuthorIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Book.author"`)
 	}
@@ -949,23 +589,11 @@ func (_u *BookUpdateOne) sqlSave(ctx context.Context) (_node *Book, err error) {
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(book.FieldTitle, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Isbn(); ok {
-		_spec.SetField(book.FieldIsbn, field.TypeString, value)
-	}
-	if _u.mutation.IsbnCleared() {
-		_spec.ClearField(book.FieldIsbn, field.TypeString)
-	}
 	if value, ok := _u.mutation.Pages(); ok {
 		_spec.SetField(book.FieldPages, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AddedPages(); ok {
 		_spec.AddField(book.FieldPages, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Price(); ok {
-		_spec.SetField(book.FieldPrice, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedPrice(); ok {
-		_spec.AddField(book.FieldPrice, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.Published(); ok {
 		_spec.SetField(book.FieldPublished, field.TypeBool, value)
@@ -975,12 +603,6 @@ func (_u *BookUpdateOne) sqlSave(ctx context.Context) (_node *Book, err error) {
 	}
 	if _u.mutation.PublishedAtCleared() {
 		_spec.ClearField(book.FieldPublishedAt, field.TypeTime)
-	}
-	if value, ok := _u.mutation.ViewCount(); ok {
-		_spec.SetField(book.FieldViewCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedViewCount(); ok {
-		_spec.AddField(book.FieldViewCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.InternalNotes(); ok {
 		_spec.SetField(book.FieldInternalNotes, field.TypeString, value)
@@ -1010,80 +632,6 @@ func (_u *BookUpdateOne) sqlSave(ctx context.Context) (_node *Book, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(author.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.CategoryCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   book.CategoryTable,
-			Columns: []string{book.CategoryColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.CategoryIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   book.CategoryTable,
-			Columns: []string{book.CategoryColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.TagsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedTagsIDs(); len(nodes) > 0 && !_u.mutation.TagsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.TagsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

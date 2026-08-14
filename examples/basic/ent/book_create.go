@@ -13,9 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
-	"github.com/troygilman/vent/examples/basic/ent/category"
 	"github.com/troygilman/vent/examples/basic/ent/review"
-	"github.com/troygilman/vent/examples/basic/ent/tag"
 )
 
 // BookCreate is the builder for creating a Book entity.
@@ -32,20 +30,6 @@ func (_c *BookCreate) SetTitle(v string) *BookCreate {
 	return _c
 }
 
-// SetIsbn sets the "isbn" field.
-func (_c *BookCreate) SetIsbn(v string) *BookCreate {
-	_c.mutation.SetIsbn(v)
-	return _c
-}
-
-// SetNillableIsbn sets the "isbn" field if the given value is not nil.
-func (_c *BookCreate) SetNillableIsbn(v *string) *BookCreate {
-	if v != nil {
-		_c.SetIsbn(*v)
-	}
-	return _c
-}
-
 // SetPages sets the "pages" field.
 func (_c *BookCreate) SetPages(v int) *BookCreate {
 	_c.mutation.SetPages(v)
@@ -56,20 +40,6 @@ func (_c *BookCreate) SetPages(v int) *BookCreate {
 func (_c *BookCreate) SetNillablePages(v *int) *BookCreate {
 	if v != nil {
 		_c.SetPages(*v)
-	}
-	return _c
-}
-
-// SetPrice sets the "price" field.
-func (_c *BookCreate) SetPrice(v float64) *BookCreate {
-	_c.mutation.SetPrice(v)
-	return _c
-}
-
-// SetNillablePrice sets the "price" field if the given value is not nil.
-func (_c *BookCreate) SetNillablePrice(v *float64) *BookCreate {
-	if v != nil {
-		_c.SetPrice(*v)
 	}
 	return _c
 }
@@ -116,20 +86,6 @@ func (_c *BookCreate) SetNillableCreatedAt(v *time.Time) *BookCreate {
 	return _c
 }
 
-// SetViewCount sets the "view_count" field.
-func (_c *BookCreate) SetViewCount(v int) *BookCreate {
-	_c.mutation.SetViewCount(v)
-	return _c
-}
-
-// SetNillableViewCount sets the "view_count" field if the given value is not nil.
-func (_c *BookCreate) SetNillableViewCount(v *int) *BookCreate {
-	if v != nil {
-		_c.SetViewCount(*v)
-	}
-	return _c
-}
-
 // SetInternalNotes sets the "internal_notes" field.
 func (_c *BookCreate) SetInternalNotes(v string) *BookCreate {
 	_c.mutation.SetInternalNotes(v)
@@ -153,40 +109,6 @@ func (_c *BookCreate) SetAuthorID(id int) *BookCreate {
 // SetAuthor sets the "author" edge to the Author entity.
 func (_c *BookCreate) SetAuthor(v *Author) *BookCreate {
 	return _c.SetAuthorID(v.ID)
-}
-
-// SetCategoryID sets the "category" edge to the Category entity by ID.
-func (_c *BookCreate) SetCategoryID(id int) *BookCreate {
-	_c.mutation.SetCategoryID(id)
-	return _c
-}
-
-// SetNillableCategoryID sets the "category" edge to the Category entity by ID if the given value is not nil.
-func (_c *BookCreate) SetNillableCategoryID(id *int) *BookCreate {
-	if id != nil {
-		_c = _c.SetCategoryID(*id)
-	}
-	return _c
-}
-
-// SetCategory sets the "category" edge to the Category entity.
-func (_c *BookCreate) SetCategory(v *Category) *BookCreate {
-	return _c.SetCategoryID(v.ID)
-}
-
-// AddTagIDs adds the "tags" edge to the Tag entity by IDs.
-func (_c *BookCreate) AddTagIDs(ids ...int) *BookCreate {
-	_c.mutation.AddTagIDs(ids...)
-	return _c
-}
-
-// AddTags adds the "tags" edges to the Tag entity.
-func (_c *BookCreate) AddTags(v ...*Tag) *BookCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddTagIDs(ids...)
 }
 
 // AddReviewIDs adds the "reviews" edge to the Review entity by IDs.
@@ -243,10 +165,6 @@ func (_c *BookCreate) defaults() {
 		v := book.DefaultPages
 		_c.mutation.SetPages(v)
 	}
-	if _, ok := _c.mutation.Price(); !ok {
-		v := book.DefaultPrice
-		_c.mutation.SetPrice(v)
-	}
 	if _, ok := _c.mutation.Published(); !ok {
 		v := book.DefaultPublished
 		_c.mutation.SetPublished(v)
@@ -254,10 +172,6 @@ func (_c *BookCreate) defaults() {
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := book.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
-	}
-	if _, ok := _c.mutation.ViewCount(); !ok {
-		v := book.DefaultViewCount
-		_c.mutation.SetViewCount(v)
 	}
 }
 
@@ -279,27 +193,11 @@ func (_c *BookCreate) check() error {
 			return &ValidationError{Name: "pages", err: fmt.Errorf(`ent: validator failed for field "Book.pages": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Price(); !ok {
-		return &ValidationError{Name: "price", err: errors.New(`ent: missing required field "Book.price"`)}
-	}
-	if v, ok := _c.mutation.Price(); ok {
-		if err := book.PriceValidator(v); err != nil {
-			return &ValidationError{Name: "price", err: fmt.Errorf(`ent: validator failed for field "Book.price": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.Published(); !ok {
 		return &ValidationError{Name: "published", err: errors.New(`ent: missing required field "Book.published"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Book.created_at"`)}
-	}
-	if _, ok := _c.mutation.ViewCount(); !ok {
-		return &ValidationError{Name: "view_count", err: errors.New(`ent: missing required field "Book.view_count"`)}
-	}
-	if v, ok := _c.mutation.ViewCount(); ok {
-		if err := book.ViewCountValidator(v); err != nil {
-			return &ValidationError{Name: "view_count", err: fmt.Errorf(`ent: validator failed for field "Book.view_count": %w`, err)}
-		}
 	}
 	if len(_c.mutation.AuthorIDs()) == 0 {
 		return &ValidationError{Name: "author", err: errors.New(`ent: missing required edge "Book.author"`)}
@@ -335,17 +233,9 @@ func (_c *BookCreate) createSpec() (*Book, *sqlgraph.CreateSpec) {
 		_spec.SetField(book.FieldTitle, field.TypeString, value)
 		_node.Title = value
 	}
-	if value, ok := _c.mutation.Isbn(); ok {
-		_spec.SetField(book.FieldIsbn, field.TypeString, value)
-		_node.Isbn = &value
-	}
 	if value, ok := _c.mutation.Pages(); ok {
 		_spec.SetField(book.FieldPages, field.TypeInt, value)
 		_node.Pages = value
-	}
-	if value, ok := _c.mutation.Price(); ok {
-		_spec.SetField(book.FieldPrice, field.TypeFloat64, value)
-		_node.Price = value
 	}
 	if value, ok := _c.mutation.Published(); ok {
 		_spec.SetField(book.FieldPublished, field.TypeBool, value)
@@ -358,10 +248,6 @@ func (_c *BookCreate) createSpec() (*Book, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(book.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
-	}
-	if value, ok := _c.mutation.ViewCount(); ok {
-		_spec.SetField(book.FieldViewCount, field.TypeInt, value)
-		_node.ViewCount = value
 	}
 	if value, ok := _c.mutation.InternalNotes(); ok {
 		_spec.SetField(book.FieldInternalNotes, field.TypeString, value)
@@ -382,39 +268,6 @@ func (_c *BookCreate) createSpec() (*Book, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.book_author = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.CategoryIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: false,
-			Table:   book.CategoryTable,
-			Columns: []string{book.CategoryColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.book_category = &nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.TagsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   book.TagsTable,
-			Columns: book.TagsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ReviewsIDs(); len(nodes) > 0 {
@@ -497,24 +350,6 @@ func (u *BookUpsert) UpdateTitle() *BookUpsert {
 	return u
 }
 
-// SetIsbn sets the "isbn" field.
-func (u *BookUpsert) SetIsbn(v string) *BookUpsert {
-	u.Set(book.FieldIsbn, v)
-	return u
-}
-
-// UpdateIsbn sets the "isbn" field to the value that was provided on create.
-func (u *BookUpsert) UpdateIsbn() *BookUpsert {
-	u.SetExcluded(book.FieldIsbn)
-	return u
-}
-
-// ClearIsbn clears the value of the "isbn" field.
-func (u *BookUpsert) ClearIsbn() *BookUpsert {
-	u.SetNull(book.FieldIsbn)
-	return u
-}
-
 // SetPages sets the "pages" field.
 func (u *BookUpsert) SetPages(v int) *BookUpsert {
 	u.Set(book.FieldPages, v)
@@ -530,24 +365,6 @@ func (u *BookUpsert) UpdatePages() *BookUpsert {
 // AddPages adds v to the "pages" field.
 func (u *BookUpsert) AddPages(v int) *BookUpsert {
 	u.Add(book.FieldPages, v)
-	return u
-}
-
-// SetPrice sets the "price" field.
-func (u *BookUpsert) SetPrice(v float64) *BookUpsert {
-	u.Set(book.FieldPrice, v)
-	return u
-}
-
-// UpdatePrice sets the "price" field to the value that was provided on create.
-func (u *BookUpsert) UpdatePrice() *BookUpsert {
-	u.SetExcluded(book.FieldPrice)
-	return u
-}
-
-// AddPrice adds v to the "price" field.
-func (u *BookUpsert) AddPrice(v float64) *BookUpsert {
-	u.Add(book.FieldPrice, v)
 	return u
 }
 
@@ -578,24 +395,6 @@ func (u *BookUpsert) UpdatePublishedAt() *BookUpsert {
 // ClearPublishedAt clears the value of the "published_at" field.
 func (u *BookUpsert) ClearPublishedAt() *BookUpsert {
 	u.SetNull(book.FieldPublishedAt)
-	return u
-}
-
-// SetViewCount sets the "view_count" field.
-func (u *BookUpsert) SetViewCount(v int) *BookUpsert {
-	u.Set(book.FieldViewCount, v)
-	return u
-}
-
-// UpdateViewCount sets the "view_count" field to the value that was provided on create.
-func (u *BookUpsert) UpdateViewCount() *BookUpsert {
-	u.SetExcluded(book.FieldViewCount)
-	return u
-}
-
-// AddViewCount adds v to the "view_count" field.
-func (u *BookUpsert) AddViewCount(v int) *BookUpsert {
-	u.Add(book.FieldViewCount, v)
 	return u
 }
 
@@ -676,27 +475,6 @@ func (u *BookUpsertOne) UpdateTitle() *BookUpsertOne {
 	})
 }
 
-// SetIsbn sets the "isbn" field.
-func (u *BookUpsertOne) SetIsbn(v string) *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.SetIsbn(v)
-	})
-}
-
-// UpdateIsbn sets the "isbn" field to the value that was provided on create.
-func (u *BookUpsertOne) UpdateIsbn() *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdateIsbn()
-	})
-}
-
-// ClearIsbn clears the value of the "isbn" field.
-func (u *BookUpsertOne) ClearIsbn() *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.ClearIsbn()
-	})
-}
-
 // SetPages sets the "pages" field.
 func (u *BookUpsertOne) SetPages(v int) *BookUpsertOne {
 	return u.Update(func(s *BookUpsert) {
@@ -715,27 +493,6 @@ func (u *BookUpsertOne) AddPages(v int) *BookUpsertOne {
 func (u *BookUpsertOne) UpdatePages() *BookUpsertOne {
 	return u.Update(func(s *BookUpsert) {
 		s.UpdatePages()
-	})
-}
-
-// SetPrice sets the "price" field.
-func (u *BookUpsertOne) SetPrice(v float64) *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.SetPrice(v)
-	})
-}
-
-// AddPrice adds v to the "price" field.
-func (u *BookUpsertOne) AddPrice(v float64) *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.AddPrice(v)
-	})
-}
-
-// UpdatePrice sets the "price" field to the value that was provided on create.
-func (u *BookUpsertOne) UpdatePrice() *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdatePrice()
 	})
 }
 
@@ -771,27 +528,6 @@ func (u *BookUpsertOne) UpdatePublishedAt() *BookUpsertOne {
 func (u *BookUpsertOne) ClearPublishedAt() *BookUpsertOne {
 	return u.Update(func(s *BookUpsert) {
 		s.ClearPublishedAt()
-	})
-}
-
-// SetViewCount sets the "view_count" field.
-func (u *BookUpsertOne) SetViewCount(v int) *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.SetViewCount(v)
-	})
-}
-
-// AddViewCount adds v to the "view_count" field.
-func (u *BookUpsertOne) AddViewCount(v int) *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.AddViewCount(v)
-	})
-}
-
-// UpdateViewCount sets the "view_count" field to the value that was provided on create.
-func (u *BookUpsertOne) UpdateViewCount() *BookUpsertOne {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdateViewCount()
 	})
 }
 
@@ -1041,27 +777,6 @@ func (u *BookUpsertBulk) UpdateTitle() *BookUpsertBulk {
 	})
 }
 
-// SetIsbn sets the "isbn" field.
-func (u *BookUpsertBulk) SetIsbn(v string) *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.SetIsbn(v)
-	})
-}
-
-// UpdateIsbn sets the "isbn" field to the value that was provided on create.
-func (u *BookUpsertBulk) UpdateIsbn() *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdateIsbn()
-	})
-}
-
-// ClearIsbn clears the value of the "isbn" field.
-func (u *BookUpsertBulk) ClearIsbn() *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.ClearIsbn()
-	})
-}
-
 // SetPages sets the "pages" field.
 func (u *BookUpsertBulk) SetPages(v int) *BookUpsertBulk {
 	return u.Update(func(s *BookUpsert) {
@@ -1080,27 +795,6 @@ func (u *BookUpsertBulk) AddPages(v int) *BookUpsertBulk {
 func (u *BookUpsertBulk) UpdatePages() *BookUpsertBulk {
 	return u.Update(func(s *BookUpsert) {
 		s.UpdatePages()
-	})
-}
-
-// SetPrice sets the "price" field.
-func (u *BookUpsertBulk) SetPrice(v float64) *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.SetPrice(v)
-	})
-}
-
-// AddPrice adds v to the "price" field.
-func (u *BookUpsertBulk) AddPrice(v float64) *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.AddPrice(v)
-	})
-}
-
-// UpdatePrice sets the "price" field to the value that was provided on create.
-func (u *BookUpsertBulk) UpdatePrice() *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdatePrice()
 	})
 }
 
@@ -1136,27 +830,6 @@ func (u *BookUpsertBulk) UpdatePublishedAt() *BookUpsertBulk {
 func (u *BookUpsertBulk) ClearPublishedAt() *BookUpsertBulk {
 	return u.Update(func(s *BookUpsert) {
 		s.ClearPublishedAt()
-	})
-}
-
-// SetViewCount sets the "view_count" field.
-func (u *BookUpsertBulk) SetViewCount(v int) *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.SetViewCount(v)
-	})
-}
-
-// AddViewCount adds v to the "view_count" field.
-func (u *BookUpsertBulk) AddViewCount(v int) *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.AddViewCount(v)
-	})
-}
-
-// UpdateViewCount sets the "view_count" field to the value that was provided on create.
-func (u *BookUpsertBulk) UpdateViewCount() *BookUpsertBulk {
-	return u.Update(func(s *BookUpsert) {
-		s.UpdateViewCount()
 	})
 }
 

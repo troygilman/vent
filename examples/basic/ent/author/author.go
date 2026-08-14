@@ -14,8 +14,6 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
-	// FieldBio holds the string denoting the bio field in the database.
-	FieldBio = "bio"
 	// FieldActive holds the string denoting the active field in the database.
 	FieldActive = "active"
 	// EdgeBooks holds the string denoting the books edge name in mutations.
@@ -35,7 +33,6 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldName,
-	FieldBio,
 	FieldActive,
 }
 
@@ -67,11 +64,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
-}
-
-// ByBio orders the results by the bio field.
-func ByBio(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBio, opts...).ToFunc()
 }
 
 // ByActive orders the results by the active field.

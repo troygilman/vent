@@ -9,30 +9,6 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent"
 )
 
-// The ApiKeyFunc type is an adapter to allow the use of ordinary
-// function as ApiKey mutator.
-type ApiKeyFunc func(context.Context, *ent.ApiKeyMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f ApiKeyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ApiKeyMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ApiKeyMutation", m)
-}
-
-// The AuditEventFunc type is an adapter to allow the use of ordinary
-// function as AuditEvent mutator.
-type AuditEventFunc func(context.Context, *ent.AuditEventMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f AuditEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AuditEventMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuditEventMutation", m)
-}
-
 // The AuthorFunc type is an adapter to allow the use of ordinary
 // function as Author mutator.
 type AuthorFunc func(context.Context, *ent.AuthorMutation) (ent.Value, error)
@@ -55,18 +31,6 @@ func (f BookFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BookMutation", m)
-}
-
-// The CategoryFunc type is an adapter to allow the use of ordinary
-// function as Category mutator.
-type CategoryFunc func(context.Context, *ent.CategoryMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f CategoryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.CategoryMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CategoryMutation", m)
 }
 
 // The PermissionFunc type is an adapter to allow the use of ordinary
@@ -103,18 +67,6 @@ func (f ReviewFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ReviewMutation", m)
-}
-
-// The TagFunc type is an adapter to allow the use of ordinary
-// function as Tag mutator.
-type TagFunc func(context.Context, *ent.TagMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f TagFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.TagMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TagMutation", m)
 }
 
 // The UserFunc type is an adapter to allow the use of ordinary

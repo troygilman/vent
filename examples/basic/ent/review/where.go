@@ -3,8 +3,6 @@
 package review
 
 import (
-	"time"
-
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/troygilman/vent/examples/basic/ent/predicate"
@@ -68,11 +66,6 @@ func Rating(v int) predicate.Review {
 // Body applies equality check predicate on the "body" field. It's identical to BodyEQ.
 func Body(v string) predicate.Review {
 	return predicate.Review(sql.FieldEQ(FieldBody, v))
-}
-
-// CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
-func CreatedAt(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldCreatedAt, v))
 }
 
 // ReviewerEQ applies the EQ predicate on the "reviewer" field.
@@ -253,46 +246,6 @@ func BodyEqualFold(v string) predicate.Review {
 // BodyContainsFold applies the ContainsFold predicate on the "body" field.
 func BodyContainsFold(v string) predicate.Review {
 	return predicate.Review(sql.FieldContainsFold(FieldBody, v))
-}
-
-// CreatedAtEQ applies the EQ predicate on the "created_at" field.
-func CreatedAtEQ(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtNEQ applies the NEQ predicate on the "created_at" field.
-func CreatedAtNEQ(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldNEQ(FieldCreatedAt, v))
-}
-
-// CreatedAtIn applies the In predicate on the "created_at" field.
-func CreatedAtIn(vs ...time.Time) predicate.Review {
-	return predicate.Review(sql.FieldIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtNotIn applies the NotIn predicate on the "created_at" field.
-func CreatedAtNotIn(vs ...time.Time) predicate.Review {
-	return predicate.Review(sql.FieldNotIn(FieldCreatedAt, vs...))
-}
-
-// CreatedAtGT applies the GT predicate on the "created_at" field.
-func CreatedAtGT(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldGT(FieldCreatedAt, v))
-}
-
-// CreatedAtGTE applies the GTE predicate on the "created_at" field.
-func CreatedAtGTE(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldGTE(FieldCreatedAt, v))
-}
-
-// CreatedAtLT applies the LT predicate on the "created_at" field.
-func CreatedAtLT(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldLT(FieldCreatedAt, v))
-}
-
-// CreatedAtLTE applies the LTE predicate on the "created_at" field.
-func CreatedAtLTE(v time.Time) predicate.Review {
-	return predicate.Review(sql.FieldLTE(FieldCreatedAt, v))
 }
 
 // HasBook applies the HasEdge predicate on the "book" edge.

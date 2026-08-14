@@ -16,28 +16,18 @@ const (
 	FieldID = "id"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
-	// FieldIsbn holds the string denoting the isbn field in the database.
-	FieldIsbn = "isbn"
 	// FieldPages holds the string denoting the pages field in the database.
 	FieldPages = "pages"
-	// FieldPrice holds the string denoting the price field in the database.
-	FieldPrice = "price"
 	// FieldPublished holds the string denoting the published field in the database.
 	FieldPublished = "published"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
 	FieldPublishedAt = "published_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
-	// FieldViewCount holds the string denoting the view_count field in the database.
-	FieldViewCount = "view_count"
 	// FieldInternalNotes holds the string denoting the internal_notes field in the database.
 	FieldInternalNotes = "internal_notes"
 	// EdgeAuthor holds the string denoting the author edge name in mutations.
 	EdgeAuthor = "author"
-	// EdgeCategory holds the string denoting the category edge name in mutations.
-	EdgeCategory = "category"
-	// EdgeTags holds the string denoting the tags edge name in mutations.
-	EdgeTags = "tags"
 	// EdgeReviews holds the string denoting the reviews edge name in mutations.
 	EdgeReviews = "reviews"
 	// Table holds the table name of the book in the database.
@@ -49,18 +39,6 @@ const (
 	AuthorInverseTable = "authors"
 	// AuthorColumn is the table column denoting the author relation/edge.
 	AuthorColumn = "book_author"
-	// CategoryTable is the table that holds the category relation/edge.
-	CategoryTable = "books"
-	// CategoryInverseTable is the table name for the Category entity.
-	// It exists in this package in order to avoid circular dependency with the "category" package.
-	CategoryInverseTable = "categories"
-	// CategoryColumn is the table column denoting the category relation/edge.
-	CategoryColumn = "book_category"
-	// TagsTable is the table that holds the tags relation/edge. The primary key declared below.
-	TagsTable = "book_tags"
-	// TagsInverseTable is the table name for the Tag entity.
-	// It exists in this package in order to avoid circular dependency with the "tag" package.
-	TagsInverseTable = "tags"
 	// ReviewsTable is the table that holds the reviews relation/edge.
 	ReviewsTable = "reviews"
 	// ReviewsInverseTable is the table name for the Review entity.
@@ -74,13 +52,10 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldTitle,
-	FieldIsbn,
 	FieldPages,
-	FieldPrice,
 	FieldPublished,
 	FieldPublishedAt,
 	FieldCreatedAt,
-	FieldViewCount,
 	FieldInternalNotes,
 }
 
@@ -88,14 +63,7 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"book_author",
-	"book_category",
 }
-
-var (
-	// TagsPrimaryKey and TagsColumn2 are the table columns denoting the
-	// primary key for the tags relation (M2M).
-	TagsPrimaryKey = []string{"book_id", "tag_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -119,18 +87,10 @@ var (
 	DefaultPages int
 	// PagesValidator is a validator for the "pages" field. It is called by the builders before save.
 	PagesValidator func(int) error
-	// DefaultPrice holds the default value on creation for the "price" field.
-	DefaultPrice float64
-	// PriceValidator is a validator for the "price" field. It is called by the builders before save.
-	PriceValidator func(float64) error
 	// DefaultPublished holds the default value on creation for the "published" field.
 	DefaultPublished bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// DefaultViewCount holds the default value on creation for the "view_count" field.
-	DefaultViewCount int
-	// ViewCountValidator is a validator for the "view_count" field. It is called by the builders before save.
-	ViewCountValidator func(int) error
 )
 
 // OrderOption defines the ordering options for the Book queries.
@@ -146,19 +106,9 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTitle, opts...).ToFunc()
 }
 
-// ByIsbn orders the results by the isbn field.
-func ByIsbn(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldIsbn, opts...).ToFunc()
-}
-
 // ByPages orders the results by the pages field.
 func ByPages(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPages, opts...).ToFunc()
-}
-
-// ByPrice orders the results by the price field.
-func ByPrice(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPrice, opts...).ToFunc()
 }
 
 // ByPublished orders the results by the published field.
@@ -176,11 +126,6 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
 
-// ByViewCount orders the results by the view_count field.
-func ByViewCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldViewCount, opts...).ToFunc()
-}
-
 // ByInternalNotes orders the results by the internal_notes field.
 func ByInternalNotes(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldInternalNotes, opts...).ToFunc()
@@ -190,27 +135,6 @@ func ByInternalNotes(opts ...sql.OrderTermOption) OrderOption {
 func ByAuthorField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newAuthorStep(), sql.OrderByField(field, opts...))
-	}
-}
-
-// ByCategoryField orders the results by category field.
-func ByCategoryField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newCategoryStep(), sql.OrderByField(field, opts...))
-	}
-}
-
-// ByTagsCount orders the results by tags count.
-func ByTagsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newTagsStep(), opts...)
-	}
-}
-
-// ByTags orders the results by tags terms.
-func ByTags(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newTagsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -232,20 +156,6 @@ func newAuthorStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AuthorInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, false, AuthorTable, AuthorColumn),
-	)
-}
-func newCategoryStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(CategoryInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, false, CategoryTable, CategoryColumn),
-	)
-}
-func newTagsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(TagsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, TagsTable, TagsPrimaryKey...),
 	)
 }
 func newReviewsStep() *sqlgraph.Step {

@@ -8,7 +8,7 @@ import (
 	"github.com/troygilman/vent"
 )
 
-// Author demonstrates a name-bearing schema used as a unique foreign key target.
+// Author is a unique foreign-key target for Book.
 type Author struct {
 	ent.Schema
 }
@@ -16,7 +16,6 @@ type Author struct {
 func (Author) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").NotEmpty(),
-		field.String("bio").Optional().Nillable(),
 		field.Bool("active").Default(true),
 	}
 }
@@ -35,7 +34,7 @@ func (Author) Annotations() []schema.Annotation {
 			TableColumns:        []string{"name", "active"},
 			FilterableColumns:   []string{"name", "active"},
 			FieldSets: []vent.FieldSet{{
-				Fields: []string{"name", "bio", "active"},
+				Fields: []string{"name", "active"},
 			}},
 		},
 	}

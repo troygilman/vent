@@ -60,19 +60,9 @@ func Title(v string) predicate.Book {
 	return predicate.Book(sql.FieldEQ(FieldTitle, v))
 }
 
-// Isbn applies equality check predicate on the "isbn" field. It's identical to IsbnEQ.
-func Isbn(v string) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldIsbn, v))
-}
-
 // Pages applies equality check predicate on the "pages" field. It's identical to PagesEQ.
 func Pages(v int) predicate.Book {
 	return predicate.Book(sql.FieldEQ(FieldPages, v))
-}
-
-// Price applies equality check predicate on the "price" field. It's identical to PriceEQ.
-func Price(v float64) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldPrice, v))
 }
 
 // Published applies equality check predicate on the "published" field. It's identical to PublishedEQ.
@@ -88,11 +78,6 @@ func PublishedAt(v time.Time) predicate.Book {
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Book {
 	return predicate.Book(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// ViewCount applies equality check predicate on the "view_count" field. It's identical to ViewCountEQ.
-func ViewCount(v int) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldViewCount, v))
 }
 
 // InternalNotes applies equality check predicate on the "internal_notes" field. It's identical to InternalNotesEQ.
@@ -165,81 +150,6 @@ func TitleContainsFold(v string) predicate.Book {
 	return predicate.Book(sql.FieldContainsFold(FieldTitle, v))
 }
 
-// IsbnEQ applies the EQ predicate on the "isbn" field.
-func IsbnEQ(v string) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldIsbn, v))
-}
-
-// IsbnNEQ applies the NEQ predicate on the "isbn" field.
-func IsbnNEQ(v string) predicate.Book {
-	return predicate.Book(sql.FieldNEQ(FieldIsbn, v))
-}
-
-// IsbnIn applies the In predicate on the "isbn" field.
-func IsbnIn(vs ...string) predicate.Book {
-	return predicate.Book(sql.FieldIn(FieldIsbn, vs...))
-}
-
-// IsbnNotIn applies the NotIn predicate on the "isbn" field.
-func IsbnNotIn(vs ...string) predicate.Book {
-	return predicate.Book(sql.FieldNotIn(FieldIsbn, vs...))
-}
-
-// IsbnGT applies the GT predicate on the "isbn" field.
-func IsbnGT(v string) predicate.Book {
-	return predicate.Book(sql.FieldGT(FieldIsbn, v))
-}
-
-// IsbnGTE applies the GTE predicate on the "isbn" field.
-func IsbnGTE(v string) predicate.Book {
-	return predicate.Book(sql.FieldGTE(FieldIsbn, v))
-}
-
-// IsbnLT applies the LT predicate on the "isbn" field.
-func IsbnLT(v string) predicate.Book {
-	return predicate.Book(sql.FieldLT(FieldIsbn, v))
-}
-
-// IsbnLTE applies the LTE predicate on the "isbn" field.
-func IsbnLTE(v string) predicate.Book {
-	return predicate.Book(sql.FieldLTE(FieldIsbn, v))
-}
-
-// IsbnContains applies the Contains predicate on the "isbn" field.
-func IsbnContains(v string) predicate.Book {
-	return predicate.Book(sql.FieldContains(FieldIsbn, v))
-}
-
-// IsbnHasPrefix applies the HasPrefix predicate on the "isbn" field.
-func IsbnHasPrefix(v string) predicate.Book {
-	return predicate.Book(sql.FieldHasPrefix(FieldIsbn, v))
-}
-
-// IsbnHasSuffix applies the HasSuffix predicate on the "isbn" field.
-func IsbnHasSuffix(v string) predicate.Book {
-	return predicate.Book(sql.FieldHasSuffix(FieldIsbn, v))
-}
-
-// IsbnIsNil applies the IsNil predicate on the "isbn" field.
-func IsbnIsNil() predicate.Book {
-	return predicate.Book(sql.FieldIsNull(FieldIsbn))
-}
-
-// IsbnNotNil applies the NotNil predicate on the "isbn" field.
-func IsbnNotNil() predicate.Book {
-	return predicate.Book(sql.FieldNotNull(FieldIsbn))
-}
-
-// IsbnEqualFold applies the EqualFold predicate on the "isbn" field.
-func IsbnEqualFold(v string) predicate.Book {
-	return predicate.Book(sql.FieldEqualFold(FieldIsbn, v))
-}
-
-// IsbnContainsFold applies the ContainsFold predicate on the "isbn" field.
-func IsbnContainsFold(v string) predicate.Book {
-	return predicate.Book(sql.FieldContainsFold(FieldIsbn, v))
-}
-
 // PagesEQ applies the EQ predicate on the "pages" field.
 func PagesEQ(v int) predicate.Book {
 	return predicate.Book(sql.FieldEQ(FieldPages, v))
@@ -278,46 +188,6 @@ func PagesLT(v int) predicate.Book {
 // PagesLTE applies the LTE predicate on the "pages" field.
 func PagesLTE(v int) predicate.Book {
 	return predicate.Book(sql.FieldLTE(FieldPages, v))
-}
-
-// PriceEQ applies the EQ predicate on the "price" field.
-func PriceEQ(v float64) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldPrice, v))
-}
-
-// PriceNEQ applies the NEQ predicate on the "price" field.
-func PriceNEQ(v float64) predicate.Book {
-	return predicate.Book(sql.FieldNEQ(FieldPrice, v))
-}
-
-// PriceIn applies the In predicate on the "price" field.
-func PriceIn(vs ...float64) predicate.Book {
-	return predicate.Book(sql.FieldIn(FieldPrice, vs...))
-}
-
-// PriceNotIn applies the NotIn predicate on the "price" field.
-func PriceNotIn(vs ...float64) predicate.Book {
-	return predicate.Book(sql.FieldNotIn(FieldPrice, vs...))
-}
-
-// PriceGT applies the GT predicate on the "price" field.
-func PriceGT(v float64) predicate.Book {
-	return predicate.Book(sql.FieldGT(FieldPrice, v))
-}
-
-// PriceGTE applies the GTE predicate on the "price" field.
-func PriceGTE(v float64) predicate.Book {
-	return predicate.Book(sql.FieldGTE(FieldPrice, v))
-}
-
-// PriceLT applies the LT predicate on the "price" field.
-func PriceLT(v float64) predicate.Book {
-	return predicate.Book(sql.FieldLT(FieldPrice, v))
-}
-
-// PriceLTE applies the LTE predicate on the "price" field.
-func PriceLTE(v float64) predicate.Book {
-	return predicate.Book(sql.FieldLTE(FieldPrice, v))
 }
 
 // PublishedEQ applies the EQ predicate on the "published" field.
@@ -420,46 +290,6 @@ func CreatedAtLTE(v time.Time) predicate.Book {
 	return predicate.Book(sql.FieldLTE(FieldCreatedAt, v))
 }
 
-// ViewCountEQ applies the EQ predicate on the "view_count" field.
-func ViewCountEQ(v int) predicate.Book {
-	return predicate.Book(sql.FieldEQ(FieldViewCount, v))
-}
-
-// ViewCountNEQ applies the NEQ predicate on the "view_count" field.
-func ViewCountNEQ(v int) predicate.Book {
-	return predicate.Book(sql.FieldNEQ(FieldViewCount, v))
-}
-
-// ViewCountIn applies the In predicate on the "view_count" field.
-func ViewCountIn(vs ...int) predicate.Book {
-	return predicate.Book(sql.FieldIn(FieldViewCount, vs...))
-}
-
-// ViewCountNotIn applies the NotIn predicate on the "view_count" field.
-func ViewCountNotIn(vs ...int) predicate.Book {
-	return predicate.Book(sql.FieldNotIn(FieldViewCount, vs...))
-}
-
-// ViewCountGT applies the GT predicate on the "view_count" field.
-func ViewCountGT(v int) predicate.Book {
-	return predicate.Book(sql.FieldGT(FieldViewCount, v))
-}
-
-// ViewCountGTE applies the GTE predicate on the "view_count" field.
-func ViewCountGTE(v int) predicate.Book {
-	return predicate.Book(sql.FieldGTE(FieldViewCount, v))
-}
-
-// ViewCountLT applies the LT predicate on the "view_count" field.
-func ViewCountLT(v int) predicate.Book {
-	return predicate.Book(sql.FieldLT(FieldViewCount, v))
-}
-
-// ViewCountLTE applies the LTE predicate on the "view_count" field.
-func ViewCountLTE(v int) predicate.Book {
-	return predicate.Book(sql.FieldLTE(FieldViewCount, v))
-}
-
 // InternalNotesEQ applies the EQ predicate on the "internal_notes" field.
 func InternalNotesEQ(v string) predicate.Book {
 	return predicate.Book(sql.FieldEQ(FieldInternalNotes, v))
@@ -550,52 +380,6 @@ func HasAuthor() predicate.Book {
 func HasAuthorWith(preds ...predicate.Author) predicate.Book {
 	return predicate.Book(func(s *sql.Selector) {
 		step := newAuthorStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasCategory applies the HasEdge predicate on the "category" edge.
-func HasCategory() predicate.Book {
-	return predicate.Book(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, CategoryTable, CategoryColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasCategoryWith applies the HasEdge predicate on the "category" edge with a given conditions (other predicates).
-func HasCategoryWith(preds ...predicate.Category) predicate.Book {
-	return predicate.Book(func(s *sql.Selector) {
-		step := newCategoryStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasTags applies the HasEdge predicate on the "tags" edge.
-func HasTags() predicate.Book {
-	return predicate.Book(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, TagsTable, TagsPrimaryKey...),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasTagsWith applies the HasEdge predicate on the "tags" edge with a given conditions (other predicates).
-func HasTagsWith(preds ...predicate.Tag) predicate.Book {
-	return predicate.Book(func(s *sql.Selector) {
-		step := newTagsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

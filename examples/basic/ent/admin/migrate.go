@@ -21,7 +21,6 @@ var permissions = []struct {
 	Name   string
 	Schema string
 }{
-	{Name: "read_audit_event", Schema: "Audit Event"},
 	{Name: "read_author", Schema: "Author"},
 	{Name: "create_author", Schema: "Author"},
 	{Name: "update_author", Schema: "Author"},
@@ -31,10 +30,6 @@ var permissions = []struct {
 	{Name: "update_book", Schema: "Book"},
 	{Name: "delete_book", Schema: "Book"},
 	{Name: "publish", Schema: "Book"},
-	{Name: "read_category", Schema: "Category"},
-	{Name: "create_category", Schema: "Category"},
-	{Name: "update_category", Schema: "Category"},
-	{Name: "delete_category", Schema: "Category"},
 	{Name: "read_permission", Schema: "Permission"},
 	{Name: "update_permission", Schema: "Permission"},
 	{Name: "read_permission_group", Schema: "Permission Group"},
@@ -44,10 +39,6 @@ var permissions = []struct {
 	{Name: "read_review", Schema: "Review"},
 	{Name: "create_review", Schema: "Review"},
 	{Name: "update_review", Schema: "Review"},
-	{Name: "read_tag", Schema: "Tag"},
-	{Name: "create_tag", Schema: "Tag"},
-	{Name: "update_tag", Schema: "Tag"},
-	{Name: "delete_tag", Schema: "Tag"},
 	{Name: "read_user", Schema: "User"},
 	{Name: "create_user", Schema: "User"},
 	{Name: "update_user", Schema: "User"},

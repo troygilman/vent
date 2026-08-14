@@ -5,7 +5,6 @@ package ent
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -24,8 +23,6 @@ type Review struct {
 	Rating int `json:"rating,omitempty"`
 	// Body holds the value of the "body" field.
 	Body *string `json:"body,omitempty"`
-	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ReviewQuery when eager-loading is set.
 	Edges        ReviewEdges `json:"edges"`
@@ -62,8 +59,6 @@ func (*Review) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case review.FieldReviewer, review.FieldBody:
 			values[i] = new(sql.NullString)
-		case review.FieldCreatedAt:
-			values[i] = new(sql.NullTime)
 		case review.ForeignKeys[0]: // book_reviews
 			values[i] = new(sql.NullInt64)
 		default:
@@ -105,12 +100,6 @@ func (_m *Review) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Body = new(string)
 				*_m.Body = value.String
-			}
-		case review.FieldCreatedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field created_at", values[i])
-			} else if value.Valid {
-				_m.CreatedAt = value.Time
 			}
 		case review.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -170,9 +159,6 @@ func (_m *Review) String() string {
 		builder.WriteString("body=")
 		builder.WriteString(*v)
 	}
-	builder.WriteString(", ")
-	builder.WriteString("created_at=")
-	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

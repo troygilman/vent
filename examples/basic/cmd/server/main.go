@@ -89,42 +89,16 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 		return nil
 	}
 
-	fiction, err := client.Category.Create().
-		SetName("Fiction").
-		SetDescription("Novels and stories").
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-	reference, err := client.Category.Create().
-		SetName("Reference").
-		SetDescription("Manuals and catalogs").
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-
 	author, err := client.Author.Create().
 		SetName("Ada Lovelace").
-		SetBio("Demo author").
 		Save(ctx)
 	if err != nil {
 		return err
 	}
 	inactiveAuthor, err := client.Author.Create().
 		SetName("Charles Babbage").
-		SetBio("Inactive demo author").
 		SetActive(false).
 		Save(ctx)
-	if err != nil {
-		return err
-	}
-
-	scifi, err := client.Tag.Create().SetName("sci-fi").Save(ctx)
-	if err != nil {
-		return err
-	}
-	classic, err := client.Tag.Create().SetName("classic").Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -132,15 +106,11 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 	publishedAt := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
 	book, err := client.Book.Create().
 		SetTitle("Analytical Engines").
-		SetIsbn("978-0-000000-00-1").
 		SetPages(320).
-		SetPrice(24.99).
 		SetPublished(true).
 		SetPublishedAt(publishedAt).
 		SetInternalNotes("Feature showcase seed book").
 		SetAuthor(author).
-		SetCategory(fiction).
-		AddTags(scifi, classic).
 		Save(ctx)
 	if err != nil {
 		return err
@@ -149,10 +119,8 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 	_, err = client.Book.Create().
 		SetTitle("Notes on the Difference Engine").
 		SetPages(48).
-		SetPrice(9.99).
 		SetPublished(false).
 		SetAuthor(inactiveAuthor).
-		SetCategory(reference).
 		Save(ctx)
 	if err != nil {
 		return err
@@ -172,22 +140,6 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 		SetRating(3).
 		SetBody("Useful, but still a draft.").
 		SetBook(book).
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.AuditEvent.Create().
-		SetAction("seed").
-		SetDetail("Created demo library data").
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.ApiKey.Create().
-		SetName("demo-key").
-		SetToken("not-shown-in-admin").
 		Save(ctx)
 	return err
 }

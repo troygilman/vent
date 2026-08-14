@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
-	"github.com/troygilman/vent/examples/basic/ent/category"
 )
 
 // Book is the model entity for the Book schema.
@@ -21,43 +20,32 @@ type Book struct {
 	ID int `json:"id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
-	// Isbn holds the value of the "isbn" field.
-	Isbn *string `json:"isbn,omitempty"`
 	// Pages holds the value of the "pages" field.
 	Pages int `json:"pages,omitempty"`
-	// Price holds the value of the "price" field.
-	Price float64 `json:"price,omitempty"`
 	// Published holds the value of the "published" field.
 	Published bool `json:"published,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
 	PublishedAt *time.Time `json:"published_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
-	// ViewCount holds the value of the "view_count" field.
-	ViewCount int `json:"view_count,omitempty"`
 	// InternalNotes holds the value of the "internal_notes" field.
 	InternalNotes *string `json:"-"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the BookQuery when eager-loading is set.
-	Edges         BookEdges `json:"edges"`
-	book_author   *int
-	book_category *int
-	selectValues  sql.SelectValues
+	Edges        BookEdges `json:"edges"`
+	book_author  *int
+	selectValues sql.SelectValues
 }
 
 // BookEdges holds the relations/edges for other nodes in the graph.
 type BookEdges struct {
 	// Author holds the value of the author edge.
 	Author *Author `json:"author,omitempty"`
-	// Category holds the value of the category edge.
-	Category *Category `json:"category,omitempty"`
-	// Tags holds the value of the tags edge.
-	Tags []*Tag `json:"tags,omitempty"`
 	// Reviews holds the value of the reviews edge.
 	Reviews []*Review `json:"reviews,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [2]bool
 }
 
 // AuthorOrErr returns the Author value or an error if the edge
@@ -71,30 +59,10 @@ func (e BookEdges) AuthorOrErr() (*Author, error) {
 	return nil, &NotLoadedError{edge: "author"}
 }
 
-// CategoryOrErr returns the Category value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e BookEdges) CategoryOrErr() (*Category, error) {
-	if e.Category != nil {
-		return e.Category, nil
-	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: category.Label}
-	}
-	return nil, &NotLoadedError{edge: "category"}
-}
-
-// TagsOrErr returns the Tags value or an error if the edge
-// was not loaded in eager-loading.
-func (e BookEdges) TagsOrErr() ([]*Tag, error) {
-	if e.loadedTypes[2] {
-		return e.Tags, nil
-	}
-	return nil, &NotLoadedError{edge: "tags"}
-}
-
 // ReviewsOrErr returns the Reviews value or an error if the edge
 // was not loaded in eager-loading.
 func (e BookEdges) ReviewsOrErr() ([]*Review, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[1] {
 		return e.Reviews, nil
 	}
 	return nil, &NotLoadedError{edge: "reviews"}
@@ -107,17 +75,13 @@ func (*Book) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case book.FieldPublished:
 			values[i] = new(sql.NullBool)
-		case book.FieldPrice:
-			values[i] = new(sql.NullFloat64)
-		case book.FieldID, book.FieldPages, book.FieldViewCount:
+		case book.FieldID, book.FieldPages:
 			values[i] = new(sql.NullInt64)
-		case book.FieldTitle, book.FieldIsbn, book.FieldInternalNotes:
+		case book.FieldTitle, book.FieldInternalNotes:
 			values[i] = new(sql.NullString)
 		case book.FieldPublishedAt, book.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case book.ForeignKeys[0]: // book_author
-			values[i] = new(sql.NullInt64)
-		case book.ForeignKeys[1]: // book_category
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -146,24 +110,11 @@ func (_m *Book) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Title = value.String
 			}
-		case book.FieldIsbn:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field isbn", values[i])
-			} else if value.Valid {
-				_m.Isbn = new(string)
-				*_m.Isbn = value.String
-			}
 		case book.FieldPages:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field pages", values[i])
 			} else if value.Valid {
 				_m.Pages = int(value.Int64)
-			}
-		case book.FieldPrice:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field price", values[i])
-			} else if value.Valid {
-				_m.Price = value.Float64
 			}
 		case book.FieldPublished:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -184,12 +135,6 @@ func (_m *Book) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
 			}
-		case book.FieldViewCount:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field view_count", values[i])
-			} else if value.Valid {
-				_m.ViewCount = int(value.Int64)
-			}
 		case book.FieldInternalNotes:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field internal_notes", values[i])
@@ -203,13 +148,6 @@ func (_m *Book) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.book_author = new(int)
 				*_m.book_author = int(value.Int64)
-			}
-		case book.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field book_category", value)
-			} else if value.Valid {
-				_m.book_category = new(int)
-				*_m.book_category = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -227,16 +165,6 @@ func (_m *Book) Value(name string) (ent.Value, error) {
 // QueryAuthor queries the "author" edge of the Book entity.
 func (_m *Book) QueryAuthor() *AuthorQuery {
 	return NewBookClient(_m.config).QueryAuthor(_m)
-}
-
-// QueryCategory queries the "category" edge of the Book entity.
-func (_m *Book) QueryCategory() *CategoryQuery {
-	return NewBookClient(_m.config).QueryCategory(_m)
-}
-
-// QueryTags queries the "tags" edge of the Book entity.
-func (_m *Book) QueryTags() *TagQuery {
-	return NewBookClient(_m.config).QueryTags(_m)
 }
 
 // QueryReviews queries the "reviews" edge of the Book entity.
@@ -270,16 +198,8 @@ func (_m *Book) String() string {
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
 	builder.WriteString(", ")
-	if v := _m.Isbn; v != nil {
-		builder.WriteString("isbn=")
-		builder.WriteString(*v)
-	}
-	builder.WriteString(", ")
 	builder.WriteString("pages=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Pages))
-	builder.WriteString(", ")
-	builder.WriteString("price=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Price))
 	builder.WriteString(", ")
 	builder.WriteString("published=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Published))
@@ -291,9 +211,6 @@ func (_m *Book) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("view_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ViewCount))
 	builder.WriteString(", ")
 	builder.WriteString("internal_notes=<sensitive>")
 	builder.WriteByte(')')

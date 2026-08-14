@@ -3,8 +3,6 @@
 package review
 
 import (
-	"time"
-
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -20,8 +18,6 @@ const (
 	FieldRating = "rating"
 	// FieldBody holds the string denoting the body field in the database.
 	FieldBody = "body"
-	// FieldCreatedAt holds the string denoting the created_at field in the database.
-	FieldCreatedAt = "created_at"
 	// EdgeBook holds the string denoting the book edge name in mutations.
 	EdgeBook = "book"
 	// Table holds the table name of the review in the database.
@@ -41,7 +37,6 @@ var Columns = []string{
 	FieldReviewer,
 	FieldRating,
 	FieldBody,
-	FieldCreatedAt,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "reviews"
@@ -70,8 +65,6 @@ var (
 	ReviewerValidator func(string) error
 	// RatingValidator is a validator for the "rating" field. It is called by the builders before save.
 	RatingValidator func(int) error
-	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
-	DefaultCreatedAt func() time.Time
 )
 
 // OrderOption defines the ordering options for the Review queries.
@@ -95,11 +88,6 @@ func ByRating(opts ...sql.OrderTermOption) OrderOption {
 // ByBody orders the results by the body field.
 func ByBody(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBody, opts...).ToFunc()
-}
-
-// ByCreatedAt orders the results by the created_at field.
-func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
 
 // ByBookField orders the results by book field.

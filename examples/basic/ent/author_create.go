@@ -28,20 +28,6 @@ func (_c *AuthorCreate) SetName(v string) *AuthorCreate {
 	return _c
 }
 
-// SetBio sets the "bio" field.
-func (_c *AuthorCreate) SetBio(v string) *AuthorCreate {
-	_c.mutation.SetBio(v)
-	return _c
-}
-
-// SetNillableBio sets the "bio" field if the given value is not nil.
-func (_c *AuthorCreate) SetNillableBio(v *string) *AuthorCreate {
-	if v != nil {
-		_c.SetBio(*v)
-	}
-	return _c
-}
-
 // SetActive sets the "active" field.
 func (_c *AuthorCreate) SetActive(v bool) *AuthorCreate {
 	_c.mutation.SetActive(v)
@@ -156,10 +142,6 @@ func (_c *AuthorCreate) createSpec() (*Author, *sqlgraph.CreateSpec) {
 		_spec.SetField(author.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := _c.mutation.Bio(); ok {
-		_spec.SetField(author.FieldBio, field.TypeString, value)
-		_node.Bio = &value
-	}
 	if value, ok := _c.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)
 		_node.Active = value
@@ -244,24 +226,6 @@ func (u *AuthorUpsert) UpdateName() *AuthorUpsert {
 	return u
 }
 
-// SetBio sets the "bio" field.
-func (u *AuthorUpsert) SetBio(v string) *AuthorUpsert {
-	u.Set(author.FieldBio, v)
-	return u
-}
-
-// UpdateBio sets the "bio" field to the value that was provided on create.
-func (u *AuthorUpsert) UpdateBio() *AuthorUpsert {
-	u.SetExcluded(author.FieldBio)
-	return u
-}
-
-// ClearBio clears the value of the "bio" field.
-func (u *AuthorUpsert) ClearBio() *AuthorUpsert {
-	u.SetNull(author.FieldBio)
-	return u
-}
-
 // SetActive sets the "active" field.
 func (u *AuthorUpsert) SetActive(v bool) *AuthorUpsert {
 	u.Set(author.FieldActive, v)
@@ -325,27 +289,6 @@ func (u *AuthorUpsertOne) SetName(v string) *AuthorUpsertOne {
 func (u *AuthorUpsertOne) UpdateName() *AuthorUpsertOne {
 	return u.Update(func(s *AuthorUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetBio sets the "bio" field.
-func (u *AuthorUpsertOne) SetBio(v string) *AuthorUpsertOne {
-	return u.Update(func(s *AuthorUpsert) {
-		s.SetBio(v)
-	})
-}
-
-// UpdateBio sets the "bio" field to the value that was provided on create.
-func (u *AuthorUpsertOne) UpdateBio() *AuthorUpsertOne {
-	return u.Update(func(s *AuthorUpsert) {
-		s.UpdateBio()
-	})
-}
-
-// ClearBio clears the value of the "bio" field.
-func (u *AuthorUpsertOne) ClearBio() *AuthorUpsertOne {
-	return u.Update(func(s *AuthorUpsert) {
-		s.ClearBio()
 	})
 }
 
@@ -578,27 +521,6 @@ func (u *AuthorUpsertBulk) SetName(v string) *AuthorUpsertBulk {
 func (u *AuthorUpsertBulk) UpdateName() *AuthorUpsertBulk {
 	return u.Update(func(s *AuthorUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetBio sets the "bio" field.
-func (u *AuthorUpsertBulk) SetBio(v string) *AuthorUpsertBulk {
-	return u.Update(func(s *AuthorUpsert) {
-		s.SetBio(v)
-	})
-}
-
-// UpdateBio sets the "bio" field to the value that was provided on create.
-func (u *AuthorUpsertBulk) UpdateBio() *AuthorUpsertBulk {
-	return u.Update(func(s *AuthorUpsert) {
-		s.UpdateBio()
-	})
-}
-
-// ClearBio clears the value of the "bio" field.
-func (u *AuthorUpsertBulk) ClearBio() *AuthorUpsertBulk {
-	return u.Update(func(s *AuthorUpsert) {
-		s.ClearBio()
 	})
 }
 

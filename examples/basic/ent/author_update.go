@@ -42,26 +42,6 @@ func (_u *AuthorUpdate) SetNillableName(v *string) *AuthorUpdate {
 	return _u
 }
 
-// SetBio sets the "bio" field.
-func (_u *AuthorUpdate) SetBio(v string) *AuthorUpdate {
-	_u.mutation.SetBio(v)
-	return _u
-}
-
-// SetNillableBio sets the "bio" field if the given value is not nil.
-func (_u *AuthorUpdate) SetNillableBio(v *string) *AuthorUpdate {
-	if v != nil {
-		_u.SetBio(*v)
-	}
-	return _u
-}
-
-// ClearBio clears the value of the "bio" field.
-func (_u *AuthorUpdate) ClearBio() *AuthorUpdate {
-	_u.mutation.ClearBio()
-	return _u
-}
-
 // SetActive sets the "active" field.
 func (_u *AuthorUpdate) SetActive(v bool) *AuthorUpdate {
 	_u.mutation.SetActive(v)
@@ -169,12 +149,6 @@ func (_u *AuthorUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(author.FieldName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Bio(); ok {
-		_spec.SetField(author.FieldBio, field.TypeString, value)
-	}
-	if _u.mutation.BioCleared() {
-		_spec.ClearField(author.FieldBio, field.TypeString)
-	}
 	if value, ok := _u.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)
 	}
@@ -254,26 +228,6 @@ func (_u *AuthorUpdateOne) SetNillableName(v *string) *AuthorUpdateOne {
 	if v != nil {
 		_u.SetName(*v)
 	}
-	return _u
-}
-
-// SetBio sets the "bio" field.
-func (_u *AuthorUpdateOne) SetBio(v string) *AuthorUpdateOne {
-	_u.mutation.SetBio(v)
-	return _u
-}
-
-// SetNillableBio sets the "bio" field if the given value is not nil.
-func (_u *AuthorUpdateOne) SetNillableBio(v *string) *AuthorUpdateOne {
-	if v != nil {
-		_u.SetBio(*v)
-	}
-	return _u
-}
-
-// ClearBio clears the value of the "bio" field.
-func (_u *AuthorUpdateOne) ClearBio() *AuthorUpdateOne {
-	_u.mutation.ClearBio()
 	return _u
 }
 
@@ -413,12 +367,6 @@ func (_u *AuthorUpdateOne) sqlSave(ctx context.Context) (_node *Author, err erro
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(author.FieldName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Bio(); ok {
-		_spec.SetField(author.FieldBio, field.TypeString, value)
-	}
-	if _u.mutation.BioCleared() {
-		_spec.ClearField(author.FieldBio, field.TypeString)
 	}
 	if value, ok := _u.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)

@@ -58,11 +58,6 @@ func Name(v string) predicate.Author {
 	return predicate.Author(sql.FieldEQ(FieldName, v))
 }
 
-// Bio applies equality check predicate on the "bio" field. It's identical to BioEQ.
-func Bio(v string) predicate.Author {
-	return predicate.Author(sql.FieldEQ(FieldBio, v))
-}
-
 // Active applies equality check predicate on the "active" field. It's identical to ActiveEQ.
 func Active(v bool) predicate.Author {
 	return predicate.Author(sql.FieldEQ(FieldActive, v))
@@ -131,81 +126,6 @@ func NameEqualFold(v string) predicate.Author {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Author {
 	return predicate.Author(sql.FieldContainsFold(FieldName, v))
-}
-
-// BioEQ applies the EQ predicate on the "bio" field.
-func BioEQ(v string) predicate.Author {
-	return predicate.Author(sql.FieldEQ(FieldBio, v))
-}
-
-// BioNEQ applies the NEQ predicate on the "bio" field.
-func BioNEQ(v string) predicate.Author {
-	return predicate.Author(sql.FieldNEQ(FieldBio, v))
-}
-
-// BioIn applies the In predicate on the "bio" field.
-func BioIn(vs ...string) predicate.Author {
-	return predicate.Author(sql.FieldIn(FieldBio, vs...))
-}
-
-// BioNotIn applies the NotIn predicate on the "bio" field.
-func BioNotIn(vs ...string) predicate.Author {
-	return predicate.Author(sql.FieldNotIn(FieldBio, vs...))
-}
-
-// BioGT applies the GT predicate on the "bio" field.
-func BioGT(v string) predicate.Author {
-	return predicate.Author(sql.FieldGT(FieldBio, v))
-}
-
-// BioGTE applies the GTE predicate on the "bio" field.
-func BioGTE(v string) predicate.Author {
-	return predicate.Author(sql.FieldGTE(FieldBio, v))
-}
-
-// BioLT applies the LT predicate on the "bio" field.
-func BioLT(v string) predicate.Author {
-	return predicate.Author(sql.FieldLT(FieldBio, v))
-}
-
-// BioLTE applies the LTE predicate on the "bio" field.
-func BioLTE(v string) predicate.Author {
-	return predicate.Author(sql.FieldLTE(FieldBio, v))
-}
-
-// BioContains applies the Contains predicate on the "bio" field.
-func BioContains(v string) predicate.Author {
-	return predicate.Author(sql.FieldContains(FieldBio, v))
-}
-
-// BioHasPrefix applies the HasPrefix predicate on the "bio" field.
-func BioHasPrefix(v string) predicate.Author {
-	return predicate.Author(sql.FieldHasPrefix(FieldBio, v))
-}
-
-// BioHasSuffix applies the HasSuffix predicate on the "bio" field.
-func BioHasSuffix(v string) predicate.Author {
-	return predicate.Author(sql.FieldHasSuffix(FieldBio, v))
-}
-
-// BioIsNil applies the IsNil predicate on the "bio" field.
-func BioIsNil() predicate.Author {
-	return predicate.Author(sql.FieldIsNull(FieldBio))
-}
-
-// BioNotNil applies the NotNil predicate on the "bio" field.
-func BioNotNil() predicate.Author {
-	return predicate.Author(sql.FieldNotNull(FieldBio))
-}
-
-// BioEqualFold applies the EqualFold predicate on the "bio" field.
-func BioEqualFold(v string) predicate.Author {
-	return predicate.Author(sql.FieldEqualFold(FieldBio, v))
-}
-
-// BioContainsFold applies the ContainsFold predicate on the "bio" field.
-func BioContainsFold(v string) predicate.Author {
-	return predicate.Author(sql.FieldContainsFold(FieldBio, v))
 }
 
 // ActiveEQ applies the EQ predicate on the "active" field.

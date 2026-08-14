@@ -10,14 +10,11 @@ import (
 
 	"github.com/troygilman/vent"
 	ent "github.com/troygilman/vent/examples/basic/ent"
-	"github.com/troygilman/vent/examples/basic/ent/auditevent"
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
-	"github.com/troygilman/vent/examples/basic/ent/category"
 	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
 	"github.com/troygilman/vent/examples/basic/ent/review"
-	"github.com/troygilman/vent/examples/basic/ent/tag"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 	"github.com/troygilman/vent/requestctx"
 	"github.com/troygilman/vent/templates/gui"
@@ -27,186 +24,13 @@ import (
 var (
 	_ = sort.Strings
 	_ = strings.Builder{}
-	_ = auditevent.Label
 	_ = author.Label
 	_ = book.Label
-	_ = category.Label
 	_ = permission.Label
 	_ = permissiongroup.Label
 	_ = review.Label
-	_ = tag.Label
 	_ = user.Label
 )
-
-// AuditEventField is the typed admin field contract for AuditEvent.
-type AuditEventField interface {
-	ListCell(ctx context.Context, e *ent.AuditEvent) string
-	CreateHTML(ctx context.Context) (string, error)
-	UpdateHTML(ctx context.Context, e *ent.AuditEvent) (string, error)
-	ApplyCreate(ctx context.Context, builder *ent.AuditEventCreate, input AuditEventCreateInput) error
-	ApplyUpdate(ctx context.Context, builder *ent.AuditEventUpdateOne, input AuditEventUpdateInput) error
-}
-
-// AuditEventFields holds the resolved admin field implementations for AuditEvent.
-type AuditEventFields struct {
-	listColumns      []AuditEventField
-	createFormFields []AuditEventField
-	updateFormFields []AuditEventField
-	createBindFields []AuditEventField
-	updateBindFields []AuditEventField
-}
-
-func newAuditEventFields(schemaAdmin AuditEventAdmin) (AuditEventFields, error) {
-	f := AuditEventFields{}
-	ActionField := schemaAdmin.FieldAction()
-	if ActionField == nil {
-		return AuditEventFields{}, fmt.Errorf("AuditEventAdmin.FieldAction() returned nil")
-	}
-	DetailField := schemaAdmin.FieldDetail()
-	if DetailField == nil {
-		return AuditEventFields{}, fmt.Errorf("AuditEventAdmin.FieldDetail() returned nil")
-	}
-	CreatedAtField := schemaAdmin.FieldCreatedAt()
-	if CreatedAtField == nil {
-		return AuditEventFields{}, fmt.Errorf("AuditEventAdmin.FieldCreatedAt() returned nil")
-	}
-	f.listColumns = []AuditEventField{
-		ActionField,
-		DetailField,
-		CreatedAtField,
-	}
-	f.createFormFields = []AuditEventField{
-		ActionField,
-		DetailField,
-		CreatedAtField,
-	}
-	f.updateFormFields = []AuditEventField{
-		ActionField,
-		DetailField,
-		CreatedAtField,
-	}
-	f.createBindFields = []AuditEventField{}
-	f.updateBindFields = []AuditEventField{}
-	return f, nil
-}
-
-func (f AuditEventFields) eagerLoadQuery(q *ent.AuditEventQuery) *ent.AuditEventQuery {
-	return q
-}
-
-type AuditEventActionField struct {
-	client *ent.Client
-}
-
-// NewAuditEventActionField returns the generated default implementation for action.
-func NewAuditEventActionField(client *ent.Client) AuditEventActionField {
-	return AuditEventActionField{client: client}
-}
-
-func (f AuditEventActionField) ListCell(ctx context.Context, e *ent.AuditEvent) string {
-	return vent.FormatFormValue(e.Action)
-}
-
-func (f AuditEventActionField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "action",
-		Label:    "Action",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f AuditEventActionField) UpdateHTML(ctx context.Context, e *ent.AuditEvent) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "action",
-		Label:    "Action",
-		Value:    vent.FormatFormValue(e.Action),
-		Editable: false,
-	})
-}
-
-func (f AuditEventActionField) ApplyCreate(_ context.Context, builder *ent.AuditEventCreate, input AuditEventCreateInput) error {
-	return nil
-}
-
-func (f AuditEventActionField) ApplyUpdate(_ context.Context, builder *ent.AuditEventUpdateOne, input AuditEventUpdateInput) error {
-	return nil
-}
-
-type AuditEventDetailField struct {
-	client *ent.Client
-}
-
-// NewAuditEventDetailField returns the generated default implementation for detail.
-func NewAuditEventDetailField(client *ent.Client) AuditEventDetailField {
-	return AuditEventDetailField{client: client}
-}
-
-func (f AuditEventDetailField) ListCell(ctx context.Context, e *ent.AuditEvent) string {
-	return vent.FormatFormValue(e.Detail)
-}
-
-func (f AuditEventDetailField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "detail",
-		Label:    "Detail",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f AuditEventDetailField) UpdateHTML(ctx context.Context, e *ent.AuditEvent) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "detail",
-		Label:    "Detail",
-		Value:    vent.FormatFormValue(e.Detail),
-		Editable: false,
-	})
-}
-
-func (f AuditEventDetailField) ApplyCreate(_ context.Context, builder *ent.AuditEventCreate, input AuditEventCreateInput) error {
-	return nil
-}
-
-func (f AuditEventDetailField) ApplyUpdate(_ context.Context, builder *ent.AuditEventUpdateOne, input AuditEventUpdateInput) error {
-	return nil
-}
-
-type AuditEventCreatedAtField struct {
-	client *ent.Client
-}
-
-// NewAuditEventCreatedAtField returns the generated default implementation for created_at.
-func NewAuditEventCreatedAtField(client *ent.Client) AuditEventCreatedAtField {
-	return AuditEventCreatedAtField{client: client}
-}
-
-func (f AuditEventCreatedAtField) ListCell(ctx context.Context, e *ent.AuditEvent) string {
-	return vent.FormatFormValue(e.CreatedAt)
-}
-
-func (f AuditEventCreatedAtField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
-		Name:     "created_at",
-		Label:    "CreatedAt",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f AuditEventCreatedAtField) UpdateHTML(ctx context.Context, e *ent.AuditEvent) (string, error) {
-	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
-		Name:     "created_at",
-		Label:    "CreatedAt",
-		Value:    vent.FormatFormValue(e.CreatedAt),
-		Editable: false,
-	})
-}
-
-func (f AuditEventCreatedAtField) ApplyCreate(_ context.Context, builder *ent.AuditEventCreate, input AuditEventCreateInput) error {
-	return nil
-}
-
-func (f AuditEventCreatedAtField) ApplyUpdate(_ context.Context, builder *ent.AuditEventUpdateOne, input AuditEventUpdateInput) error {
-	return nil
-}
 
 // AuthorField is the typed admin field contract for Author.
 type AuthorField interface {
@@ -232,10 +56,6 @@ func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 	if NameField == nil {
 		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldName() returned nil")
 	}
-	BioField := schemaAdmin.FieldBio()
-	if BioField == nil {
-		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldBio() returned nil")
-	}
 	ActiveField := schemaAdmin.FieldActive()
 	if ActiveField == nil {
 		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldActive() returned nil")
@@ -246,22 +66,18 @@ func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 	}
 	f.createFormFields = []AuthorField{
 		NameField,
-		BioField,
 		ActiveField,
 	}
 	f.updateFormFields = []AuthorField{
 		NameField,
-		BioField,
 		ActiveField,
 	}
 	f.createBindFields = []AuthorField{
 		NameField,
-		BioField,
 		ActiveField,
 	}
 	f.updateBindFields = []AuthorField{
 		NameField,
-		BioField,
 		ActiveField,
 	}
 	return f, nil
@@ -309,54 +125,6 @@ func (f AuthorNameField) ApplyCreate(_ context.Context, builder *ent.AuthorCreat
 func (f AuthorNameField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error {
 	if input.Name != nil {
 		builder.SetName(*input.Name)
-	}
-	return nil
-}
-
-type AuthorBioField struct {
-	client *ent.Client
-}
-
-// NewAuthorBioField returns the generated default implementation for bio.
-func NewAuthorBioField(client *ent.Client) AuthorBioField {
-	return AuthorBioField{client: client}
-}
-
-func (f AuthorBioField) ListCell(ctx context.Context, e *ent.Author) string {
-	return vent.FormatFormValue(e.Bio)
-}
-
-func (f AuthorBioField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "bio",
-		Label:    "Bio",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f AuthorBioField) UpdateHTML(ctx context.Context, e *ent.Author) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "bio",
-		Label:    "Bio",
-		Value:    vent.FormatFormValue(e.Bio),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f AuthorBioField) ApplyCreate(_ context.Context, builder *ent.AuthorCreate, input AuthorCreateInput) error {
-	if input.Bio != nil {
-		builder.SetNillableBio(input.Bio)
-	}
-	return nil
-}
-
-func (f AuthorBioField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error {
-	if input.Bio.Set {
-		if input.Bio.Value == nil {
-			builder.ClearBio()
-		} else {
-			builder.SetNillableBio(input.Bio.Value)
-		}
 	}
 	return nil
 }
@@ -430,29 +198,13 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 	if TitleField == nil {
 		return BookFields{}, fmt.Errorf("BookAdmin.FieldTitle() returned nil")
 	}
-	IsbnField := schemaAdmin.FieldIsbn()
-	if IsbnField == nil {
-		return BookFields{}, fmt.Errorf("BookAdmin.FieldIsbn() returned nil")
-	}
 	AuthorField := schemaAdmin.FieldAuthor()
 	if AuthorField == nil {
 		return BookFields{}, fmt.Errorf("BookAdmin.FieldAuthor() returned nil")
 	}
-	CategoryField := schemaAdmin.FieldCategory()
-	if CategoryField == nil {
-		return BookFields{}, fmt.Errorf("BookAdmin.FieldCategory() returned nil")
-	}
-	TagsField := schemaAdmin.FieldTags()
-	if TagsField == nil {
-		return BookFields{}, fmt.Errorf("BookAdmin.FieldTags() returned nil")
-	}
 	PagesField := schemaAdmin.FieldPages()
 	if PagesField == nil {
 		return BookFields{}, fmt.Errorf("BookAdmin.FieldPages() returned nil")
-	}
-	PriceField := schemaAdmin.FieldPrice()
-	if PriceField == nil {
-		return BookFields{}, fmt.Errorf("BookAdmin.FieldPrice() returned nil")
 	}
 	PublishedField := schemaAdmin.FieldPublished()
 	if PublishedField == nil {
@@ -461,10 +213,6 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 	PublishedAtField := schemaAdmin.FieldPublishedAt()
 	if PublishedAtField == nil {
 		return BookFields{}, fmt.Errorf("BookAdmin.FieldPublishedAt() returned nil")
-	}
-	ViewCountField := schemaAdmin.FieldViewCount()
-	if ViewCountField == nil {
-		return BookFields{}, fmt.Errorf("BookAdmin.FieldViewCount() returned nil")
 	}
 	CreatedAtField := schemaAdmin.FieldCreatedAt()
 	if CreatedAtField == nil {
@@ -477,59 +225,39 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 	f.listColumns = []BookField{
 		TitleField,
 		AuthorField,
-		CategoryField,
 		PublishedField,
-		PriceField,
-		PublishedAtField,
+		PagesField,
 	}
 	f.createFormFields = []BookField{
 		TitleField,
-		IsbnField,
 		AuthorField,
-		CategoryField,
-		TagsField,
 		PagesField,
-		PriceField,
 		PublishedField,
 		PublishedAtField,
-		ViewCountField,
 		CreatedAtField,
 		NotesField,
 	}
 	f.updateFormFields = []BookField{
 		TitleField,
-		IsbnField,
 		AuthorField,
-		CategoryField,
-		TagsField,
 		PagesField,
-		PriceField,
 		PublishedField,
 		PublishedAtField,
-		ViewCountField,
 		CreatedAtField,
 		NotesField,
 	}
 	f.createBindFields = []BookField{
 		TitleField,
-		IsbnField,
 		AuthorField,
-		CategoryField,
-		TagsField,
 		PagesField,
-		PriceField,
 		PublishedField,
 		PublishedAtField,
 		NotesField,
 	}
 	f.updateBindFields = []BookField{
 		TitleField,
-		IsbnField,
 		AuthorField,
-		CategoryField,
-		TagsField,
 		PagesField,
-		PriceField,
 		PublishedField,
 		PublishedAtField,
 		NotesField,
@@ -539,8 +267,6 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 
 func (f BookFields) eagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
 	q = q.WithAuthor()
-	q = q.WithCategory()
-	q = q.WithTags()
 	return q
 }
 
@@ -582,54 +308,6 @@ func (f BookTitleField) ApplyCreate(_ context.Context, builder *ent.BookCreate, 
 func (f BookTitleField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
 	if input.Title != nil {
 		builder.SetTitle(*input.Title)
-	}
-	return nil
-}
-
-type BookIsbnField struct {
-	client *ent.Client
-}
-
-// NewBookIsbnField returns the generated default implementation for isbn.
-func NewBookIsbnField(client *ent.Client) BookIsbnField {
-	return BookIsbnField{client: client}
-}
-
-func (f BookIsbnField) ListCell(ctx context.Context, e *ent.Book) string {
-	return vent.FormatFormValue(e.Isbn)
-}
-
-func (f BookIsbnField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "isbn",
-		Label:    "Isbn",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f BookIsbnField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "isbn",
-		Label:    "Isbn",
-		Value:    vent.FormatFormValue(e.Isbn),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f BookIsbnField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
-	if input.Isbn != nil {
-		builder.SetNillableIsbn(input.Isbn)
-	}
-	return nil
-}
-
-func (f BookIsbnField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	if input.Isbn.Set {
-		if input.Isbn.Value == nil {
-			builder.ClearIsbn()
-		} else {
-			builder.SetNillableIsbn(input.Isbn.Value)
-		}
 	}
 	return nil
 }
@@ -730,208 +408,6 @@ func (f BookAuthorField) loadAuthorOptionsWithSelection(ctx context.Context, e *
 	return options, nil
 }
 
-type BookCategoryField struct {
-	client *ent.Client
-}
-
-// NewBookCategoryField returns the generated default implementation for category.
-func NewBookCategoryField(client *ent.Client) BookCategoryField {
-	return BookCategoryField{client: client}
-}
-
-func (f BookCategoryField) ListCell(ctx context.Context, e *ent.Book) string {
-	if e.Edges.Category != nil {
-		return MustAdmin(ctx).Category().Name(e.Edges.Category)
-	}
-	return ""
-}
-
-func (f BookCategoryField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadCategoryOptions(ctx)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "category",
-		Label:    "Category",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f BookCategoryField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	options, err := f.loadCategoryOptionsWithSelection(ctx, e)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "category",
-		Label:    "Category",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f BookCategoryField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
-	if input.Category != "" {
-		id, err := parseID(input.Category, "category")
-		if err != nil {
-			return err
-		}
-		builder.SetCategoryID(id)
-	}
-	return nil
-}
-
-func (f BookCategoryField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	if input.Category != nil {
-		if *input.Category != "" {
-			id, err := parseID(*input.Category, "category")
-			if err != nil {
-				return err
-			}
-			builder.SetCategoryID(id)
-		} else {
-			builder.ClearCategory()
-		}
-	}
-	return nil
-}
-func (f BookCategoryField) loadCategoryOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Category.Query().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	options := make([]gui.SelectOption, len(entities))
-	for i, entity := range entities {
-		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Category().Name(entity),
-		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f BookCategoryField) loadCategoryOptionsWithSelection(ctx context.Context, e *ent.Book) ([]gui.SelectOption, error) {
-	options, err := f.loadCategoryOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for i := range options {
-		options[i].Selected = e.Edges.Category != nil && e.Edges.Category.ID == options[i].Value
-	}
-	return options, nil
-}
-
-type BookTagsField struct {
-	client *ent.Client
-}
-
-// NewBookTagsField returns the generated default implementation for tags.
-func NewBookTagsField(client *ent.Client) BookTagsField {
-	return BookTagsField{client: client}
-}
-
-func (f BookTagsField) ListCell(ctx context.Context, e *ent.Book) string {
-	if len(e.Edges.Tags) == 0 {
-		return ""
-	}
-	var labels strings.Builder
-	for i, related := range e.Edges.Tags {
-		if i > 0 {
-			labels.WriteString(", ")
-		}
-		labels.WriteString(MustAdmin(ctx).Tag().Name(related))
-	}
-	return labels.String()
-}
-
-func (f BookTagsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadTagsOptions(ctx)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "tags",
-		Label:    "Tags",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f BookTagsField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	options, err := f.loadTagsOptionsWithSelection(ctx, e)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "tags",
-		Label:    "Tags",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f BookTagsField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
-	if len(input.Tags) > 0 {
-		ids, err := parseIDList(input.Tags, "tags")
-		if err != nil {
-			return err
-		}
-		builder.AddTagIDs(ids...)
-	}
-	return nil
-}
-
-func (f BookTagsField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	if input.Tags != nil {
-		builder.ClearTags()
-		if len(*input.Tags) > 0 {
-			ids, err := parseIDList(*input.Tags, "tags")
-			if err != nil {
-				return err
-			}
-			builder.AddTagIDs(ids...)
-		}
-	}
-	return nil
-}
-func (f BookTagsField) loadTagsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Tag.Query().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	options := make([]gui.SelectOption, len(entities))
-	for i, entity := range entities {
-		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Tag().Name(entity),
-		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f BookTagsField) loadTagsOptionsWithSelection(ctx context.Context, e *ent.Book) ([]gui.SelectOption, error) {
-	options, err := f.loadTagsOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.Tags {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
-	}
-	return options, nil
-}
-
 type BookPagesField struct {
 	client *ent.Client
 }
@@ -973,51 +449,6 @@ func (f BookPagesField) ApplyCreate(_ context.Context, builder *ent.BookCreate, 
 func (f BookPagesField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
 	if input.Pages != nil {
 		builder.SetPages(*input.Pages)
-	}
-	return nil
-}
-
-type BookPriceField struct {
-	client *ent.Client
-}
-
-// NewBookPriceField returns the generated default implementation for price.
-func NewBookPriceField(client *ent.Client) BookPriceField {
-	return BookPriceField{client: client}
-}
-
-func (f BookPriceField) ListCell(ctx context.Context, e *ent.Book) string {
-	return vent.FormatFormValue(e.Price)
-}
-
-func (f BookPriceField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderFloatFieldHTML(ctx, gui.SchemaEntityFloatFieldProps{
-		Name:     "price",
-		Label:    "Price",
-		Value:    vent.FormatFormValue(book.DefaultPrice),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f BookPriceField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	return gui.RenderFloatFieldHTML(ctx, gui.SchemaEntityFloatFieldProps{
-		Name:     "price",
-		Label:    "Price",
-		Value:    vent.FormatFormValue(e.Price),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f BookPriceField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
-	if input.Price != nil {
-		builder.SetPrice(*input.Price)
-	}
-	return nil
-}
-
-func (f BookPriceField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	if input.Price != nil {
-		builder.SetPrice(*input.Price)
 	}
 	return nil
 }
@@ -1125,45 +556,6 @@ func (f BookPublishedAtField) ApplyUpdate(_ context.Context, builder *ent.BookUp
 	return nil
 }
 
-type BookViewCountField struct {
-	client *ent.Client
-}
-
-// NewBookViewCountField returns the generated default implementation for view_count.
-func NewBookViewCountField(client *ent.Client) BookViewCountField {
-	return BookViewCountField{client: client}
-}
-
-func (f BookViewCountField) ListCell(ctx context.Context, e *ent.Book) string {
-	return vent.FormatFormValue(e.ViewCount)
-}
-
-func (f BookViewCountField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderIntFieldHTML(ctx, gui.SchemaEntityIntFieldProps{
-		Name:     "view_count",
-		Label:    "ViewCount",
-		Value:    vent.FormatFormValue(book.DefaultViewCount),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f BookViewCountField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	return gui.RenderIntFieldHTML(ctx, gui.SchemaEntityIntFieldProps{
-		Name:     "view_count",
-		Label:    "ViewCount",
-		Value:    vent.FormatFormValue(e.ViewCount),
-		Editable: false,
-	})
-}
-
-func (f BookViewCountField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
-	return nil
-}
-
-func (f BookViewCountField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	return nil
-}
-
 type BookCreatedAtField struct {
 	client *ent.Client
 }
@@ -1199,151 +591,6 @@ func (f BookCreatedAtField) ApplyCreate(_ context.Context, builder *ent.BookCrea
 }
 
 func (f BookCreatedAtField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error {
-	return nil
-}
-
-// CategoryField is the typed admin field contract for Category.
-type CategoryField interface {
-	ListCell(ctx context.Context, e *ent.Category) string
-	CreateHTML(ctx context.Context) (string, error)
-	UpdateHTML(ctx context.Context, e *ent.Category) (string, error)
-	ApplyCreate(ctx context.Context, builder *ent.CategoryCreate, input CategoryCreateInput) error
-	ApplyUpdate(ctx context.Context, builder *ent.CategoryUpdateOne, input CategoryUpdateInput) error
-}
-
-// CategoryFields holds the resolved admin field implementations for Category.
-type CategoryFields struct {
-	listColumns      []CategoryField
-	createFormFields []CategoryField
-	updateFormFields []CategoryField
-	createBindFields []CategoryField
-	updateBindFields []CategoryField
-}
-
-func newCategoryFields(schemaAdmin CategoryAdmin) (CategoryFields, error) {
-	f := CategoryFields{}
-	NameField := schemaAdmin.FieldName()
-	if NameField == nil {
-		return CategoryFields{}, fmt.Errorf("CategoryAdmin.FieldName() returned nil")
-	}
-	DescriptionField := schemaAdmin.FieldDescription()
-	if DescriptionField == nil {
-		return CategoryFields{}, fmt.Errorf("CategoryAdmin.FieldDescription() returned nil")
-	}
-	f.listColumns = []CategoryField{
-		NameField,
-		DescriptionField,
-	}
-	f.createFormFields = []CategoryField{
-		NameField,
-		DescriptionField,
-	}
-	f.updateFormFields = []CategoryField{
-		NameField,
-		DescriptionField,
-	}
-	f.createBindFields = []CategoryField{
-		NameField,
-		DescriptionField,
-	}
-	f.updateBindFields = []CategoryField{
-		NameField,
-		DescriptionField,
-	}
-	return f, nil
-}
-
-func (f CategoryFields) eagerLoadQuery(q *ent.CategoryQuery) *ent.CategoryQuery {
-	return q
-}
-
-type CategoryNameField struct {
-	client *ent.Client
-}
-
-// NewCategoryNameField returns the generated default implementation for name.
-func NewCategoryNameField(client *ent.Client) CategoryNameField {
-	return CategoryNameField{client: client}
-}
-
-func (f CategoryNameField) ListCell(ctx context.Context, e *ent.Category) string {
-	return MustAdmin(ctx).Category().Name(e)
-}
-
-func (f CategoryNameField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f CategoryNameField) UpdateHTML(ctx context.Context, e *ent.Category) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
-		Value:    vent.FormatFormValue(e.Name),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f CategoryNameField) ApplyCreate(_ context.Context, builder *ent.CategoryCreate, input CategoryCreateInput) error {
-	builder.SetName(input.Name)
-	return nil
-}
-
-func (f CategoryNameField) ApplyUpdate(_ context.Context, builder *ent.CategoryUpdateOne, input CategoryUpdateInput) error {
-	if input.Name != nil {
-		builder.SetName(*input.Name)
-	}
-	return nil
-}
-
-type CategoryDescriptionField struct {
-	client *ent.Client
-}
-
-// NewCategoryDescriptionField returns the generated default implementation for description.
-func NewCategoryDescriptionField(client *ent.Client) CategoryDescriptionField {
-	return CategoryDescriptionField{client: client}
-}
-
-func (f CategoryDescriptionField) ListCell(ctx context.Context, e *ent.Category) string {
-	return vent.FormatFormValue(e.Description)
-}
-
-func (f CategoryDescriptionField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "description",
-		Label:    "Description",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f CategoryDescriptionField) UpdateHTML(ctx context.Context, e *ent.Category) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "description",
-		Label:    "Description",
-		Value:    vent.FormatFormValue(e.Description),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f CategoryDescriptionField) ApplyCreate(_ context.Context, builder *ent.CategoryCreate, input CategoryCreateInput) error {
-	if input.Description != nil {
-		builder.SetNillableDescription(input.Description)
-	}
-	return nil
-}
-
-func (f CategoryDescriptionField) ApplyUpdate(_ context.Context, builder *ent.CategoryUpdateOne, input CategoryUpdateInput) error {
-	if input.Description.Set {
-		if input.Description.Value == nil {
-			builder.ClearDescription()
-		} else {
-			builder.SetNillableDescription(input.Description.Value)
-		}
-	}
 	return nil
 }
 
@@ -1784,29 +1031,22 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 	if BookField == nil {
 		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldBook() returned nil")
 	}
-	CreatedAtField := schemaAdmin.FieldCreatedAt()
-	if CreatedAtField == nil {
-		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldCreatedAt() returned nil")
-	}
 	f.listColumns = []ReviewField{
 		ReviewerField,
 		RatingField,
 		BookField,
-		CreatedAtField,
 	}
 	f.createFormFields = []ReviewField{
 		ReviewerField,
 		RatingField,
 		BodyField,
 		BookField,
-		CreatedAtField,
 	}
 	f.updateFormFields = []ReviewField{
 		ReviewerField,
 		RatingField,
 		BodyField,
 		BookField,
-		CreatedAtField,
 	}
 	f.createBindFields = []ReviewField{
 		ReviewerField,
@@ -2052,287 +1292,6 @@ func (f ReviewBookField) loadBookOptionsWithSelection(ctx context.Context, e *en
 	}
 	for i := range options {
 		options[i].Selected = e.Edges.Book != nil && e.Edges.Book.ID == options[i].Value
-	}
-	return options, nil
-}
-
-type ReviewCreatedAtField struct {
-	client *ent.Client
-}
-
-// NewReviewCreatedAtField returns the generated default implementation for created_at.
-func NewReviewCreatedAtField(client *ent.Client) ReviewCreatedAtField {
-	return ReviewCreatedAtField{client: client}
-}
-
-func (f ReviewCreatedAtField) ListCell(ctx context.Context, e *ent.Review) string {
-	return vent.FormatFormValue(e.CreatedAt)
-}
-
-func (f ReviewCreatedAtField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
-		Name:     "created_at",
-		Label:    "CreatedAt",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f ReviewCreatedAtField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
-	return gui.RenderTimeFieldHTML(ctx, gui.SchemaEntityTimeFieldProps{
-		Name:     "created_at",
-		Label:    "CreatedAt",
-		Value:    vent.FormatFormValue(e.CreatedAt),
-		Editable: false,
-	})
-}
-
-func (f ReviewCreatedAtField) ApplyCreate(_ context.Context, builder *ent.ReviewCreate, input ReviewCreateInput) error {
-	return nil
-}
-
-func (f ReviewCreatedAtField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdateOne, input ReviewUpdateInput) error {
-	return nil
-}
-
-// TagField is the typed admin field contract for Tag.
-type TagField interface {
-	ListCell(ctx context.Context, e *ent.Tag) string
-	CreateHTML(ctx context.Context) (string, error)
-	UpdateHTML(ctx context.Context, e *ent.Tag) (string, error)
-	ApplyCreate(ctx context.Context, builder *ent.TagCreate, input TagCreateInput) error
-	ApplyUpdate(ctx context.Context, builder *ent.TagUpdateOne, input TagUpdateInput) error
-}
-
-// TagFields holds the resolved admin field implementations for Tag.
-type TagFields struct {
-	listColumns      []TagField
-	createFormFields []TagField
-	updateFormFields []TagField
-	createBindFields []TagField
-	updateBindFields []TagField
-}
-
-func newTagFields(schemaAdmin TagAdmin) (TagFields, error) {
-	f := TagFields{}
-	IdField := schemaAdmin.FieldID()
-	if IdField == nil {
-		return TagFields{}, fmt.Errorf("TagAdmin.FieldID() returned nil")
-	}
-	NameField := schemaAdmin.FieldName()
-	if NameField == nil {
-		return TagFields{}, fmt.Errorf("TagAdmin.FieldName() returned nil")
-	}
-	BooksField := schemaAdmin.FieldBooks()
-	if BooksField == nil {
-		return TagFields{}, fmt.Errorf("TagAdmin.FieldBooks() returned nil")
-	}
-	f.listColumns = []TagField{
-		IdField,
-		NameField,
-	}
-	f.createFormFields = []TagField{
-		NameField,
-		BooksField,
-	}
-	f.updateFormFields = []TagField{
-		IdField,
-		NameField,
-		BooksField,
-	}
-	f.createBindFields = []TagField{
-		NameField,
-		BooksField,
-	}
-	f.updateBindFields = []TagField{
-		NameField,
-		BooksField,
-	}
-	return f, nil
-}
-
-func (f TagFields) eagerLoadQuery(q *ent.TagQuery) *ent.TagQuery {
-	q = q.WithBooks()
-	return q
-}
-
-type TagIdField struct {
-	client *ent.Client
-}
-
-// NewTagIdField returns the generated default implementation for id.
-func NewTagIdField(client *ent.Client) TagIdField {
-	return TagIdField{client: client}
-}
-
-func (f TagIdField) ListCell(ctx context.Context, e *ent.Tag) string {
-	return fmt.Sprintf("%d", e.ID)
-}
-
-func (f TagIdField) CreateHTML(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (f TagIdField) UpdateHTML(ctx context.Context, e *ent.Tag) (string, error) {
-	return gui.RenderIntFieldHTML(ctx, gui.SchemaEntityIntFieldProps{
-		Name:     "id",
-		Label:    "ID",
-		Value:    fmt.Sprintf("%d", e.ID),
-		Editable: false,
-	})
-}
-
-func (f TagIdField) ApplyCreate(_ context.Context, builder *ent.TagCreate, input TagCreateInput) error {
-	return nil
-}
-
-func (f TagIdField) ApplyUpdate(_ context.Context, builder *ent.TagUpdateOne, input TagUpdateInput) error {
-	return nil
-}
-
-type TagNameField struct {
-	client *ent.Client
-}
-
-// NewTagNameField returns the generated default implementation for name.
-func NewTagNameField(client *ent.Client) TagNameField {
-	return TagNameField{client: client}
-}
-
-func (f TagNameField) ListCell(ctx context.Context, e *ent.Tag) string {
-	return MustAdmin(ctx).Tag().Name(e)
-}
-
-func (f TagNameField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f TagNameField) UpdateHTML(ctx context.Context, e *ent.Tag) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
-		Value:    vent.FormatFormValue(e.Name),
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-	})
-}
-
-func (f TagNameField) ApplyCreate(_ context.Context, builder *ent.TagCreate, input TagCreateInput) error {
-	builder.SetName(input.Name)
-	return nil
-}
-
-func (f TagNameField) ApplyUpdate(_ context.Context, builder *ent.TagUpdateOne, input TagUpdateInput) error {
-	if input.Name != nil {
-		builder.SetName(*input.Name)
-	}
-	return nil
-}
-
-type TagBooksField struct {
-	client *ent.Client
-}
-
-// NewTagBooksField returns the generated default implementation for books.
-func NewTagBooksField(client *ent.Client) TagBooksField {
-	return TagBooksField{client: client}
-}
-
-func (f TagBooksField) ListCell(ctx context.Context, e *ent.Tag) string {
-	if len(e.Edges.Books) == 0 {
-		return ""
-	}
-	var labels strings.Builder
-	for i, related := range e.Edges.Books {
-		if i > 0 {
-			labels.WriteString(", ")
-		}
-		labels.WriteString(MustAdmin(ctx).Book().Name(related))
-	}
-	return labels.String()
-}
-
-func (f TagBooksField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadBooksOptions(ctx)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "books",
-		Label:    "Books",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f TagBooksField) UpdateHTML(ctx context.Context, e *ent.Tag) (string, error) {
-	options, err := f.loadBooksOptionsWithSelection(ctx, e)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "books",
-		Label:    "Books",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
-}
-
-func (f TagBooksField) ApplyCreate(_ context.Context, builder *ent.TagCreate, input TagCreateInput) error {
-	if len(input.Books) > 0 {
-		ids, err := parseIDList(input.Books, "books")
-		if err != nil {
-			return err
-		}
-		builder.AddBookIDs(ids...)
-	}
-	return nil
-}
-
-func (f TagBooksField) ApplyUpdate(_ context.Context, builder *ent.TagUpdateOne, input TagUpdateInput) error {
-	if input.Books != nil {
-		builder.ClearBooks()
-		if len(*input.Books) > 0 {
-			ids, err := parseIDList(*input.Books, "books")
-			if err != nil {
-				return err
-			}
-			builder.AddBookIDs(ids...)
-		}
-	}
-	return nil
-}
-func (f TagBooksField) loadBooksOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Book.Query().All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	options := make([]gui.SelectOption, len(entities))
-	for i, entity := range entities {
-		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Book().Name(entity),
-		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f TagBooksField) loadBooksOptionsWithSelection(ctx context.Context, e *ent.Tag) ([]gui.SelectOption, error) {
-	options, err := f.loadBooksOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.Books {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
 	}
 	return options, nil
 }

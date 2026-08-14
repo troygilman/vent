@@ -18,8 +18,6 @@ type Author struct {
 	ID int `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// Bio holds the value of the "bio" field.
-	Bio *string `json:"bio,omitempty"`
 	// Active holds the value of the "active" field.
 	Active bool `json:"active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -55,7 +53,7 @@ func (*Author) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case author.FieldID:
 			values[i] = new(sql.NullInt64)
-		case author.FieldName, author.FieldBio:
+		case author.FieldName:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -83,13 +81,6 @@ func (_m *Author) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
-			}
-		case author.FieldBio:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field bio", values[i])
-			} else if value.Valid {
-				_m.Bio = new(string)
-				*_m.Bio = value.String
 			}
 		case author.FieldActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -140,11 +131,6 @@ func (_m *Author) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
-	builder.WriteString(", ")
-	if v := _m.Bio; v != nil {
-		builder.WriteString("bio=")
-		builder.WriteString(*v)
-	}
 	builder.WriteString(", ")
 	builder.WriteString("active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Active))
