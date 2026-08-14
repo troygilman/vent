@@ -12,7 +12,7 @@ import (
 
 func TestAuthorAdminNameUsesEmail(t *testing.T) {
 	ctx := context.Background()
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	client := enttest.Open(t, "sqlite3", "file:author_admin?mode=memory&cache=shared&_fk=1")
 	user := client.User.Create().
 		SetEmail("ada@vent.com").
 		SaveX(ctx)

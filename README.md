@@ -218,6 +218,7 @@ Each `*Admin` owns:
 
 - **`FieldX()`** — one method per surface member
 - **`Name(entity)`** — display label (lists, breadcrumbs, current-user chip)
+- **`EagerLoadQuery(q)`** — edges loaded for lists, detail pages, and FK option labels (override to nest `WithX`)
 - **`ValidateCreate` / `ValidateUpdate` / `ValidateDelete`** — mutation policy after bind, before save
 - **`CanRead` / `CanCreate` / `CanUpdate` / `CanDelete`** — permission checks for routes, nav, and UI controls
 
@@ -258,6 +259,16 @@ func (a UserAdmin) ValidateUpdate(ctx context.Context, id int, in admin.UserUpda
     }
     // additional checks...
     return nil
+}
+```
+
+Nest eager-loads so `Name()` on a related schema can use edges (the default only `WithX()`s one level):
+
+```go
+func (a BookAdmin) EagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
+    return a.DefaultBookAdmin.EagerLoadQuery(q).WithAuthor(func(aq *ent.AuthorQuery) {
+        aq.WithUser()
+    })
 }
 ```
 

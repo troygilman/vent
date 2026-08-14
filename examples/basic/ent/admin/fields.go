@@ -83,11 +83,6 @@ func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 	return f, nil
 }
 
-func (f AuthorFields) eagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery {
-	q = q.WithUser()
-	return q
-}
-
 type AuthorUserField struct {
 	client *ent.Client
 }
@@ -156,7 +151,7 @@ func (f AuthorUserField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdat
 	return nil
 }
 func (f AuthorUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.User.Query().All(ctx)
+	entities, err := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -320,11 +315,6 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 	return f, nil
 }
 
-func (f BookFields) eagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
-	q = q.WithAuthor()
-	return q
-}
-
 type BookTitleField struct {
 	client *ent.Client
 }
@@ -435,7 +425,7 @@ func (f BookAuthorField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateO
 	return nil
 }
 func (f BookAuthorField) loadAuthorOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Author.Query().All(ctx)
+	entities, err := MustAdmin(ctx).Author().EagerLoadQuery(f.client.Author.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -698,11 +688,6 @@ func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) 
 	return f, nil
 }
 
-func (f PermissionFields) eagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery {
-	q = q.WithGroups()
-	return q
-}
-
 type PermissionNameField struct {
 	client *ent.Client
 }
@@ -815,7 +800,7 @@ func (f PermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.Permi
 	return nil
 }
 func (f PermissionGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.PermissionGroup.Query().All(ctx)
+	entities, err := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -895,11 +880,6 @@ func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroup
 		PermissionsField,
 	}
 	return f, nil
-}
-
-func (f PermissionGroupFields) eagerLoadQuery(q *ent.PermissionGroupQuery) *ent.PermissionGroupQuery {
-	q = q.WithPermissions()
-	return q
 }
 
 type PermissionGroupNameField struct {
@@ -1018,7 +998,7 @@ func (f PermissionGroupPermissionsField) ApplyUpdate(_ context.Context, builder 
 	return nil
 }
 func (f PermissionGroupPermissionsField) loadPermissionsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Permission.Query().All(ctx)
+	entities, err := MustAdmin(ctx).Permission().EagerLoadQuery(f.client.Permission.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1118,12 +1098,6 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 	return f, nil
 }
 
-func (f ReviewFields) eagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery {
-	q = q.WithUser()
-	q = q.WithBook()
-	return q
-}
-
 type ReviewUserField struct {
 	client *ent.Client
 }
@@ -1192,7 +1166,7 @@ func (f ReviewUserField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 func (f ReviewUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.User.Query().All(ctx)
+	entities, err := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1378,7 +1352,7 @@ func (f ReviewBookField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 func (f ReviewBookField) loadBookOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.Book.Query().All(ctx)
+	entities, err := MustAdmin(ctx).Book().EagerLoadQuery(f.client.Book.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1500,11 +1474,6 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		LastLoginField,
 	}
 	return f, nil
-}
-
-func (f UserFields) eagerLoadQuery(q *ent.UserQuery) *ent.UserQuery {
-	q = q.WithGroups()
-	return q
 }
 
 type UserIdField struct {
@@ -1842,7 +1811,7 @@ func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateO
 	return nil
 }
 func (f UserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.PermissionGroup.Query().All(ctx)
+	entities, err := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}

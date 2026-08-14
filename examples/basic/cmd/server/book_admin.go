@@ -15,6 +15,12 @@ func (BookAdmin) Name(e *ent.Book) string {
 	return e.Title
 }
 
+func (a BookAdmin) EagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
+	return a.DefaultBookAdmin.EagerLoadQuery(q).WithAuthor(func(aq *ent.AuthorQuery) {
+		aq.WithUser()
+	})
+}
+
 // FieldNotes supplies the required custom field declared on the Book schema.
 func (a BookAdmin) FieldNotes() admin.BookField {
 	return BookNotesField{}

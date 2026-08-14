@@ -106,15 +106,6 @@ func new{{ $node.Name }}Fields(schemaAdmin {{ $node.Name }}Admin) ({{ $node.Name
 	return f, nil
 }
 
-func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query {
-	{{- range $member := $rc.AdminSurface }}
-	{{- if $member.EagerLoad }}
-	q = q.With{{ pascal $member.Name }}()
-	{{- end }}
-	{{- end }}
-	return q
-}
-
 {{ range $member := $rc.AdminSurface }}
 {{- if hasGeneratedFieldDefault $member }}
 {{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
@@ -380,7 +371,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 
 {{- if isMemberKindEdge $member }}
 func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Options(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.{{ $member.EdgeTypeName }}.Query().All(ctx)
+	entities, err := MustAdmin(ctx).{{ $member.EdgeTypeName }}().EagerLoadQuery(f.client.{{ $member.EdgeTypeName }}.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -61,15 +61,17 @@ func (a Admin) {{ $item.Node.Name }}() {{ $item.Node.Name }}Admin {
 // {{ $node.Name }}Admin is the customizable admin surface for {{ $node.Name }}.
 // Embed Default{{ $node.Name }}Admin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type {{ $node.Name }}Admin interface {
 	{{- range $member := $rc.AdminSurface }}
 	Field{{ $member.Label }}() {{ $node.Name }}Field
 	{{- end }}
 	Name(e *ent.{{ $node.Name }}) string
+	EagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query
 	ValidateCreate(ctx context.Context, input {{ $node.Name }}CreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input {{ $node.Name }}UpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -108,6 +110,15 @@ func (Default{{ $node.Name }}Admin) Name(e *ent.{{ $node.Name }}) string {
 	{{- else }}
 	return fmt.Sprintf("%v", e.{{ $rc.DefaultNameField }})
 	{{- end }}
+}
+
+func (Default{{ $node.Name }}Admin) EagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query {
+	{{- range $member := $rc.AdminSurface }}
+	{{- if $member.EagerLoad }}
+	q = q.With{{ pascal $member.Name }}()
+	{{- end }}
+	{{- end }}
+	return q
 }
 
 	{{- range $member := $rc.AdminSurface }}

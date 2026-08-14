@@ -69,14 +69,16 @@ func (a Admin) User() UserAdmin {
 // AuthorAdmin is the customizable admin surface for Author.
 // Embed DefaultAuthorAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type AuthorAdmin interface {
 	FieldUser() AuthorField
 	FieldActive() AuthorField
 	Name(e *ent.Author) string
+	EagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery
 	ValidateCreate(ctx context.Context, input AuthorCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input AuthorUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -100,6 +102,11 @@ func NewDefaultAuthorAdmin(client *ent.Client) DefaultAuthorAdmin {
 
 func (DefaultAuthorAdmin) Name(e *ent.Author) string {
 	return fmt.Sprintf("%v", e.ID)
+}
+
+func (DefaultAuthorAdmin) EagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery {
+	q = q.WithUser()
+	return q
 }
 
 func (a DefaultAuthorAdmin) FieldUser() AuthorField {
@@ -149,10 +156,11 @@ func (DefaultAuthorAdmin) CanDelete(ctx context.Context, e *ent.Author) (bool, e
 // BookAdmin is the customizable admin surface for Book.
 // Embed DefaultBookAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type BookAdmin interface {
 	FieldTitle() BookField
 	FieldAuthor() BookField
@@ -162,6 +170,7 @@ type BookAdmin interface {
 	FieldCreatedAt() BookField
 	FieldNotes() BookField
 	Name(e *ent.Book) string
+	EagerLoadQuery(q *ent.BookQuery) *ent.BookQuery
 	ValidateCreate(ctx context.Context, input BookCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input BookUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -185,6 +194,11 @@ func NewDefaultBookAdmin(client *ent.Client) DefaultBookAdmin {
 
 func (DefaultBookAdmin) Name(e *ent.Book) string {
 	return fmt.Sprintf("%v", e.ID)
+}
+
+func (DefaultBookAdmin) EagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
+	q = q.WithAuthor()
+	return q
 }
 
 func (a DefaultBookAdmin) FieldTitle() BookField {
@@ -254,14 +268,16 @@ func (DefaultBookAdmin) CanDelete(ctx context.Context, e *ent.Book) (bool, error
 // PermissionAdmin is the customizable admin surface for Permission.
 // Embed DefaultPermissionAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type PermissionAdmin interface {
 	FieldName() PermissionField
 	FieldGroups() PermissionField
 	Name(e *ent.Permission) string
+	EagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery
 	ValidateCreate(ctx context.Context, input PermissionCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input PermissionUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -293,6 +309,11 @@ func permissionSchemaName(name string) string {
 
 func (DefaultPermissionAdmin) Name(e *ent.Permission) string {
 	return vent.FormatPermissionSelectLabel(permissionSchemaName(e.Name), e.Name)
+}
+
+func (DefaultPermissionAdmin) EagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery {
+	q = q.WithGroups()
+	return q
 }
 
 func (a DefaultPermissionAdmin) FieldName() PermissionField {
@@ -338,14 +359,16 @@ func (DefaultPermissionAdmin) CanDelete(ctx context.Context, e *ent.Permission) 
 // PermissionGroupAdmin is the customizable admin surface for PermissionGroup.
 // Embed DefaultPermissionGroupAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type PermissionGroupAdmin interface {
 	FieldName() PermissionGroupField
 	FieldPermissions() PermissionGroupField
 	Name(e *ent.PermissionGroup) string
+	EagerLoadQuery(q *ent.PermissionGroupQuery) *ent.PermissionGroupQuery
 	ValidateCreate(ctx context.Context, input PermissionGroupCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input PermissionGroupUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -369,6 +392,11 @@ func NewDefaultPermissionGroupAdmin(client *ent.Client) DefaultPermissionGroupAd
 
 func (DefaultPermissionGroupAdmin) Name(e *ent.PermissionGroup) string {
 	return fmt.Sprintf("%v", e.Name)
+}
+
+func (DefaultPermissionGroupAdmin) EagerLoadQuery(q *ent.PermissionGroupQuery) *ent.PermissionGroupQuery {
+	q = q.WithPermissions()
+	return q
 }
 
 func (a DefaultPermissionGroupAdmin) FieldName() PermissionGroupField {
@@ -418,16 +446,18 @@ func (DefaultPermissionGroupAdmin) CanDelete(ctx context.Context, e *ent.Permiss
 // ReviewAdmin is the customizable admin surface for Review.
 // Embed DefaultReviewAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type ReviewAdmin interface {
 	FieldUser() ReviewField
 	FieldRating() ReviewField
 	FieldBody() ReviewField
 	FieldBook() ReviewField
 	Name(e *ent.Review) string
+	EagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery
 	ValidateCreate(ctx context.Context, input ReviewCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input ReviewUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -451,6 +481,12 @@ func NewDefaultReviewAdmin(client *ent.Client) DefaultReviewAdmin {
 
 func (DefaultReviewAdmin) Name(e *ent.Review) string {
 	return fmt.Sprintf("%v", e.ID)
+}
+
+func (DefaultReviewAdmin) EagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery {
+	q = q.WithUser()
+	q = q.WithBook()
+	return q
 }
 
 func (a DefaultReviewAdmin) FieldUser() ReviewField {
@@ -504,10 +540,11 @@ func (DefaultReviewAdmin) CanDelete(ctx context.Context, e *ent.Review) (bool, e
 // UserAdmin is the customizable admin surface for User.
 // Embed DefaultUserAdmin and override only the methods you need.
 //
-// Field* methods supply field implementations. Validate* methods own mutation
-// policy. CanRead/CanUpdate/CanDelete take the target entity. CanCreate and
-// schema CRUD permissions (read_/create_/...) own schema-level access for
-// routes, menu visibility, and create.
+// Field* methods supply field implementations. EagerLoadQuery controls which
+// edges are loaded for lists, detail pages, and FK option labels. Validate*
+// methods own mutation policy. CanRead/CanUpdate/CanDelete take the target
+// entity. CanCreate and schema CRUD permissions (read_/create_/...) own
+// schema-level access for routes, menu visibility, and create.
 type UserAdmin interface {
 	FieldID() UserField
 	FieldEmail() UserField
@@ -518,6 +555,7 @@ type UserAdmin interface {
 	FieldGroups() UserField
 	FieldLastLogin() UserField
 	Name(e *ent.User) string
+	EagerLoadQuery(q *ent.UserQuery) *ent.UserQuery
 	ValidateCreate(ctx context.Context, input UserCreateInput) error
 	ValidateUpdate(ctx context.Context, id int, input UserUpdateInput) error
 	ValidateDelete(ctx context.Context, id int) error
@@ -541,6 +579,11 @@ func NewDefaultUserAdmin(client *ent.Client) DefaultUserAdmin {
 
 func (DefaultUserAdmin) Name(e *ent.User) string {
 	return fmt.Sprintf("%v", e.ID)
+}
+
+func (DefaultUserAdmin) EagerLoadQuery(q *ent.UserQuery) *ent.UserQuery {
+	q = q.WithGroups()
+	return q
 }
 
 func (a DefaultUserAdmin) FieldID() UserField {

@@ -48,7 +48,7 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 		var filter AuthorListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.authorFields.eagerLoadQuery(h.client.Author.Query())
+			query := h.schemas.Author.EagerLoadQuery(h.client.Author.Query())
 			var signals struct {
 				Filter AuthorListFilter `json:"filter"`
 			}
@@ -180,7 +180,7 @@ func (h *AdminHandler) getAuthorAddHandler() http.Handler {
 
 // buildAuthorPageProps builds the edit page props for Author.
 func (h *AdminHandler) buildAuthorPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.authorFields.eagerLoadQuery(h.client.Author.Query().
+	e, err := h.schemas.Author.EagerLoadQuery(h.client.Author.Query().
 		Where(author.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -430,7 +430,7 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 		var filter BookListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.bookFields.eagerLoadQuery(h.client.Book.Query())
+			query := h.schemas.Book.EagerLoadQuery(h.client.Book.Query())
 			var signals struct {
 				Filter BookListFilter `json:"filter"`
 			}
@@ -574,7 +574,7 @@ func (h *AdminHandler) getBookAddHandler() http.Handler {
 
 // buildBookPageProps builds the edit page props for Book.
 func (h *AdminHandler) buildBookPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.bookFields.eagerLoadQuery(h.client.Book.Query().
+	e, err := h.schemas.Book.EagerLoadQuery(h.client.Book.Query().
 		Where(book.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -812,7 +812,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 		var filter PermissionListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
+			query := h.schemas.Permission.EagerLoadQuery(h.client.Permission.Query())
 			var signals struct {
 				Filter PermissionListFilter `json:"filter"`
 			}
@@ -880,7 +880,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 
 // buildPermissionPageProps builds the edit page props for Permission.
 func (h *AdminHandler) buildPermissionPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query().
+	e, err := h.schemas.Permission.EagerLoadQuery(h.client.Permission.Query().
 		Where(permission.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -1050,7 +1050,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		var filter PermissionGroupListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
+			query := h.schemas.PermissionGroup.EagerLoadQuery(h.client.PermissionGroup.Query())
 			var signals struct {
 				Filter PermissionGroupListFilter `json:"filter"`
 			}
@@ -1181,7 +1181,7 @@ func (h *AdminHandler) getPermissionGroupAddHandler() http.Handler {
 
 // buildPermissionGroupPageProps builds the edit page props for PermissionGroup.
 func (h *AdminHandler) buildPermissionGroupPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query().
+	e, err := h.schemas.PermissionGroup.EagerLoadQuery(h.client.PermissionGroup.Query().
 		Where(permissiongroup.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -1425,7 +1425,7 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 		var filter ReviewListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.reviewFields.eagerLoadQuery(h.client.Review.Query())
+			query := h.schemas.Review.EagerLoadQuery(h.client.Review.Query())
 			var signals struct {
 				Filter ReviewListFilter `json:"filter"`
 			}
@@ -1560,7 +1560,7 @@ func (h *AdminHandler) getReviewAddHandler() http.Handler {
 
 // buildReviewPageProps builds the edit page props for Review.
 func (h *AdminHandler) buildReviewPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.reviewFields.eagerLoadQuery(h.client.Review.Query().
+	e, err := h.schemas.Review.EagerLoadQuery(h.client.Review.Query().
 		Where(review.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -1776,7 +1776,7 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		var filter UserListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
-			query := h.userFields.eagerLoadQuery(h.client.User.Query())
+			query := h.schemas.User.EagerLoadQuery(h.client.User.Query())
 			var signals struct {
 				Filter UserListFilter `json:"filter"`
 			}
@@ -1919,7 +1919,7 @@ func (h *AdminHandler) getUserAddHandler() http.Handler {
 
 // buildUserPageProps builds the edit page props for User.
 func (h *AdminHandler) buildUserPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
-	e, err := h.userFields.eagerLoadQuery(h.client.User.Query().
+	e, err := h.schemas.User.EagerLoadQuery(h.client.User.Query().
 		Where(user.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
@@ -2105,8 +2105,8 @@ type UserPasswordInput struct {
 
 // buildUserPasswordPageProps builds the manage password page props for User.
 func (h *AdminHandler) buildUserPasswordPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityPasswordProps, error) {
-	e, err := h.client.User.Query().
-		Where(user.IDEQ(id)).
+	e, err := h.schemas.User.EagerLoadQuery(h.client.User.Query().
+		Where(user.IDEQ(id))).
 		Only(ctx)
 	if err != nil {
 		return gui.SchemaEntityPasswordProps{}, err
