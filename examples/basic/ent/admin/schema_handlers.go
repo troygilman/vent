@@ -32,28 +32,50 @@ type PermissionUpdateInput struct {
 	Groups *[]string `json:"groups"`
 }
 
+// PermissionListFilter is the typed Datastar filter signal for listing Permission.
+type PermissionListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query()).
-			Order(permission.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
-			for j, field := range h.permissionFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+		var filter PermissionListFilter
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
+			var signals struct {
+				Filter PermissionListFilter `json:"filter"`
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(permission.NameContainsFold(filterVal))
+			}
+
+			entities, err := query.
+				Order(permission.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
+			}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
+				for j, field := range h.permissionFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Permission.CanCreate(r.Context())
@@ -73,6 +95,9 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
@@ -245,28 +270,50 @@ type PermissionGroupUpdateInput struct {
 	Permissions *[]string `json:"permissions"`
 }
 
+// PermissionGroupListFilter is the typed Datastar filter signal for listing PermissionGroup.
+type PermissionGroupListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query()).
-			Order(permissiongroup.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
-			for j, field := range h.permissionGroupFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+		var filter PermissionGroupListFilter
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
+			var signals struct {
+				Filter PermissionGroupListFilter `json:"filter"`
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(permissiongroup.NameContainsFold(filterVal))
+			}
+
+			entities, err := query.
+				Order(permissiongroup.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
+			}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
+				for j, field := range h.permissionGroupFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%spermission_groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.PermissionGroup.CanCreate(r.Context())
@@ -285,6 +332,9 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			PluralDisplayName:   "PermissionGroups",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
@@ -599,28 +649,58 @@ type UserUpdateInput struct {
 	LastLogin   *string   `json:"last_login"`
 }
 
+// UserListFilter is the typed Datastar filter signal for listing User.
+type UserListFilter struct {
+	Email    string          `json:"email"`
+	IsStaff  vent.BoolFilter `json:"is_staff"`
+	IsActive vent.BoolFilter `json:"is_active"`
+}
+
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.userFields.eagerLoadQuery(h.client.User.Query()).
-			Order(user.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
-			for j, field := range h.userFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+		var filter UserListFilter
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.userFields.eagerLoadQuery(h.client.User.Query())
+			var signals struct {
+				Filter UserListFilter `json:"filter"`
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Email; filterVal != "" {
+				query = query.Where(user.EmailContainsFold(filterVal))
+			}
+			if v, ok := filter.IsStaff.Bool(); ok {
+				query = query.Where(user.IsStaffEQ(v))
+			}
+			if v, ok := filter.IsActive.Bool(); ok {
+				query = query.Where(user.IsActiveEQ(v))
+			}
+
+			entities, err := query.
+				Order(user.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
+			}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
+				for j, field := range h.userFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.User.CanCreate(r.Context())
@@ -643,6 +723,11 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "is_superuser", Label: "IsSuperuser", Type: "bool"},
 				{Name: "is_active", Label: "IsActive", Type: "bool"},
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: filter.IsStaff.Normalize().String()},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,

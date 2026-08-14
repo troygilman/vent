@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 
+	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
 )
 
@@ -13,6 +14,7 @@ type SchemaTableProps struct {
 	PluralDisplayName   string
 	Columns             []SchemaTableColumn
 	Rows                []SchemaTableRow
+	FilterableColumns   []SchemaTableFilterableColumn
 	RenderContext       RenderContext
 }
 
@@ -31,6 +33,28 @@ type SchemaTableCell struct {
 	LinkURL string
 }
 
+type SchemaTableFilterableColumn struct {
+	Name  string
+	Label string
+	Type  string
+	Value string
+}
+
+func tableFiltersActive(columns []SchemaTableFilterableColumn) bool {
+	for _, column := range columns {
+		if column.Type == "bool" {
+			if _, ok := vent.BoolFilter(column.Value).Bool(); ok {
+				return true
+			}
+			continue
+		}
+		if column.Value != "" {
+			return true
+		}
+	}
+	return false
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	@Index() {
@@ -41,6 +65,72 @@ templ SchemaTablePage(props SchemaTableProps) {
 					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
 				}
 			</div>
+			<div class="schema-table">
+			if len(props.FilterableColumns) > 0 {
+				<form
+					id="schema-table-filters"
+					class="table-filters"
+					data-query-string__history="{include: /^filter\./}"
+					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:submit__prevent="void 0"
+					data-indicator="_indicator"
+				>
+					for _, filter := range props.FilterableColumns {
+						<label class="table-filter">
+							<span class="table-filter-label">{ filter.Label }</span>
+							if filter.Type == "string" {
+								<div class="input">
+									<input
+										type="text"
+										name={ "filter." + filter.Name }
+										data-bind__event.change={ "filter." + filter.Name }
+										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+										value={ filter.Value }
+										placeholder={ "Filter by " + filter.Label }
+									/>
+								</div>
+							} else if filter.Type == "bool" {
+								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
+								<select
+									class="select"
+									name={ "filter." + filter.Name }
+									data-bind={ "filter." + filter.Name }
+									data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
+								>
+									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
+									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
+									<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
+								</select>
+							} else if filter.Type == "int" {
+								<div class="input">
+									<input
+										type="text"
+										inputmode="numeric"
+										name={ "filter." + filter.Name }
+										data-bind__event.change={ "filter." + filter.Name }
+										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+										value={ filter.Value }
+										placeholder={ "Filter by " + filter.Label }
+									/>
+								</div>
+							}
+						</label>
+					}
+					if tableFiltersActive(props.FilterableColumns) {
+						<div class="table-filter-actions">
+							<button
+								type="button"
+								class="btn btn-neutral"
+								data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+								data-indicator="_indicator"
+							>
+								Clear
+							</button>
+						</div>
+					}
+				</form>
+			}
 			<div class="table-container">
 				<table class="data-table">
 					<thead>
@@ -75,6 +165,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 					</tbody>
 				</table>
 			</div>
+			</div>
+			@Indicator()
 		}
 	}
 }

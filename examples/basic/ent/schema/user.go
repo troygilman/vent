@@ -37,6 +37,11 @@ func (User) Annotations() []schema.Annotation {
 				"is_active",
 				"last_login",
 			},
+			FilterableColumns: []string{
+				"email",
+				"is_staff",
+				"is_active",
+			},
 			Permissions: []vent.Permission{
 				{Name: "impersonate", Desc: "Act as another user"},
 			},
