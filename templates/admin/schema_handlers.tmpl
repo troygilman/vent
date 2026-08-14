@@ -46,7 +46,30 @@ type {{ $node.Name }}UpdateInput struct {
 // get{{ $node.Name }}ListHandler returns the handler for GET /admin/{{ lower $node.Name }}s/
 func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.{{ fieldsVarName $node.Name }}.eagerLoadQuery(h.client.{{ $node.Name }}.Query()).
+		query := h.{{ fieldsVarName $node.Name }}.eagerLoadQuery(h.client.{{ $node.Name }}.Query())
+		
+		{{- if $rc.FilterableColumns }}
+		// Apply filters from query parameters
+		{{- range $filter := $rc.FilterableColumns }}
+		if filterVal := r.URL.Query().Get("{{ $filter.Name }}"); filterVal != "" {
+			{{- if eq $filter.Type "string" }}
+			query = query.Where({{ lower $node.Name }}.{{ pascal $filter.Name }}ContainsFold(filterVal))
+			{{- else if eq $filter.Type "bool" }}
+			if filterVal == "true" {
+				query = query.Where({{ lower $node.Name }}.{{ pascal $filter.Name }}EQ(true))
+			} else if filterVal == "false" {
+				query = query.Where({{ lower $node.Name }}.{{ pascal $filter.Name }}EQ(false))
+			}
+			{{- else if eq $filter.Type "int" }}
+			if intVal, err := strconv.Atoi(filterVal); err == nil {
+				query = query.Where({{ lower $node.Name }}.{{ pascal $filter.Name }}EQ(intVal))
+			}
+			{{- end }}
+		}
+		{{- end }}
+		{{- end }}
+
+		entities, err := query.
 			Order({{ lower $node.Name }}.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -84,6 +107,11 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{{- range $col := $rc.TableColumns }}
 				{Name: "{{ $col.Name }}", Label: "{{ $col.Label }}", Type: "{{ $col.Type }}"},
+				{{- end }}
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{{- range $filter := $rc.FilterableColumns }}
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}"},
 				{{- end }}
 			},
 			Rows:          rows,

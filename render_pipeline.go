@@ -13,8 +13,16 @@ type RenderConfig struct {
 
 	AdminSurface      []SurfaceMember
 	TableColumns      []TableColumn
+	FilterableColumns []FilterableColumnConfig
 	CreateInputFields []InputFieldSpec
 	UpdateInputFields []InputFieldSpec
+}
+
+// FilterableColumnConfig describes a filterable column for list views.
+type FilterableColumnConfig struct {
+	Name  string
+	Label string
+	Type  string
 }
 
 // NodeRenderConfig pairs a node with its render config for iteration in templates.
@@ -172,7 +180,7 @@ func buildRenderConfig(node *gen.Type) (RenderConfig, error) {
 		return RenderConfig{}, err
 	}
 
-	return projectRenderConfig(meta, applied), nil
+	return projectRenderConfig(node, meta, applied, annotation, hasAnnotation), nil
 }
 
 func buildRenderConfigs(nodes []*gen.Type) ([]NodeRenderConfig, error) {
@@ -521,7 +529,7 @@ func isReadOnlyField(meta SchemaMeta, name string) bool {
 	return false
 }
 
-func projectRenderConfig(meta SchemaMeta, applied appliedLayout) RenderConfig {
+func projectRenderConfig(node *gen.Type, meta SchemaMeta, applied appliedLayout, annotation VentSchemaAnnotation, hasAnnotation bool) RenderConfig {
 	rc := RenderConfig{SchemaMeta: meta}
 
 	for _, member := range applied.adminSurface {
@@ -530,6 +538,17 @@ func projectRenderConfig(meta SchemaMeta, applied appliedLayout) RenderConfig {
 
 	for _, member := range applied.tableColumns {
 		rc.TableColumns = append(rc.TableColumns, projectTableColumn(member))
+	}
+
+	// Project filterable columns from annotation
+	if hasAnnotation {
+		for _, filter := range annotation.FilterableColumns {
+			rc.FilterableColumns = append(rc.FilterableColumns, FilterableColumnConfig{
+				Name:  filter.Name,
+				Label: labelForField(node, filter.Name),
+				Type:  filter.Type,
+			})
+		}
 	}
 
 	for _, member := range applied.adminSurface {
@@ -547,6 +566,16 @@ func projectRenderConfig(meta SchemaMeta, applied appliedLayout) RenderConfig {
 	}
 
 	return rc
+}
+
+// labelForField returns a label for a field name, using the field's name if found.
+func labelForField(node *gen.Type, fieldName string) string {
+	for _, field := range node.Fields {
+		if field.Name == fieldName {
+			return pascalCase(field.Name)
+		}
+	}
+	return pascalCase(fieldName)
 }
 
 func projectSurfaceMember(member resolvedMember) SurfaceMember {
