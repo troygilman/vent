@@ -52,6 +52,7 @@ attribute({
  *
  * After URL params are merged into signals, the element dispatches a bubbling
  * `query-string` event. Use data-on:query-string to fetch or otherwise react.
+ * Falsey signal values are omitted when writing the query string.
  */
 attribute({
   name: "query-string",
@@ -62,7 +63,6 @@ attribute({
   returnsValue: true,
 
   apply({ el, mods, rx }) {
-    const filterEmpty = mods.has("filter")
     const useHistory = mods.has("history")
 
     let filter = {}
@@ -132,10 +132,7 @@ attribute({
 
           if (value !== null && typeof value === "object" && !Array.isArray(value)) {
             walk(value, path)
-          } else {
-            if (filterEmpty && (value === "" || value == null || value === undefined)) {
-              continue
-            }
+          } else if (value) {
             params.set(path, String(value))
           }
         }

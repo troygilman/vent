@@ -4,7 +4,7 @@ package vent
 type BoolFilter string
 
 const (
-	BoolFilterAll   BoolFilter = "all"
+	BoolFilterAll   BoolFilter = ""
 	BoolFilterTrue  BoolFilter = "true"
 	BoolFilterFalse BoolFilter = "false"
 )
