@@ -53,9 +53,34 @@ func IDLTE(id int) predicate.Author {
 	return predicate.Author(sql.FieldLTE(FieldID, id))
 }
 
+// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
+func UserID(v int) predicate.Author {
+	return predicate.Author(sql.FieldEQ(FieldUserID, v))
+}
+
 // Active applies equality check predicate on the "active" field. It's identical to ActiveEQ.
 func Active(v bool) predicate.Author {
 	return predicate.Author(sql.FieldEQ(FieldActive, v))
+}
+
+// UserIDEQ applies the EQ predicate on the "user_id" field.
+func UserIDEQ(v int) predicate.Author {
+	return predicate.Author(sql.FieldEQ(FieldUserID, v))
+}
+
+// UserIDNEQ applies the NEQ predicate on the "user_id" field.
+func UserIDNEQ(v int) predicate.Author {
+	return predicate.Author(sql.FieldNEQ(FieldUserID, v))
+}
+
+// UserIDIn applies the In predicate on the "user_id" field.
+func UserIDIn(vs ...int) predicate.Author {
+	return predicate.Author(sql.FieldIn(FieldUserID, vs...))
+}
+
+// UserIDNotIn applies the NotIn predicate on the "user_id" field.
+func UserIDNotIn(vs ...int) predicate.Author {
+	return predicate.Author(sql.FieldNotIn(FieldUserID, vs...))
 }
 
 // ActiveEQ applies the EQ predicate on the "active" field.

@@ -22,8 +22,7 @@ func (User) Fields() []ent.Field {
 
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
-		// FK lives on authors.id so Author and User share a primary key.
-		edge.To("author", Author.Type).Unique().StorageKey(edge.Column("id")),
+		edge.To("author", Author.Type).Unique(),
 		edge.To("reviews", Review.Type),
 	}
 }

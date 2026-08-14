@@ -29,6 +29,20 @@ func (_u *AuthorUpdate) Where(ps ...predicate.Author) *AuthorUpdate {
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *AuthorUpdate) SetUserID(v int) *AuthorUpdate {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *AuthorUpdate) SetNillableUserID(v *int) *AuthorUpdate {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
 // SetActive sets the "active" field.
 func (_u *AuthorUpdate) SetActive(v bool) *AuthorUpdate {
 	_u.mutation.SetActive(v)
@@ -40,12 +54,6 @@ func (_u *AuthorUpdate) SetNillableActive(v *bool) *AuthorUpdate {
 	if v != nil {
 		_u.SetActive(*v)
 	}
-	return _u
-}
-
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *AuthorUpdate) SetUserID(id int) *AuthorUpdate {
-	_u.mutation.SetUserID(id)
 	return _u
 }
 
@@ -245,6 +253,20 @@ type AuthorUpdateOne struct {
 	mutation *AuthorMutation
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *AuthorUpdateOne) SetUserID(v int) *AuthorUpdateOne {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *AuthorUpdateOne) SetNillableUserID(v *int) *AuthorUpdateOne {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
 // SetActive sets the "active" field.
 func (_u *AuthorUpdateOne) SetActive(v bool) *AuthorUpdateOne {
 	_u.mutation.SetActive(v)
@@ -256,12 +278,6 @@ func (_u *AuthorUpdateOne) SetNillableActive(v *bool) *AuthorUpdateOne {
 	if v != nil {
 		_u.SetActive(*v)
 	}
-	return _u
-}
-
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *AuthorUpdateOne) SetUserID(id int) *AuthorUpdateOne {
-	_u.mutation.SetUserID(id)
 	return _u
 }
 

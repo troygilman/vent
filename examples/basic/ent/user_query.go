@@ -558,6 +558,9 @@ func (_q *UserQuery) loadAuthor(ctx context.Context, query *AuthorQuery, nodes [
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(author.FieldUserID)
+	}
 	query.Where(predicate.Author(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.AuthorColumn), fks...))
 	}))
@@ -566,10 +569,10 @@ func (_q *UserQuery) loadAuthor(ctx context.Context, query *AuthorQuery, nodes [
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.ID
+		fk := n.UserID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

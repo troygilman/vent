@@ -335,12 +335,12 @@ func (_q *AuthorQuery) WithBooks(opts ...func(*BookQuery)) *AuthorQuery {
 // Example:
 //
 //	var v []struct {
-//		Active bool `json:"active,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Author.Query().
-//		GroupBy(author.FieldActive).
+//		GroupBy(author.FieldUserID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *AuthorQuery) GroupBy(field string, fields ...string) *AuthorGroupBy {
@@ -358,11 +358,11 @@ func (_q *AuthorQuery) GroupBy(field string, fields ...string) *AuthorGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Active bool `json:"active,omitempty"`
+//		UserID int `json:"user_id,omitempty"`
 //	}
 //
 //	client.Author.Query().
-//		Select(author.FieldActive).
+//		Select(author.FieldUserID).
 //		Scan(ctx, &v)
 func (_q *AuthorQuery) Select(fields ...string) *AuthorSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -450,7 +450,7 @@ func (_q *AuthorQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Author)
 	for i := range nodes {
-		fk := nodes[i].ID
+		fk := nodes[i].UserID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -467,7 +467,7 @@ func (_q *AuthorQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -531,6 +531,9 @@ func (_q *AuthorQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != author.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withUser != nil {
+			_spec.Node.AddColumnOnce(author.FieldUserID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

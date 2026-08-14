@@ -331,7 +331,7 @@ The example is a small library domain (`Author`, `Book`, `Review`) plus Vent aut
 | Schema | What it demonstrates |
 | ------ | -------------------- |
 | `User` / `Permission` / `PermissionGroup` | Auth mixins, custom permissions, fieldsets, table columns, list filters, field override (`is_superuser`) |
-| `Author` | 1:1 with `User` (shared primary key), unique FK target for books, bool filter |
+| `Author` | Required unique FK to `User`, unique FK target for books, bool filter |
 | `Book` | Mixed field kinds, unique FK to author, list filters, read-only `created_at`, `CustomFields` (`notes`), extra `publish` permission |
 | `Review` | Required FKs to `Book` and `User`, `DisableDelete`, int filter |
 

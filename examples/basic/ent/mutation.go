@@ -125,12 +125,6 @@ func (m AuthorMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of Author entities.
-func (m *AuthorMutation) SetID(id int) {
-	m.id = &id
-}
-
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
 func (m *AuthorMutation) ID() (id int, exists bool) {
@@ -157,6 +151,42 @@ func (m *AuthorMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetUserID sets the "user_id" field.
+func (m *AuthorMutation) SetUserID(i int) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *AuthorMutation) UserID() (r int, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the Author entity.
+// If the Author object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AuthorMutation) OldUserID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *AuthorMutation) ResetUserID() {
+	m.user = nil
 }
 
 // SetActive sets the "active" field.
@@ -195,27 +225,15 @@ func (m *AuthorMutation) ResetActive() {
 	m.active = nil
 }
 
-// SetUserID sets the "user" edge to the User entity by id.
-func (m *AuthorMutation) SetUserID(id int) {
-	m.user = &id
-}
-
 // ClearUser clears the "user" edge to the User entity.
 func (m *AuthorMutation) ClearUser() {
 	m.cleareduser = true
+	m.clearedFields[author.FieldUserID] = struct{}{}
 }
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *AuthorMutation) UserCleared() bool {
 	return m.cleareduser
-}
-
-// UserID returns the "user" edge ID in the mutation.
-func (m *AuthorMutation) UserID() (id int, exists bool) {
-	if m.user != nil {
-		return *m.user, true
-	}
-	return
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -322,7 +340,10 @@ func (m *AuthorMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AuthorMutation) Fields() []string {
-	fields := make([]string, 0, 1)
+	fields := make([]string, 0, 2)
+	if m.user != nil {
+		fields = append(fields, author.FieldUserID)
+	}
 	if m.active != nil {
 		fields = append(fields, author.FieldActive)
 	}
@@ -334,6 +355,8 @@ func (m *AuthorMutation) Fields() []string {
 // schema.
 func (m *AuthorMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case author.FieldUserID:
+		return m.UserID()
 	case author.FieldActive:
 		return m.Active()
 	}
@@ -345,6 +368,8 @@ func (m *AuthorMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *AuthorMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case author.FieldUserID:
+		return m.OldUserID(ctx)
 	case author.FieldActive:
 		return m.OldActive(ctx)
 	}
@@ -356,6 +381,13 @@ func (m *AuthorMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *AuthorMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case author.FieldUserID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
 	case author.FieldActive:
 		v, ok := value.(bool)
 		if !ok {
@@ -370,13 +402,16 @@ func (m *AuthorMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *AuthorMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *AuthorMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -412,6 +447,9 @@ func (m *AuthorMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *AuthorMutation) ResetField(name string) error {
 	switch name {
+	case author.FieldUserID:
+		m.ResetUserID()
+		return nil
 	case author.FieldActive:
 		m.ResetActive()
 		return nil

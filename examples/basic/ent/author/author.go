@@ -12,6 +12,8 @@ const (
 	Label = "author"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldUserID holds the string denoting the user_id field in the database.
+	FieldUserID = "user_id"
 	// FieldActive holds the string denoting the active field in the database.
 	FieldActive = "active"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -26,7 +28,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UserInverseTable = "users"
 	// UserColumn is the table column denoting the user relation/edge.
-	UserColumn = "id"
+	UserColumn = "user_id"
 	// BooksTable is the table that holds the books relation/edge.
 	BooksTable = "books"
 	// BooksInverseTable is the table name for the Book entity.
@@ -39,6 +41,7 @@ const (
 // Columns holds all SQL columns for author fields.
 var Columns = []string{
 	FieldID,
+	FieldUserID,
 	FieldActive,
 }
 
@@ -63,6 +66,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByUserID orders the results by the user_id field.
+func ByUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserID, opts...).ToFunc()
 }
 
 // ByActive orders the results by the active field.

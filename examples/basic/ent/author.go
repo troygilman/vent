@@ -17,6 +17,8 @@ type Author struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID int `json:"user_id,omitempty"`
 	// Active holds the value of the "active" field.
 	Active bool `json:"active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -63,7 +65,7 @@ func (*Author) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case author.FieldActive:
 			values[i] = new(sql.NullBool)
-		case author.FieldID:
+		case author.FieldID, author.FieldUserID:
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -86,6 +88,12 @@ func (_m *Author) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
+		case author.FieldUserID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = int(value.Int64)
+			}
 		case author.FieldActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field active", values[i])
@@ -138,6 +146,9 @@ func (_m *Author) String() string {
 	var builder strings.Builder
 	builder.WriteString("Author(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("user_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString(", ")
 	builder.WriteString("active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Active))
 	builder.WriteByte(')')

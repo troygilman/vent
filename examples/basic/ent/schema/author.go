@@ -8,15 +8,15 @@ import (
 	"github.com/troygilman/vent"
 )
 
-// Author is a 1:1 extension of User: Author.id is the User primary key.
+// Author is a 1:1 profile of a User. Authors have their own PK and a required
+// unique FK to users.
 type Author struct {
 	ent.Schema
 }
 
 func (Author) Fields() []ent.Field {
 	return []ent.Field{
-		// Application-assigned so Author.id can equal User.id (shared PK / FK).
-		field.Int("id"),
+		field.Int("user_id"),
 		field.Bool("active").Default(true),
 	}
 }
@@ -26,7 +26,8 @@ func (Author) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Ref("author").
 			Unique().
-			Required(),
+			Required().
+			Field("user_id"),
 		edge.From("books", Book.Type).Ref("author"),
 	}
 }

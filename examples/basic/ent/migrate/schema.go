@@ -12,6 +12,7 @@ var (
 	AuthorsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "active", Type: field.TypeBool, Default: true},
+		{Name: "user_id", Type: field.TypeInt, Unique: true},
 	}
 	// AuthorsTable holds the schema information for the "authors" table.
 	AuthorsTable = &schema.Table{
@@ -21,7 +22,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "authors_users_author",
-				Columns:    []*schema.Column{AuthorsColumns[0]},
+				Columns:    []*schema.Column{AuthorsColumns[2]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

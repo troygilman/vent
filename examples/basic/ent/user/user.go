@@ -43,7 +43,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "author" package.
 	AuthorInverseTable = "authors"
 	// AuthorColumn is the table column denoting the author relation/edge.
-	AuthorColumn = "id"
+	AuthorColumn = "user_id"
 	// ReviewsTable is the table that holds the reviews relation/edge.
 	ReviewsTable = "reviews"
 	// ReviewsInverseTable is the table name for the Review entity.
