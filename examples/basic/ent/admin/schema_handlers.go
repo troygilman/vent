@@ -663,11 +663,11 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		if filterVal := filter.Email; filterVal != "" {
 			query = query.Where(user.EmailContainsFold(filterVal))
 		}
-		if filterVal := filter.IsStaff; filterVal == "true" || filterVal == "false" {
-			query = query.Where(user.IsStaffEQ(filterVal == "true"))
+		if v, ok := vent.ParseBoolFilter(filter.IsStaff); ok {
+			query = query.Where(user.IsStaffEQ(v))
 		}
-		if filterVal := filter.IsActive; filterVal == "true" || filterVal == "false" {
-			query = query.Where(user.IsActiveEQ(filterVal == "true"))
+		if v, ok := vent.ParseBoolFilter(filter.IsActive); ok {
+			query = query.Where(user.IsActiveEQ(v))
 		}
 
 		entities, err := query.

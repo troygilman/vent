@@ -71,8 +71,8 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
 		}
 		{{- else if eq $filter.Type "bool" }}
-		if filterVal := filter.{{ $filter.PredicateName }}; filterVal == "true" || filterVal == "false" {
-			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(filterVal == "true"))
+		if v, ok := vent.ParseBoolFilter(filter.{{ $filter.PredicateName }}); ok {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(v))
 		}
 		{{- else if eq $filter.Type "int" }}
 		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {

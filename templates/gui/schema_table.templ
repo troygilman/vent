@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
 )
 
@@ -49,8 +50,8 @@ func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[st
 }
 
 func tableFilterValue(column SchemaTableFilterableColumn) string {
-	if column.Type == "bool" && column.Value != "true" && column.Value != "false" {
-		return "all"
+	if column.Type == "bool" {
+		return vent.NormalizeBoolFilter(column.Value)
 	}
 	return column.Value
 }
@@ -59,7 +60,7 @@ func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, len(columns))
 	for i, column := range columns {
 		if column.Type == "bool" {
-			parts[i] = fmt.Sprintf("$filter.%s !== 'all'", column.Name)
+			parts[i] = fmt.Sprintf("$filter.%s !== '%s'", column.Name, vent.BoolFilterAll)
 			continue
 		}
 		parts[i] = fmt.Sprintf("$filter.%s !== ''", column.Name)
@@ -71,7 +72,7 @@ func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, 0, len(columns)+1)
 	for _, column := range columns {
 		if column.Type == "bool" {
-			parts = append(parts, fmt.Sprintf("$filter.%s = 'all'", column.Name))
+			parts = append(parts, fmt.Sprintf("$filter.%s = '%s'", column.Name, vent.BoolFilterAll))
 			continue
 		}
 		parts = append(parts, fmt.Sprintf("$filter.%s = ''", column.Name))
@@ -113,9 +114,9 @@ templ SchemaTablePage(props SchemaTableProps) {
 									name={ filter.Name }
 									data-bind={ "filter." + filter.Name }
 								>
-									<option value="all" selected?={ boolValue == "all" }>All</option>
-									<option value="true" selected?={ boolValue == "true" }>Yes</option>
-									<option value="false" selected?={ boolValue == "false" }>No</option>
+									<option value={ vent.BoolFilterAll } selected?={ boolValue == vent.BoolFilterAll }>All</option>
+									<option value={ vent.BoolFilterTrue } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
+									<option value={ vent.BoolFilterFalse } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
