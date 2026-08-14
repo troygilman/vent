@@ -28,6 +28,8 @@ attribute({
 
 // data-push-url="{include: /foo/, exclude: /bar/}" writes matching signals
 // into ?datastar= when a Datastar request on this element finishes.
+window.addEventListener("popstate", () => location.reload());
+
 attribute({
     name: "push-url",
     requirement: {
