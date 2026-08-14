@@ -1,4 +1,4 @@
-import { action, attribute, filtered } from "datastar";
+import { attribute, filtered } from "datastar";
 
 attribute({
     name: "confirm",
@@ -26,20 +26,40 @@ attribute({
     },
 });
 
-// @pushHistory(regex) writes matching signals into ?datastar= and pushStates.
-// Use the same include regex as @get's filterSignals so the bar matches the request.
+// data-push-url="{include: /foo/, exclude: /bar/}" writes matching signals
+// into ?datastar= when a Datastar request on this element finishes.
 window.addEventListener("popstate", () => location.reload());
 
-action({
-    name: "pushHistory",
-    apply(_ctx, include) {
-        const signals = filtered({ include, exclude: /(^|\.)_/ });
-        const params = new URLSearchParams();
-        params.set("datastar", JSON.stringify(signals));
-        const href = `${location.pathname}?${params}${location.hash}`;
-        const current = location.pathname + location.search + location.hash;
-        if (href !== current) {
-            history.pushState({}, "", href);
-        }
+attribute({
+    name: "push-url",
+    requirement: {
+        key: "denied",
+        value: "must",
+    },
+    returnsValue: true,
+    apply({ el, rx }) {
+        const onFetch = (event) => {
+            if (event.detail?.type !== "finished") {
+                return;
+            }
+            if (event.detail.el !== el && !el.contains(event.detail.el)) {
+                return;
+            }
+            const filter = rx() || {};
+            const signals = filtered({
+                include: filter.include ?? /.*/,
+                exclude: filter.exclude ?? /(^|\.)_/,
+            });
+            const params = new URLSearchParams();
+            params.set("datastar", JSON.stringify(signals));
+            const href = `${location.pathname}?${params}${location.hash}`;
+            const current = location.pathname + location.search + location.hash;
+            if (href !== current) {
+                history.pushState({}, "", href);
+            }
+        };
+
+        document.addEventListener("datastar-fetch", onFetch);
+        return () => document.removeEventListener("datastar-fetch", onFetch);
     },
 });

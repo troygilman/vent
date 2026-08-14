@@ -56,7 +56,7 @@ func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 	return strings.Join(parts, " || ")
 }
 
-const tableFilterRequest = `@get(location.pathname, {filterSignals: {include: /^filter\./}}); @pushHistory(/^filter\./)`
+const tableFilterRequest = `@get(location.pathname, {filterSignals: {include: /^filter\./}})`
 
 func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, 0, len(columns)+1)
@@ -83,6 +83,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
 					data-signals={ templ.JSONString(tableFilterSignals(props.FilterableColumns)) }
+					data-push-url="{include: /^filter\./}"
 					data-on:submit__prevent={ tableFilterRequest }
 				>
 					for _, filter := range props.FilterableColumns {
