@@ -24,8 +24,8 @@ func TestStaticDirHandlerServesJS(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "replace-url") {
-		t.Fatal("datastar-plugins.js does not contain replace-url plugin")
+	if !strings.Contains(rec.Body.String(), `name: "confirm"`) {
+		t.Fatal("datastar-plugins.js does not contain confirm plugin")
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
 		t.Fatalf("Cache-Control = %q, want immutable long cache", got)
