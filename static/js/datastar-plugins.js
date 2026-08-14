@@ -156,6 +156,7 @@ attribute({
     }
 
     applyUrlToSignals()
+    queueMicrotask(applyUrlToSignals)
 
     const stopEffect = effect(() => {
       writeSignalsToUrl(useHistory)
