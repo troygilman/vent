@@ -18,6 +18,8 @@ templ Index() {
 	{{ theme := requestctx.MustTheme(ctx) }}
 	{{ datastarPath := templ.URL(staticAsset(adminPath, "static/js/datastar.js")) }}
 	{{ pluginsPath := templ.URL(staticAsset(adminPath, "static/js/datastar-plugins.js")) }}
+	{{ commonPath := templ.SafeURL(staticAsset(adminPath, "static/js/common.js")) }}
+	{{ commandPalettePath := templ.SafeURL(staticAsset(adminPath, "static/js/command-palette.js")) }}
 	{{ fontPath := templ.SafeURL(adminPath + "static/fonts/inter-latin.woff2") }}
 	{{ stylePath := templ.SafeURL(staticAsset(adminPath, "static/css/style.css")) }}
 	{{ faviconIcoPath := templ.SafeURL(adminPath + "static/img/favicon.ico") }}
@@ -35,8 +37,8 @@ templ Index() {
 			<link rel="preload" href={ fontPath } as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href={ stylePath } as="style"/>
 			<link rel="stylesheet" href={ stylePath } media="all"/>
-			<script src={ templ.SafeURL(staticAsset(adminPath, "static/js/common.js")) }></script>
-			<script src={ templ.SafeURL(staticAsset(adminPath, "static/js/command-palette.js")) }></script>
+			<script src={ commonPath }></script>
+			<script src={ commandPalettePath }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{
 					"datastar": datastarPath,
