@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	ent "github.com/troygilman/vent/examples/basic/ent"
@@ -16,5 +17,10 @@ func (AuthorAdmin) Name(e *ent.Author) string {
 	if e.Edges.User != nil {
 		return e.Edges.User.Email
 	}
-	return fmt.Sprintf("%d", e.ID)
+	// FK option lists and nested book edges do not always eager-load User.
+	u, err := e.QueryUser().Only(context.Background())
+	if err != nil {
+		return fmt.Sprintf("%d", e.ID)
+	}
+	return u.Email
 }
