@@ -2,8 +2,46 @@ package vent
 
 import (
 	"encoding/json"
+	"net/url"
 	"testing"
 )
+
+func TestUnmarshalFilterQuery(t *testing.T) {
+	var signals struct {
+		Filter struct {
+			Email   string     `json:"email"`
+			IsStaff BoolFilter `json:"is_staff"`
+		} `json:"filter"`
+	}
+	values := url.Values{
+		"filter.email":    []string{"viewer"},
+		"filter.is_staff": []string{"false"},
+		"datastar":        []string{`{"filter":{"email":"ignored"}}`},
+	}
+	if err := UnmarshalFilterQuery(values, &signals); err != nil {
+		t.Fatal(err)
+	}
+	if signals.Filter.Email != "viewer" {
+		t.Fatalf("Email = %q", signals.Filter.Email)
+	}
+	if signals.Filter.IsStaff != BoolFilterFalse {
+		t.Fatalf("IsStaff = %q", signals.Filter.IsStaff)
+	}
+}
+
+func TestUnmarshalFilterQueryEmpty(t *testing.T) {
+	var signals struct {
+		Filter struct {
+			Email string `json:"email"`
+		} `json:"filter"`
+	}
+	if err := UnmarshalFilterQuery(url.Values{}, &signals); err != nil {
+		t.Fatal(err)
+	}
+	if signals.Filter.Email != "" {
+		t.Fatalf("Email = %q", signals.Filter.Email)
+	}
+}
 
 func TestBoolFilterBool(t *testing.T) {
 	cases := []struct {

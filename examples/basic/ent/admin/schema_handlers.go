@@ -44,7 +44,12 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 		var signals struct {
 			Filter PermissionListFilter `json:"filter"`
 		}
-		if err := datastar.ReadSignals(r, &signals); err != nil {
+		if r.URL.Query().Has("datastar") {
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+		} else if err := vent.UnmarshalFilterQuery(r.URL.Query(), &signals); err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
 			return
 		}
@@ -278,7 +283,12 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		var signals struct {
 			Filter PermissionGroupListFilter `json:"filter"`
 		}
-		if err := datastar.ReadSignals(r, &signals); err != nil {
+		if r.URL.Query().Has("datastar") {
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+		} else if err := vent.UnmarshalFilterQuery(r.URL.Query(), &signals); err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
 			return
 		}
@@ -655,7 +665,12 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		var signals struct {
 			Filter UserListFilter `json:"filter"`
 		}
-		if err := datastar.ReadSignals(r, &signals); err != nil {
+		if r.URL.Query().Has("datastar") {
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+		} else if err := vent.UnmarshalFilterQuery(r.URL.Query(), &signals); err != nil {
 			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
 			return
 		}

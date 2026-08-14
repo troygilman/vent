@@ -1,5 +1,28 @@
 package vent
 
+import (
+	"encoding/json"
+	"net/url"
+	"strings"
+)
+
+// UnmarshalFilterQuery reads dotted filter.* query parameters into dest.
+// dest should be a pointer to a struct with a `json:"filter"` field.
+func UnmarshalFilterQuery(values url.Values, dest any) error {
+	filter := map[string]string{}
+	for key, vals := range values {
+		if !strings.HasPrefix(key, "filter.") || len(vals) == 0 {
+			continue
+		}
+		filter[strings.TrimPrefix(key, "filter.")] = vals[0]
+	}
+	body, err := json.Marshal(map[string]any{"filter": filter})
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, dest)
+}
+
 // BoolFilter is a list-filter selector for boolean fields.
 type BoolFilter string
 

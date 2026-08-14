@@ -70,7 +70,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					class="table-filters"
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
-					data-push-url="{include: /^filter\./}"
+					data-query-string__history="{include: /^filter\./}"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
 					data-indicator="_indicator"
@@ -82,8 +82,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 								<div class="input">
 									<input
 										type="text"
-										name={ filter.Name }
-										data-bind={ "filter." + filter.Name }
+										name={ "filter." + filter.Name }
+										data-bind__event.change={ "filter." + filter.Name }
 										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
 										value={ filter.Value }
 										placeholder={ "Filter by " + filter.Label }
@@ -93,7 +93,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
 								<select
 									class="select"
-									name={ filter.Name }
+									name={ "filter." + filter.Name }
 									data-bind={ "filter." + filter.Name }
 									data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
 								>
@@ -106,8 +106,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 									<input
 										type="text"
 										inputmode="numeric"
-										name={ filter.Name }
-										data-bind={ "filter." + filter.Name }
+										name={ "filter." + filter.Name }
+										data-bind__event.change={ "filter." + filter.Name }
 										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
 										value={ filter.Value }
 										placeholder={ "Filter by " + filter.Label }

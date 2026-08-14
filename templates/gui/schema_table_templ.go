@@ -176,7 +176,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-push-url=\"{include: /^filter\\./}\" data-on:change=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:submit__prevent=\"void 0\" data-indicator=\"_indicator\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-query-string__history=\"{include: /^filter\\./}\" data-on:change=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:submit__prevent=\"void 0\" data-indicator=\"_indicator\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -204,22 +204,22 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var9 string
-							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(filter.Name)
+							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter." + filter.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 85, Col: 28}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 85, Col: 40}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-bind=\"")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" data-bind__event.change=\"")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var10 string
 							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter." + filter.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 86, Col: 45}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 86, Col: 59}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 							if templ_7745c5c3_Err != nil {
@@ -275,9 +275,9 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var14 string
-							templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(filter.Name)
+							templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter." + filter.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 96, Col: 27}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 96, Col: 39}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 							if templ_7745c5c3_Err != nil {
@@ -388,22 +388,22 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var20 string
-							templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(filter.Name)
+							templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter." + filter.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 109, Col: 28}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 109, Col: 40}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" data-bind=\"")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" data-bind__event.change=\"")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var21 string
 							templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter." + filter.Name)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 110, Col: 45}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 110, Col: 59}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 							if templ_7745c5c3_Err != nil {
