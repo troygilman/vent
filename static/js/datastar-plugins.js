@@ -62,7 +62,6 @@ attribute({
   returnsValue: true,
 
   apply({ el, mods, rx }) {
-    const filterEmpty = mods.has("filter")
     const useHistory = mods.has("history")
 
     let filter = {}
@@ -132,10 +131,7 @@ attribute({
 
           if (value !== null && typeof value === "object" && !Array.isArray(value)) {
             walk(value, path)
-          } else {
-            if (filterEmpty && (value === "" || value == null || value === undefined)) {
-              continue
-            }
+          } else if (value) {
             params.set(path, String(value))
           }
         }
