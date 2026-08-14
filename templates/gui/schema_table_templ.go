@@ -163,7 +163,7 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if len(props.FilterableColumns) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"schema-table-filters\" class=\"table-filters\" data-query-string__history=\"{include: /^filter\\./}\" data-init__delay.1ms=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:change=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:submit__prevent=\"void 0\" data-indicator=\"_indicator\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"schema-table-filters\" class=\"table-filters\" data-query-string__history=\"{include: /^filter\\./}\" data-on:query-string=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:change=\"@get(location.pathname, {filterSignals: {include: /^filter\\./}})\" data-on:submit__prevent=\"void 0\" data-indicator=\"_indicator\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

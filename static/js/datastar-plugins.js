@@ -49,6 +49,9 @@ attribute({
  *   <div data-query-string__filter></div>
  *   <div data-query-string__history></div>
  *   <div data-query-string__filter__history="{include: /^(search|page|sort)$/}"></div>
+ *
+ * After URL params are merged into signals, the element dispatches a bubbling
+ * `query-string` event. Use data-on:query-string to fetch or otherwise react.
  */
 attribute({
   name: "query-string",
@@ -155,8 +158,15 @@ attribute({
       }
     }
 
+    const emitUpdated = () => {
+      el.dispatchEvent(new Event("query-string", { bubbles: true }))
+    }
+
     applyUrlToSignals()
-    queueMicrotask(applyUrlToSignals)
+    queueMicrotask(() => {
+      applyUrlToSignals()
+      emitUpdated()
+    })
 
     const stopEffect = effect(() => {
       writeSignalsToUrl(useHistory)
@@ -166,7 +176,7 @@ attribute({
     if (useHistory) {
       onPopState = () => {
         applyUrlToSignals()
-        el.dispatchEvent(new Event("change", { bubbles: true }))
+        emitUpdated()
       }
       window.addEventListener("popstate", onPopState)
     }

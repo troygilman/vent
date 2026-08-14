@@ -71,7 +71,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					id="schema-table-filters"
 					class="table-filters"
 					data-query-string__history="{include: /^filter\./}"
-					data-init__delay.1ms="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
 					data-indicator="_indicator"
