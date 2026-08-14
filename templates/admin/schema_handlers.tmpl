@@ -47,11 +47,7 @@ type {{ $node.Name }}UpdateInput struct {
 // {{ $node.Name }}ListFilter is the typed Datastar filter signal for listing {{ $node.Name }}.
 type {{ $node.Name }}ListFilter struct {
 	{{- range $filter := $rc.FilterableColumns }}
-	{{- if eq $filter.Type "bool" }}
-	{{ $filter.PredicateName }} vent.FilterBool `json:"{{ $filter.Name }}"`
-	{{- else }}
 	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
-	{{- end }}
 	{{- end }}
 }
 {{- end }}
@@ -75,8 +71,8 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
 		}
 		{{- else if eq $filter.Type "bool" }}
-		if v := filter.{{ $filter.PredicateName }}.Ptr(); v != nil {
-			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(*v))
+		if filterVal := filter.{{ $filter.PredicateName }}; filterVal == "true" || filterVal == "false" {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(filterVal == "true"))
 		}
 		{{- else if eq $filter.Type "int" }}
 		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
@@ -130,11 +126,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{{- range $filter := $rc.FilterableColumns }}
-				{{- if eq $filter.Type "bool" }}
-				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: gui.BoolFilterValue(filter.{{ $filter.PredicateName }}.Ptr())},
-				{{- else }}
 				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
-				{{- end }}
 				{{- end }}
 			},
 			Rows:          rows,
