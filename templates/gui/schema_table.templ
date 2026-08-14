@@ -65,6 +65,11 @@ templ SchemaTablePage(props SchemaTableProps) {
 					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
 				}
 			</div>
+			<div
+				class="schema-table"
+				data-on:datastar-ready__document="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+				data-indicator="_indicator"
+			>
 			if len(props.FilterableColumns) > 0 {
 				<form
 					class="table-filters"
@@ -73,6 +78,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					data-query-string__history="{include: /^filter\./}"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
+					data-indicator="_indicator"
 					data-indicator="_indicator"
 				>
 					for _, filter := range props.FilterableColumns {
@@ -163,6 +169,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 						}
 					</tbody>
 				</table>
+			</div>
 			</div>
 			@Indicator()
 		}
