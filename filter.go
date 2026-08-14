@@ -1,16 +1,18 @@
 package vent
 
-// Boolean list-filter selector values sent as Datastar string signals.
+// BoolFilter is a list-filter selector for boolean fields.
+type BoolFilter string
+
 const (
-	BoolFilterAll   = "all"
-	BoolFilterTrue  = "true"
-	BoolFilterFalse = "false"
+	BoolFilterAll   BoolFilter = "all"
+	BoolFilterTrue  BoolFilter = "true"
+	BoolFilterFalse BoolFilter = "false"
 )
 
-// ParseBoolFilter converts a boolean list-filter signal into a bool.
+// Bool converts a boolean list-filter signal into a bool.
 // ok is false for BoolFilterAll and any other unset value.
-func ParseBoolFilter(value string) (v bool, ok bool) {
-	switch value {
+func (f BoolFilter) Bool() (v bool, ok bool) {
+	switch f {
 	case BoolFilterTrue:
 		return true, true
 	case BoolFilterFalse:
@@ -20,11 +22,15 @@ func ParseBoolFilter(value string) (v bool, ok bool) {
 	}
 }
 
-// NormalizeBoolFilter returns BoolFilterTrue or BoolFilterFalse unchanged,
+// Normalize returns BoolFilterTrue or BoolFilterFalse unchanged,
 // and BoolFilterAll for every other value.
-func NormalizeBoolFilter(value string) string {
-	if value == BoolFilterTrue || value == BoolFilterFalse {
-		return value
+func (f BoolFilter) Normalize() BoolFilter {
+	if f == BoolFilterTrue || f == BoolFilterFalse {
+		return f
 	}
 	return BoolFilterAll
+}
+
+func (f BoolFilter) String() string {
+	return string(f)
 }

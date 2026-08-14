@@ -51,9 +51,13 @@ func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[st
 
 func tableFilterValue(column SchemaTableFilterableColumn) string {
 	if column.Type == "bool" {
-		return vent.NormalizeBoolFilter(column.Value)
+		return tableFilterBoolValue(column).String()
 	}
 	return column.Value
+}
+
+func tableFilterBoolValue(column SchemaTableFilterableColumn) vent.BoolFilter {
+	return vent.BoolFilter(column.Value).Normalize()
 }
 
 func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
@@ -108,15 +112,15 @@ templ SchemaTablePage(props SchemaTableProps) {
 									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								{{ boolValue := tableFilterValue(filter) }}
+								{{ boolValue := tableFilterBoolValue(filter) }}
 								<select
 									class="select"
 									name={ filter.Name }
 									data-bind={ "filter." + filter.Name }
 								>
-									<option value={ vent.BoolFilterAll } selected?={ boolValue == vent.BoolFilterAll }>All</option>
-									<option value={ vent.BoolFilterTrue } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
-									<option value={ vent.BoolFilterFalse } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
+									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
+									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
+									<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">

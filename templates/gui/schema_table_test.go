@@ -12,7 +12,7 @@ func TestTableFilterSignalsBoolJSON(t *testing.T) {
 	got := tableFilterSignals([]SchemaTableFilterableColumn{
 		{Name: "email", Type: "string", Value: "admin"},
 		{Name: "is_staff", Type: "bool", Value: ""},
-		{Name: "is_active", Type: "bool", Value: vent.BoolFilterTrue},
+		{Name: "is_active", Type: "bool", Value: vent.BoolFilterTrue.String()},
 	})
 	raw, err := json.Marshal(got)
 	if err != nil {
@@ -25,16 +25,16 @@ func TestTableFilterSignalsBoolJSON(t *testing.T) {
 }
 
 func TestTableFilterValueNormalizesBool(t *testing.T) {
-	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: ""}); got != vent.BoolFilterAll {
+	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: ""}); got != vent.BoolFilterAll.String() {
 		t.Fatalf("empty bool = %q, want all", got)
 	}
-	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterAll}); got != vent.BoolFilterAll {
+	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterAll.String()}); got != vent.BoolFilterAll.String() {
 		t.Fatalf("all = %q, want all", got)
 	}
-	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterTrue}); got != vent.BoolFilterTrue {
+	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterTrue.String()}); got != vent.BoolFilterTrue.String() {
 		t.Fatalf("true = %q", got)
 	}
-	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterFalse}); got != vent.BoolFilterFalse {
+	if got := tableFilterValue(SchemaTableFilterableColumn{Type: "bool", Value: vent.BoolFilterFalse.String()}); got != vent.BoolFilterFalse.String() {
 		t.Fatalf("false = %q", got)
 	}
 }
