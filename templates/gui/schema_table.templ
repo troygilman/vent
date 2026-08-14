@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/troygilman/vent/requestctx"
@@ -41,26 +40,18 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
-func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]string {
-	signals := make(map[string]string, len(columns))
+func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[string]string {
+	filter := make(map[string]string, len(columns))
 	for _, column := range columns {
-		signals[column.Name] = column.Value
+		filter[column.Name] = column.Value
 	}
-	return signals
-}
-
-func tableFilterIncludePattern(columns []SchemaTableFilterableColumn) string {
-	names := make([]string, len(columns))
-	for i, column := range columns {
-		names[i] = regexp.QuoteMeta(column.Name)
-	}
-	return "^(" + strings.Join(names, "|") + ")$"
+	return map[string]map[string]string{"filter": filter}
 }
 
 func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, len(columns))
 	for i, column := range columns {
-		parts[i] = fmt.Sprintf("$%s !== ''", column.Name)
+		parts[i] = fmt.Sprintf("$filter.%s !== ''", column.Name)
 	}
 	return strings.Join(parts, " || ")
 }
@@ -68,9 +59,9 @@ func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, 0, len(columns)+1)
 	for _, column := range columns {
-		parts = append(parts, fmt.Sprintf("$%s = ''", column.Name))
+		parts = append(parts, fmt.Sprintf("$filter.%s = ''", column.Name))
 	}
-	parts = append(parts, "@get(location.pathname, {filterSignals: {exclude: /.*/}})")
+	parts = append(parts, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
 	return strings.Join(parts, "; ")
 }
 
@@ -90,25 +81,25 @@ templ SchemaTablePage(props SchemaTableProps) {
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
 					data-signals={ templ.JSONString(tableFilterSignals(props.FilterableColumns)) }
-					data-query-string__filter={ "{include: /" + tableFilterIncludePattern(props.FilterableColumns) + "/}" }
-					data-on:submit__prevent="@get(location.pathname + location.search, {filterSignals: {exclude: /.*/}})"
+					data-replace-url
+					data-on:submit__prevent="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 				>
 					for _, filter := range props.FilterableColumns {
 						<label class="table-filter">
 							<span class="table-filter-label">{ filter.Label }</span>
 							if filter.Type == "string" {
 								<div class="input">
-									<input type="text" name={ filter.Name } data-bind={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								<select class="select" name={ filter.Name } data-bind={ filter.Name }>
+								<select class="select" name={ filter.Name } data-bind={ "filter." + filter.Name }>
 									<option value="" selected?={ filter.Value == "" }>All</option>
 									<option value="true" selected?={ filter.Value == "true" }>Yes</option>
 									<option value="false" selected?={ filter.Value == "false" }>No</option>
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
-									<input type="number" name={ filter.Name } data-bind={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="number" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							}
 						</label>
@@ -127,45 +118,41 @@ templ SchemaTablePage(props SchemaTableProps) {
 					</div>
 				</form>
 			}
-			@SchemaTableResults(props)
+			<div class="table-container">
+				<table class="data-table">
+					<thead>
+						<tr>
+							for _, column := range props.Columns {
+								<th>{ column.Label }</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						if len(props.Rows) == 0 {
+							<tr>
+								<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
+							</tr>
+						} else {
+							for _, row := range props.Rows {
+								<tr>
+									for _, cell := range row.Cells {
+										if cell.LinkURL != "" {
+											<td>
+												<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
+													{ cell.Display }
+												</a>
+											</td>
+										} else {
+											<td>{ cell.Display }</td>
+										}
+									}
+								</tr>
+							}
+						}
+					</tbody>
+				</table>
+			</div>
 			@Indicator()
 		}
 	}
-}
-
-templ SchemaTableResults(props SchemaTableProps) {
-	<div id="schema-table-results" class="table-container">
-		<table class="data-table">
-			<thead>
-				<tr>
-					for _, column := range props.Columns {
-						<th>{ column.Label }</th>
-					}
-				</tr>
-			</thead>
-			<tbody>
-				if len(props.Rows) == 0 {
-					<tr>
-						<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
-					</tr>
-				} else {
-					for _, row := range props.Rows {
-						<tr>
-							for _, cell := range row.Cells {
-								if cell.LinkURL != "" {
-									<td>
-										<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
-											{ cell.Display }
-										</a>
-									</td>
-								} else {
-									<td>{ cell.Display }</td>
-								}
-							}
-						</tr>
-					}
-				}
-			</tbody>
-		</table>
-	</div>
 }

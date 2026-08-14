@@ -32,11 +32,24 @@ type PermissionUpdateInput struct {
 	Groups *[]string `json:"groups"`
 }
 
+// PermissionListFilter is the typed Datastar filter signal for listing Permission.
+type PermissionListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
-		if filterVal := r.URL.Query().Get("name"); filterVal != "" {
+		var signals struct {
+			Filter PermissionListFilter `json:"filter"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+			return
+		}
+		filter := signals.Filter
+		if filterVal := filter.Name; filterVal != "" {
 			query = query.Where(permission.NameContainsFold(filterVal))
 		}
 
@@ -80,18 +93,10 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string", Value: r.URL.Query().Get("name")},
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
-		}
-
-		if vent.IsDatastarRequest(r) {
-			sse := datastar.NewSSE(w, r)
-			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
-				vent.HandleError(w, r, err)
-			}
-			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -261,11 +266,24 @@ type PermissionGroupUpdateInput struct {
 	Permissions *[]string `json:"permissions"`
 }
 
+// PermissionGroupListFilter is the typed Datastar filter signal for listing PermissionGroup.
+type PermissionGroupListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
-		if filterVal := r.URL.Query().Get("name"); filterVal != "" {
+		var signals struct {
+			Filter PermissionGroupListFilter `json:"filter"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+			return
+		}
+		filter := signals.Filter
+		if filterVal := filter.Name; filterVal != "" {
 			query = query.Where(permissiongroup.NameContainsFold(filterVal))
 		}
 
@@ -308,18 +326,10 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string", Value: r.URL.Query().Get("name")},
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
-		}
-
-		if vent.IsDatastarRequest(r) {
-			sse := datastar.NewSSE(w, r)
-			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
-				vent.HandleError(w, r, err)
-			}
-			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -631,21 +641,36 @@ type UserUpdateInput struct {
 	LastLogin   *string   `json:"last_login"`
 }
 
+// UserListFilter is the typed Datastar filter signal for listing User.
+type UserListFilter struct {
+	Email    string `json:"email"`
+	IsStaff  string `json:"is_staff"`
+	IsActive string `json:"is_active"`
+}
+
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.userFields.eagerLoadQuery(h.client.User.Query())
-		if filterVal := r.URL.Query().Get("email"); filterVal != "" {
+		var signals struct {
+			Filter UserListFilter `json:"filter"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+			return
+		}
+		filter := signals.Filter
+		if filterVal := filter.Email; filterVal != "" {
 			query = query.Where(user.EmailContainsFold(filterVal))
 		}
-		if filterVal := r.URL.Query().Get("is_staff"); filterVal != "" {
+		if filterVal := filter.IsStaff; filterVal != "" {
 			if filterVal == "true" {
 				query = query.Where(user.IsStaffEQ(true))
 			} else if filterVal == "false" {
 				query = query.Where(user.IsStaffEQ(false))
 			}
 		}
-		if filterVal := r.URL.Query().Get("is_active"); filterVal != "" {
+		if filterVal := filter.IsActive; filterVal != "" {
 			if filterVal == "true" {
 				query = query.Where(user.IsActiveEQ(true))
 			} else if filterVal == "false" {
@@ -696,20 +721,12 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "email", Label: "Email", Type: "string", Value: r.URL.Query().Get("email")},
-				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: r.URL.Query().Get("is_staff")},
-				{Name: "is_active", Label: "IsActive", Type: "bool", Value: r.URL.Query().Get("is_active")},
+				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: filter.IsStaff},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
-		}
-
-		if vent.IsDatastarRequest(r) {
-			sse := datastar.NewSSE(w, r)
-			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
-				vent.HandleError(w, r, err)
-			}
-			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {

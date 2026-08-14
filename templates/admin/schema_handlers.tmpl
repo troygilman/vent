@@ -43,12 +43,30 @@ type {{ $node.Name }}UpdateInput struct {
 	{{- end }}
 }
 
+{{- if $rc.FilterableColumns }}
+// {{ $node.Name }}ListFilter is the typed Datastar filter signal for listing {{ $node.Name }}.
+type {{ $node.Name }}ListFilter struct {
+	{{- range $filter := $rc.FilterableColumns }}
+	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
+	{{- end }}
+}
+{{- end }}
+
 // get{{ $node.Name }}ListHandler returns the handler for GET /admin/{{ lower $node.Name }}s/
 func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := h.{{ fieldsVarName $node.Name }}.eagerLoadQuery(h.client.{{ $node.Name }}.Query())
+		{{- if $rc.FilterableColumns }}
+		var signals struct {
+			Filter {{ $node.Name }}ListFilter `json:"filter"`
+		}
+		if err := datastar.ReadSignals(r, &signals); err != nil {
+			vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+			return
+		}
+		filter := signals.Filter
 		{{- range $filter := $rc.FilterableColumns }}
-		if filterVal := r.URL.Query().Get("{{ $filter.Name }}"); filterVal != "" {
+		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
 			{{- if eq $filter.Type "string" }}
 			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
 			{{- else if eq $filter.Type "bool" }}
@@ -63,6 +81,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			}
 			{{- end }}
 		}
+		{{- end }}
 		{{- end }}
 
 		entities, err := query.
@@ -107,19 +126,11 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{{- range $filter := $rc.FilterableColumns }}
-				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: r.URL.Query().Get("{{ $filter.Name }}")},
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
 				{{- end }}
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
-		}
-
-		if vent.IsDatastarRequest(r) {
-			sse := datastar.NewSSE(w, r)
-			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
-				vent.HandleError(w, r, err)
-			}
-			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
