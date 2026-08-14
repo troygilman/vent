@@ -33,6 +33,7 @@ func (Category) Annotations() []schema.Annotation {
 			SingularDisplayName: "Category",
 			PluralDisplayName:   "Categories",
 			TableColumns:        []string{"name", "description"},
+			FilterableColumns:   []string{"name"},
 			FieldSets: []vent.FieldSet{{
 				Label:  "Category",
 				Fields: []string{"name", "description"},

@@ -96,10 +96,25 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 	if err != nil {
 		return err
 	}
+	reference, err := client.Category.Create().
+		SetName("Reference").
+		SetDescription("Manuals and catalogs").
+		Save(ctx)
+	if err != nil {
+		return err
+	}
 
 	author, err := client.Author.Create().
 		SetName("Ada Lovelace").
 		SetBio("Demo author").
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	inactiveAuthor, err := client.Author.Create().
+		SetName("Charles Babbage").
+		SetBio("Inactive demo author").
+		SetActive(false).
 		Save(ctx)
 	if err != nil {
 		return err
@@ -131,10 +146,31 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 		return err
 	}
 
+	_, err = client.Book.Create().
+		SetTitle("Notes on the Difference Engine").
+		SetPages(48).
+		SetPrice(9.99).
+		SetPublished(false).
+		SetAuthor(inactiveAuthor).
+		SetCategory(reference).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+
 	_, err = client.Review.Create().
 		SetReviewer("Casey").
 		SetRating(5).
 		SetBody("A clear tour of Vent's schema features.").
+		SetBook(book).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = client.Review.Create().
+		SetReviewer("Riley").
+		SetRating(3).
+		SetBody("Useful, but still a draft.").
 		SetBook(book).
 		Save(ctx)
 	if err != nil {

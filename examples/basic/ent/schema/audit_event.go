@@ -31,6 +31,7 @@ func (AuditEvent) Annotations() []schema.Annotation {
 			RouteName:           "audit-events",
 			ReadOnlyFields:      []string{"action", "detail", "created_at"},
 			TableColumns:        []string{"action", "detail", "created_at"},
+			FilterableColumns:   []string{"action"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"action", "detail", "created_at"},
 			}},

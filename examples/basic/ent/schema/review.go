@@ -41,6 +41,7 @@ func (Review) Annotations() []schema.Annotation {
 			DisableDelete:       true,
 			ReadOnlyFields:      []string{"created_at"},
 			TableColumns:        []string{"reviewer", "rating", "book", "created_at"},
+			FilterableColumns:   []string{"reviewer", "rating"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"reviewer", "rating", "body", "book", "created_at"},
 			}},

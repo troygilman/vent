@@ -36,12 +36,29 @@ type AuditEventCreateInput struct {
 type AuditEventUpdateInput struct {
 }
 
+// AuditEventListFilter is the typed Datastar filter signal for listing AuditEvent.
+type AuditEventListFilter struct {
+	Action string `json:"action"`
+}
+
 // getAuditEventListHandler returns the handler for GET /admin/auditevents/
 func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter AuditEventListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.auditEventFields.eagerLoadQuery(h.client.AuditEvent.Query())
+			var signals struct {
+				Filter AuditEventListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Action; filterVal != "" {
+				query = query.Where(auditevent.ActionContainsFold(filterVal))
+			}
 
 			entities, err := query.
 				Order(auditevent.ByID()).
@@ -84,9 +101,11 @@ func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 				{Name: "detail", Label: "Detail", Type: "string"},
 				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "action", Label: "Action", Type: "string", Value: filter.Action},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -195,12 +214,33 @@ type AuthorUpdateInput struct {
 	Active *bool                 `json:"active"`
 }
 
+// AuthorListFilter is the typed Datastar filter signal for listing Author.
+type AuthorListFilter struct {
+	Name   string          `json:"name"`
+	Active vent.BoolFilter `json:"active"`
+}
+
 // getAuthorListHandler returns the handler for GET /admin/authors/
 func (h *AdminHandler) getAuthorListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter AuthorListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.authorFields.eagerLoadQuery(h.client.Author.Query())
+			var signals struct {
+				Filter AuthorListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(author.NameContainsFold(filterVal))
+			}
+			if v, ok := filter.Active.Bool(); ok {
+				query = query.Where(author.ActiveEQ(v))
+			}
 
 			entities, err := query.
 				Order(author.ByID()).
@@ -242,9 +282,12 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "active", Label: "Active", Type: "bool"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
+				{Name: "active", Label: "Active", Type: "bool", Value: filter.Active.Normalize().String()},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -564,12 +607,39 @@ type BookUpdateInput struct {
 	Notes       *string               `json:"notes"`
 }
 
+// BookListFilter is the typed Datastar filter signal for listing Book.
+type BookListFilter struct {
+	Title     string          `json:"title"`
+	Published vent.BoolFilter `json:"published"`
+	Pages     string          `json:"pages"`
+}
+
 // getBookListHandler returns the handler for GET /admin/books/
 func (h *AdminHandler) getBookListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter BookListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.bookFields.eagerLoadQuery(h.client.Book.Query())
+			var signals struct {
+				Filter BookListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Title; filterVal != "" {
+				query = query.Where(book.TitleContainsFold(filterVal))
+			}
+			if v, ok := filter.Published.Bool(); ok {
+				query = query.Where(book.PublishedEQ(v))
+			}
+			if filterVal := filter.Pages; filterVal != "" {
+				if intVal, err := strconv.Atoi(filterVal); err == nil {
+					query = query.Where(book.PagesEQ(intVal))
+				}
+			}
 
 			entities, err := query.
 				Order(book.ByID()).
@@ -615,9 +685,13 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 				{Name: "price", Label: "Price", Type: "float64"},
 				{Name: "published_at", Label: "PublishedAt", Type: "time.Time"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "title", Label: "Title", Type: "string", Value: filter.Title},
+				{Name: "published", Label: "Published", Type: "bool", Value: filter.Published.Normalize().String()},
+				{Name: "pages", Label: "Pages", Type: "int", Value: filter.Pages},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -921,12 +995,29 @@ type CategoryUpdateInput struct {
 	Description OptionalInput[string] `json:"description"`
 }
 
+// CategoryListFilter is the typed Datastar filter signal for listing Category.
+type CategoryListFilter struct {
+	Name string `json:"name"`
+}
+
 // getCategoryListHandler returns the handler for GET /admin/categorys/
 func (h *AdminHandler) getCategoryListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter CategoryListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.categoryFields.eagerLoadQuery(h.client.Category.Query())
+			var signals struct {
+				Filter CategoryListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(category.NameContainsFold(filterVal))
+			}
 
 			entities, err := query.
 				Order(category.ByID()).
@@ -968,9 +1059,11 @@ func (h *AdminHandler) getCategoryListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "description", Label: "Description", Type: "string"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1272,12 +1365,29 @@ type PermissionUpdateInput struct {
 	Groups *[]string `json:"groups"`
 }
 
+// PermissionListFilter is the typed Datastar filter signal for listing Permission.
+type PermissionListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter PermissionListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
+			var signals struct {
+				Filter PermissionListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(permission.NameContainsFold(filterVal))
+			}
 
 			entities, err := query.
 				Order(permission.ByID()).
@@ -1319,9 +1429,11 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1491,12 +1603,29 @@ type PermissionGroupUpdateInput struct {
 	Permissions *[]string `json:"permissions"`
 }
 
+// PermissionGroupListFilter is the typed Datastar filter signal for listing PermissionGroup.
+type PermissionGroupListFilter struct {
+	Name string `json:"name"`
+}
+
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter PermissionGroupListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
+			var signals struct {
+				Filter PermissionGroupListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Name; filterVal != "" {
+				query = query.Where(permissiongroup.NameContainsFold(filterVal))
+			}
 
 			entities, err := query.
 				Order(permissiongroup.ByID()).
@@ -1537,9 +1666,11 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1847,12 +1978,35 @@ type ReviewUpdateInput struct {
 	Book     *string               `json:"book"`
 }
 
+// ReviewListFilter is the typed Datastar filter signal for listing Review.
+type ReviewListFilter struct {
+	Reviewer string `json:"reviewer"`
+	Rating   string `json:"rating"`
+}
+
 // getReviewListHandler returns the handler for GET /admin/reviews/
 func (h *AdminHandler) getReviewListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var filter ReviewListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.reviewFields.eagerLoadQuery(h.client.Review.Query())
+			var signals struct {
+				Filter ReviewListFilter `json:"filter"`
+			}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Reviewer; filterVal != "" {
+				query = query.Where(review.ReviewerContainsFold(filterVal))
+			}
+			if filterVal := filter.Rating; filterVal != "" {
+				if intVal, err := strconv.Atoi(filterVal); err == nil {
+					query = query.Where(review.RatingEQ(intVal))
+				}
+			}
 
 			entities, err := query.
 				Order(review.ByID()).
@@ -1896,9 +2050,12 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				{Name: "book", Label: "Book", Type: "edge"},
 				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{},
-			Rows:              rows,
-			RenderContext:     renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "reviewer", Label: "Reviewer", Type: "string", Value: filter.Reviewer},
+				{Name: "rating", Label: "Rating", Type: "int", Value: filter.Rating},
+			},
+			Rows:          rows,
+			RenderContext: renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {

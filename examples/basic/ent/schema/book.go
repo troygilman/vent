@@ -57,6 +57,11 @@ func (Book) Annotations() []schema.Annotation {
 				"price",
 				"published_at",
 			},
+			FilterableColumns: []string{
+				"title",
+				"published",
+				"pages",
+			},
 			FieldSets: []vent.FieldSet{{
 				Label: "Book",
 				Fields: []string{

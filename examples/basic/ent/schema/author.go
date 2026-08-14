@@ -33,6 +33,7 @@ func (Author) Annotations() []schema.Annotation {
 			SingularDisplayName: "Author",
 			PluralDisplayName:   "Authors",
 			TableColumns:        []string{"name", "active"},
+			FilterableColumns:   []string{"name", "active"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"name", "bio", "active"},
 			}},

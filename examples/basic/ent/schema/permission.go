@@ -29,6 +29,7 @@ func (Permission) Annotations() []schema.Annotation {
 			DisableDelete:       true,
 			ReadOnlyFields:      []string{"name"},
 			TableColumns:        []string{"name", "groups"},
+			FilterableColumns:   []string{"name"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"name", "groups"},
 			}},
