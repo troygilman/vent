@@ -643,9 +643,9 @@ type UserUpdateInput struct {
 
 // UserListFilter is the typed Datastar filter signal for listing User.
 type UserListFilter struct {
-	Email    string `json:"email"`
-	IsStaff  *bool  `json:"is_staff"`
-	IsActive *bool  `json:"is_active"`
+	Email    string          `json:"email"`
+	IsStaff  vent.FilterBool `json:"is_staff"`
+	IsActive vent.FilterBool `json:"is_active"`
 }
 
 // getUserListHandler returns the handler for GET /admin/users/
@@ -663,11 +663,11 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		if filterVal := filter.Email; filterVal != "" {
 			query = query.Where(user.EmailContainsFold(filterVal))
 		}
-		if filter.IsStaff != nil {
-			query = query.Where(user.IsStaffEQ(*filter.IsStaff))
+		if v := filter.IsStaff.Ptr(); v != nil {
+			query = query.Where(user.IsStaffEQ(*v))
 		}
-		if filter.IsActive != nil {
-			query = query.Where(user.IsActiveEQ(*filter.IsActive))
+		if v := filter.IsActive.Ptr(); v != nil {
+			query = query.Where(user.IsActiveEQ(*v))
 		}
 
 		entities, err := query.
@@ -714,8 +714,8 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
-				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: gui.BoolFilterValue(filter.IsStaff)},
-				{Name: "is_active", Label: "IsActive", Type: "bool", Value: gui.BoolFilterValue(filter.IsActive)},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: gui.BoolFilterValue(filter.IsStaff.Ptr())},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: gui.BoolFilterValue(filter.IsActive.Ptr())},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,

@@ -48,7 +48,7 @@ type {{ $node.Name }}UpdateInput struct {
 type {{ $node.Name }}ListFilter struct {
 	{{- range $filter := $rc.FilterableColumns }}
 	{{- if eq $filter.Type "bool" }}
-	{{ $filter.PredicateName }} *bool `json:"{{ $filter.Name }}"`
+	{{ $filter.PredicateName }} vent.FilterBool `json:"{{ $filter.Name }}"`
 	{{- else }}
 	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
 	{{- end }}
@@ -75,8 +75,8 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
 		}
 		{{- else if eq $filter.Type "bool" }}
-		if filter.{{ $filter.PredicateName }} != nil {
-			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(*filter.{{ $filter.PredicateName }}))
+		if v := filter.{{ $filter.PredicateName }}.Ptr(); v != nil {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(*v))
 		}
 		{{- else if eq $filter.Type "int" }}
 		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
@@ -131,7 +131,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{{- range $filter := $rc.FilterableColumns }}
 				{{- if eq $filter.Type "bool" }}
-				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: gui.BoolFilterValue(filter.{{ $filter.PredicateName }})},
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: gui.BoolFilterValue(filter.{{ $filter.PredicateName }}.Ptr())},
 				{{- else }}
 				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
 				{{- end }}
