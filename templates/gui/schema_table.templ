@@ -40,17 +40,32 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
-func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[string]string {
-	filter := make(map[string]string, len(columns))
+func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[string]any {
+	filter := make(map[string]any, len(columns))
 	for _, column := range columns {
+		if column.Type == "bool" {
+			switch column.Value {
+			case "true":
+				filter[column.Name] = true
+			case "false":
+				filter[column.Name] = false
+			default:
+				filter[column.Name] = nil
+			}
+			continue
+		}
 		filter[column.Name] = column.Value
 	}
-	return map[string]map[string]string{"filter": filter}
+	return map[string]map[string]any{"filter": filter}
 }
 
 func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, len(columns))
 	for i, column := range columns {
+		if column.Type == "bool" {
+			parts[i] = fmt.Sprintf("$filter.%s !== null", column.Name)
+			continue
+		}
 		parts[i] = fmt.Sprintf("$filter.%s !== ''", column.Name)
 	}
 	return strings.Join(parts, " || ")
@@ -59,10 +74,24 @@ func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
 func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
 	parts := make([]string, 0, len(columns)+1)
 	for _, column := range columns {
+		if column.Type == "bool" {
+			parts = append(parts, fmt.Sprintf("$filter.%s = null", column.Name))
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("$filter.%s = ''", column.Name))
 	}
 	parts = append(parts, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
 	return strings.Join(parts, "; ")
+}
+
+func BoolFilterValue(v *bool) string {
+	if v == nil {
+		return ""
+	}
+	if *v {
+		return "true"
+	}
+	return "false"
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -92,7 +121,11 @@ templ SchemaTablePage(props SchemaTableProps) {
 									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								<select class="select" name={ filter.Name } data-bind={ "filter." + filter.Name }>
+								<select
+									class="select"
+									name={ filter.Name }
+									data-on:change={ "$filter." + filter.Name + " = el.value === '' ? null : el.value === 'true'" }
+								>
 									<option value="" selected?={ filter.Value == "" }>All</option>
 									<option value="true" selected?={ filter.Value == "true" }>Yes</option>
 									<option value="false" selected?={ filter.Value == "false" }>No</option>

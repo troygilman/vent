@@ -47,7 +47,11 @@ type {{ $node.Name }}UpdateInput struct {
 // {{ $node.Name }}ListFilter is the typed Datastar filter signal for listing {{ $node.Name }}.
 type {{ $node.Name }}ListFilter struct {
 	{{- range $filter := $rc.FilterableColumns }}
+	{{- if eq $filter.Type "bool" }}
+	{{ $filter.PredicateName }} *bool `json:"{{ $filter.Name }}"`
+	{{- else }}
 	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
+	{{- end }}
 	{{- end }}
 }
 {{- end }}
@@ -66,21 +70,21 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 		}
 		filter := signals.Filter
 		{{- range $filter := $rc.FilterableColumns }}
+		{{- if eq $filter.Type "string" }}
 		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
-			{{- if eq $filter.Type "string" }}
 			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
-			{{- else if eq $filter.Type "bool" }}
-			if filterVal == "true" {
-				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(true))
-			} else if filterVal == "false" {
-				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(false))
-			}
-			{{- else if eq $filter.Type "int" }}
+		}
+		{{- else if eq $filter.Type "bool" }}
+		if filter.{{ $filter.PredicateName }} != nil {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(*filter.{{ $filter.PredicateName }}))
+		}
+		{{- else if eq $filter.Type "int" }}
+		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
 			if intVal, err := strconv.Atoi(filterVal); err == nil {
 				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(intVal))
 			}
-			{{- end }}
 		}
+		{{- end }}
 		{{- end }}
 		{{- end }}
 
@@ -126,7 +130,11 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{{- range $filter := $rc.FilterableColumns }}
+				{{- if eq $filter.Type "bool" }}
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: gui.BoolFilterValue(filter.{{ $filter.PredicateName }})},
+				{{- else }}
 				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
+				{{- end }}
 				{{- end }}
 			},
 			Rows:          rows,
