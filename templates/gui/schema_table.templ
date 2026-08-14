@@ -41,48 +41,33 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
-func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]map[string]string {
+type tableFilters struct {
+	Signals   map[string]map[string]string
+	ShowClear string
+	OnClear   string
+}
+
+func newTableFilters(columns []SchemaTableFilterableColumn) tableFilters {
 	filter := make(map[string]string, len(columns))
-	for _, column := range columns {
-		filter[column.Name] = tableFilterValue(column)
-	}
-	return map[string]map[string]string{"filter": filter}
-}
-
-func tableFilterValue(column SchemaTableFilterableColumn) string {
-	if column.Type == "bool" {
-		return tableFilterBoolValue(column).String()
-	}
-	return column.Value
-}
-
-func tableFilterBoolValue(column SchemaTableFilterableColumn) vent.BoolFilter {
-	return vent.BoolFilter(column.Value).Normalize()
-}
-
-func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
-	parts := make([]string, len(columns))
+	active := make([]string, len(columns))
+	reset := make([]string, 0, len(columns)+1)
 	for i, column := range columns {
+		empty := "''"
+		value := column.Value
 		if column.Type == "bool" {
-			parts[i] = fmt.Sprintf("$filter.%s !== '%s'", column.Name, vent.BoolFilterAll)
-			continue
+			value = vent.BoolFilter(column.Value).Normalize().String()
+			empty = "'" + vent.BoolFilterAll.String() + "'"
 		}
-		parts[i] = fmt.Sprintf("$filter.%s !== ''", column.Name)
+		filter[column.Name] = value
+		active[i] = fmt.Sprintf("$filter.%s !== %s", column.Name, empty)
+		reset = append(reset, fmt.Sprintf("$filter.%s = %s", column.Name, empty))
 	}
-	return strings.Join(parts, " || ")
-}
-
-func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
-	parts := make([]string, 0, len(columns)+1)
-	for _, column := range columns {
-		if column.Type == "bool" {
-			parts = append(parts, fmt.Sprintf("$filter.%s = '%s'", column.Name, vent.BoolFilterAll))
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("$filter.%s = ''", column.Name))
+	reset = append(reset, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
+	return tableFilters{
+		Signals:   map[string]map[string]string{"filter": filter},
+		ShowClear: strings.Join(active, " || "),
+		OnClear:   strings.Join(reset, "; "),
 	}
-	parts = append(parts, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
-	return strings.Join(parts, "; ")
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -96,11 +81,12 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			if len(props.FilterableColumns) > 0 {
+				{{ filters := newTableFilters(props.FilterableColumns) }}
 				<form
 					class="table-filters"
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
-					data-signals={ templ.JSONString(tableFilterSignals(props.FilterableColumns)) }
+					data-signals={ templ.JSONString(filters.Signals) }
 					data-push-url="{include: /^filter\./}"
 					data-on:submit__prevent="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 				>
@@ -112,7 +98,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								{{ boolValue := tableFilterBoolValue(filter) }}
+								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
 								<select
 									class="select"
 									name={ filter.Name }
@@ -134,8 +120,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<button
 							type="button"
 							class="btn btn-neutral"
-							data-show={ tableFilterActiveExpr(props.FilterableColumns) }
-							data-on:click={ tableFilterClearExpr(props.FilterableColumns) }
+							data-show={ filters.ShowClear }
+							data-on:click={ filters.OnClear }
 							data-indicator="_indicator"
 						>
 							Clear
