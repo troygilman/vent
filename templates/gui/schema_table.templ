@@ -40,6 +40,21 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
+func tableFiltersActive(columns []SchemaTableFilterableColumn) bool {
+	for _, column := range columns {
+		if column.Type == "bool" {
+			if _, ok := vent.BoolFilter(column.Value).Bool(); ok {
+				return true
+			}
+			continue
+		}
+		if column.Value != "" {
+			return true
+		}
+	}
+	return false
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	@Index() {
@@ -101,18 +116,18 @@ templ SchemaTablePage(props SchemaTableProps) {
 							}
 						</label>
 					}
-					<div class="table-filter-actions">
-						<button type="submit" class="btn btn-primary" data-indicator="_indicator">Filter</button>
-						<button
-							type="button"
-							class="btn btn-neutral"
-							data-show={ fmt.Sprintf("Object.values($filter ?? {}).some((v) => v !== '' && v !== '%s')", vent.BoolFilterAll) }
-							data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
-							data-indicator="_indicator"
-						>
-							Clear
-						</button>
-					</div>
+					if tableFiltersActive(props.FilterableColumns) {
+						<div class="table-filter-actions">
+							<button
+								type="button"
+								class="btn btn-neutral"
+								data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+								data-indicator="_indicator"
+							>
+								Clear
+							</button>
+						</div>
+					}
 				</form>
 			}
 			<div class="table-container">
