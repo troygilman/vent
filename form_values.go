@@ -2,11 +2,18 @@ package vent
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 )
 
 // FormatFormValue formats an entity field value for HTML form controls.
+// Optional/nillable Ent fields are pointers; they are dereferenced before
+// formatting so forms show the value instead of a pointer address.
 func FormatFormValue(value any) string {
+	value = derefFormValue(value)
+	if value == nil {
+		return ""
+	}
 	switch v := value.(type) {
 	case time.Time:
 		if v.IsZero() {
@@ -16,6 +23,23 @@ func FormatFormValue(value any) string {
 	default:
 		return fmt.Sprintf("%v", value)
 	}
+}
+
+func derefFormValue(value any) any {
+	if value == nil {
+		return nil
+	}
+	rv := reflect.ValueOf(value)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return nil
+	}
+	return rv.Interface()
 }
 
 // ParseDateTimeLocal parses a datetime-local or RFC3339 string.
