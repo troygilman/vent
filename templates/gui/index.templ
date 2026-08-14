@@ -5,21 +5,15 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
 )
-
-func staticAsset(adminPath, path string) string {
-	return adminPath + path + "?v=" + vent.StaticAssetVersion
-}
 
 templ Index() {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ theme := requestctx.MustTheme(ctx) }}
-	{{ datastarPath := templ.URL(staticAsset(adminPath, "static/js/datastar.js")) }}
-	{{ pluginsPath := templ.URL(staticAsset(adminPath, "static/js/datastar-plugins.js")) }}
+	{{ datastarPath := templ.URL(adminPath + "static/js/datastar.js") }}
 	{{ fontPath := templ.SafeURL(adminPath + "static/fonts/inter-latin.woff2") }}
-	{{ stylePath := templ.SafeURL(staticAsset(adminPath, "static/css/style.css")) }}
+	{{ stylePath := templ.SafeURL(adminPath + "static/css/style.css") }}
 	{{ faviconIcoPath := templ.SafeURL(adminPath + "static/img/favicon.ico") }}
 	{{ faviconPngPath := templ.SafeURL(adminPath + "static/img/vent-logo.png") }}
 	<!DOCTYPE html>
@@ -35,15 +29,15 @@ templ Index() {
 			<link rel="preload" href={ fontPath } as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href={ stylePath } as="style"/>
 			<link rel="stylesheet" href={ stylePath } media="all"/>
-			<script src={ templ.SafeURL(staticAsset(adminPath, "static/js/common.js")) }></script>
-			<script src={ templ.SafeURL(staticAsset(adminPath, "static/js/command-palette.js")) }></script>
+			<script src={ templ.SafeURL(adminPath + "static/js/common.js") }></script>
+			<script src={ templ.SafeURL(adminPath + "static/js/command-palette.js") }></script>
 			@ImportMap(map[string]any{
 				"imports": map[string]any{
 					"datastar": datastarPath,
 				},
 			})
 			<script type="module" src={ datastarPath }></script>
-			<script type="module" src={ pluginsPath }></script>
+			<script type="module" src={ templ.URL(adminPath + "static/js/datastar-plugins.js") }></script>
 		</head>
 		<body>
 			{ children... }
