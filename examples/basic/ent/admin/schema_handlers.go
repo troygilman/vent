@@ -39,25 +39,30 @@ type AuditEventUpdateInput struct {
 // getAuditEventListHandler returns the handler for GET /admin/auditevents/
 func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.auditEventFields.eagerLoadQuery(h.client.AuditEvent.Query()).
-			Order(auditevent.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.auditEventFields.eagerLoadQuery(h.client.AuditEvent.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.auditEventFields.listColumns))
-			for j, field := range h.auditEventFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%saudit-events/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(auditevent.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.auditEventFields.listColumns))
+				for j, field := range h.auditEventFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%saudit-events/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.AuditEvent.CanCreate(r.Context())
@@ -79,8 +84,9 @@ func (h *AdminHandler) getAuditEventListHandler() http.Handler {
 				{Name: "detail", Label: "Detail", Type: "string"},
 				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -192,25 +198,30 @@ type AuthorUpdateInput struct {
 // getAuthorListHandler returns the handler for GET /admin/authors/
 func (h *AdminHandler) getAuthorListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.authorFields.eagerLoadQuery(h.client.Author.Query()).
-			Order(author.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.authorFields.eagerLoadQuery(h.client.Author.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.authorFields.listColumns))
-			for j, field := range h.authorFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%sauthors/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(author.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.authorFields.listColumns))
+				for j, field := range h.authorFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%sauthors/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Author.CanCreate(r.Context())
@@ -231,8 +242,9 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "active", Label: "Active", Type: "bool"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -555,25 +567,30 @@ type BookUpdateInput struct {
 // getBookListHandler returns the handler for GET /admin/books/
 func (h *AdminHandler) getBookListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.bookFields.eagerLoadQuery(h.client.Book.Query()).
-			Order(book.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.bookFields.eagerLoadQuery(h.client.Book.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.bookFields.listColumns))
-			for j, field := range h.bookFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%sbooks/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(book.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.bookFields.listColumns))
+				for j, field := range h.bookFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%sbooks/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Book.CanCreate(r.Context())
@@ -598,8 +615,9 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 				{Name: "price", Label: "Price", Type: "float64"},
 				{Name: "published_at", Label: "PublishedAt", Type: "time.Time"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -906,25 +924,30 @@ type CategoryUpdateInput struct {
 // getCategoryListHandler returns the handler for GET /admin/categorys/
 func (h *AdminHandler) getCategoryListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.categoryFields.eagerLoadQuery(h.client.Category.Query()).
-			Order(category.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.categoryFields.eagerLoadQuery(h.client.Category.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.categoryFields.listColumns))
-			for j, field := range h.categoryFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%scategories/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(category.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.categoryFields.listColumns))
+				for j, field := range h.categoryFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%scategories/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Category.CanCreate(r.Context())
@@ -945,8 +968,9 @@ func (h *AdminHandler) getCategoryListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "description", Label: "Description", Type: "string"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1251,25 +1275,30 @@ type PermissionUpdateInput struct {
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query()).
-			Order(permission.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
-			for j, field := range h.permissionFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(permission.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.permissionFields.listColumns))
+				for j, field := range h.permissionFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%spermissions/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Permission.CanCreate(r.Context())
@@ -1290,8 +1319,9 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1464,25 +1494,30 @@ type PermissionGroupUpdateInput struct {
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query()).
-			Order(permissiongroup.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
-			for j, field := range h.permissionGroupFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%spermission-groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(permissiongroup.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.permissionGroupFields.listColumns))
+				for j, field := range h.permissionGroupFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%spermission-groups/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.PermissionGroup.CanCreate(r.Context())
@@ -1502,8 +1537,9 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1814,25 +1850,30 @@ type ReviewUpdateInput struct {
 // getReviewListHandler returns the handler for GET /admin/reviews/
 func (h *AdminHandler) getReviewListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.reviewFields.eagerLoadQuery(h.client.Review.Query()).
-			Order(review.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.reviewFields.eagerLoadQuery(h.client.Review.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.reviewFields.listColumns))
-			for j, field := range h.reviewFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%sreviews/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(review.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.reviewFields.listColumns))
+				for j, field := range h.reviewFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%sreviews/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Review.CanCreate(r.Context())
@@ -1855,8 +1896,9 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				{Name: "book", Label: "Book", Type: "edge"},
 				{Name: "created_at", Label: "CreatedAt", Type: "time.Time"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -2129,25 +2171,30 @@ type TagUpdateInput struct {
 // getTagListHandler returns the handler for GET /admin/tags/
 func (h *AdminHandler) getTagListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.tagFields.eagerLoadQuery(h.client.Tag.Query()).
-			Order(tag.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.tagFields.eagerLoadQuery(h.client.Tag.Query())
 
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.tagFields.listColumns))
-			for j, field := range h.tagFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%stags/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+			entities, err := query.
+				Order(tag.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.tagFields.listColumns))
+				for j, field := range h.tagFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%stags/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.Tag.CanCreate(r.Context())
@@ -2168,8 +2215,9 @@ func (h *AdminHandler) getTagListHandler() http.Handler {
 				{Name: "id", Label: "ID", Type: "int"},
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -2481,28 +2529,58 @@ type UserUpdateInput struct {
 	LastLogin   *string   `json:"last_login"`
 }
 
+// UserListFilter is the typed Datastar filter signal for listing User.
+type UserListFilter struct {
+	Email    string          `json:"email"`
+	IsStaff  vent.BoolFilter `json:"is_staff"`
+	IsActive vent.BoolFilter `json:"is_active"`
+}
+
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.userFields.eagerLoadQuery(h.client.User.Query()).
-			Order(user.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
-			for j, field := range h.userFields.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+		var filter UserListFilter
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.userFields.eagerLoadQuery(h.client.User.Query())
+			var signals struct {
+				Filter UserListFilter `json:"filter"`
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			if filterVal := filter.Email; filterVal != "" {
+				query = query.Where(user.EmailContainsFold(filterVal))
+			}
+			if v, ok := filter.IsStaff.Bool(); ok {
+				query = query.Where(user.IsStaffEQ(v))
+			}
+			if v, ok := filter.IsActive.Bool(); ok {
+				query = query.Where(user.IsActiveEQ(v))
+			}
+
+			entities, err := query.
+				Order(user.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
+			}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.userFields.listColumns))
+				for j, field := range h.userFields.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%susers/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.User.CanCreate(r.Context())
@@ -2525,6 +2603,11 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "is_superuser", Label: "IsSuperuser", Type: "bool"},
 				{Name: "is_active", Label: "IsActive", Type: "bool"},
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: filter.IsStaff.Normalize().String()},
+				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,

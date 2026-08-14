@@ -43,28 +43,76 @@ type {{ $node.Name }}UpdateInput struct {
 	{{- end }}
 }
 
+{{- if $rc.FilterableColumns }}
+// {{ $node.Name }}ListFilter is the typed Datastar filter signal for listing {{ $node.Name }}.
+type {{ $node.Name }}ListFilter struct {
+	{{- range $filter := $rc.FilterableColumns }}
+	{{- if eq $filter.Type "bool" }}
+	{{ $filter.PredicateName }} vent.BoolFilter `json:"{{ $filter.Name }}"`
+	{{- else }}
+	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
+	{{- end }}
+	{{- end }}
+}
+{{- end }}
+
 // get{{ $node.Name }}ListHandler returns the handler for GET /admin/{{ lower $node.Name }}s/
 func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.{{ fieldsVarName $node.Name }}.eagerLoadQuery(h.client.{{ $node.Name }}.Query()).
-			Order({{ lower $node.Name }}.ByID()).
-			All(r.Context())
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-
-		rows := make([]gui.SchemaTableRow, len(entities))
-		for i, e := range entities {
-			cells := make([]gui.SchemaTableCell, len(h.{{ fieldsVarName $node.Name }}.listColumns))
-			for j, field := range h.{{ fieldsVarName $node.Name }}.listColumns {
-				cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
-				if j == 0 {
-					cell.LinkURL = fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
-				}
-				cells[j] = cell
+		{{- if $rc.FilterableColumns }}
+		var filter {{ $node.Name }}ListFilter
+		{{- end }}
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
+			query := h.{{ fieldsVarName $node.Name }}.eagerLoadQuery(h.client.{{ $node.Name }}.Query())
+			{{- if $rc.FilterableColumns }}
+			var signals struct {
+				Filter {{ $node.Name }}ListFilter `json:"filter"`
 			}
-			rows[i] = gui.SchemaTableRow{Cells: cells}
+			if err := datastar.ReadSignals(r, &signals); err != nil {
+				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
+				return
+			}
+			filter = signals.Filter
+			{{- range $filter := $rc.FilterableColumns }}
+			{{- if eq $filter.Type "string" }}
+			if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
+				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
+			}
+			{{- else if eq $filter.Type "bool" }}
+			if v, ok := filter.{{ $filter.PredicateName }}.Bool(); ok {
+				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(v))
+			}
+			{{- else if eq $filter.Type "int" }}
+			if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
+				if intVal, err := strconv.Atoi(filterVal); err == nil {
+					query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(intVal))
+				}
+			}
+			{{- end }}
+			{{- end }}
+			{{- end }}
+
+			entities, err := query.
+				Order({{ lower $node.Name }}.ByID()).
+				All(r.Context())
+			if err != nil {
+				vent.HandleError(w, r, normalizeError(err))
+				return
+			}
+
+			rows = make([]gui.SchemaTableRow, len(entities))
+			for i, e := range entities {
+				cells := make([]gui.SchemaTableCell, len(h.{{ fieldsVarName $node.Name }}.listColumns))
+				for j, field := range h.{{ fieldsVarName $node.Name }}.listColumns {
+					cell := gui.SchemaTableCell{Display: field.ListCell(r.Context(), e)}
+					if j == 0 {
+						cell.LinkURL = fmt.Sprintf("%s{{ $rc.RouteName }}/%d/", requestctx.MustAdminPath(r.Context()), e.ID)
+					}
+					cells[j] = cell
+				}
+				rows[i] = gui.SchemaTableRow{Cells: cells}
+			}
 		}
 
 		canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(r.Context())
@@ -84,6 +132,15 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{{- range $col := $rc.TableColumns }}
 				{Name: "{{ $col.Name }}", Label: "{{ $col.Label }}", Type: "{{ $col.Type }}"},
+				{{- end }}
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{{- range $filter := $rc.FilterableColumns }}
+				{{- if eq $filter.Type "bool" }}
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}.Normalize().String()},
+				{{- else }}
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
+				{{- end }}
 				{{- end }}
 			},
 			Rows:          rows,

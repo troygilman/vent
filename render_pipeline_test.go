@@ -79,6 +79,16 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 		}
 	}
 
+	assertFilterableColumnNames(t, rc.FilterableColumns, []string{"email", "is_staff", "is_active"})
+	emailFilter := findFilterableColumn(t, rc.FilterableColumns, "email")
+	if emailFilter.Type != "string" || emailFilter.PredicateName != "Email" || emailFilter.Label != "Email" {
+		t.Fatalf("email filter = %#v, want string/Email/Email", emailFilter)
+	}
+	staffFilter := findFilterableColumn(t, rc.FilterableColumns, "is_staff")
+	if staffFilter.Type != "bool" || staffFilter.PredicateName != "IsStaff" {
+		t.Fatalf("is_staff filter = %#v, want bool/IsStaff", staffFilter)
+	}
+
 	assertInputSpecNames(t, rc.CreateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "groups"})
 	assertInputSpecNames(t, rc.UpdateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "groups"})
 }
@@ -246,6 +256,52 @@ func TestBuildProjectedRenderConfigReadOnly(t *testing.T) {
 	assertTableColumnNames(t, rc.TableColumns, []string{"name"})
 }
 
+func TestBuildProjectedRenderConfigFilterableColumns(t *testing.T) {
+	node := testInputNode()
+	node.Annotations = gen.Annotations{
+		VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+			TableColumns:      []string{"title", "published"},
+			FilterableColumns: []string{"title", "published", "id"},
+		},
+	}
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+
+	assertFilterableColumnNames(t, rc.FilterableColumns, []string{"title", "published", "id"})
+	title := findFilterableColumn(t, rc.FilterableColumns, "title")
+	if title.Type != "string" || title.PredicateName != "Title" {
+		t.Fatalf("title filter = %#v, want string/Title", title)
+	}
+	published := findFilterableColumn(t, rc.FilterableColumns, "published")
+	if published.Type != "bool" || published.PredicateName != "Published" {
+		t.Fatalf("published filter = %#v, want bool/Published", published)
+	}
+	id := findFilterableColumn(t, rc.FilterableColumns, "id")
+	if id.Type != "int" || id.PredicateName != "ID" || id.Label != "ID" {
+		t.Fatalf("id filter = %#v, want int/ID/ID", id)
+	}
+}
+
+func TestBuildProjectedRenderConfigFilterableColumnUnsupported(t *testing.T) {
+	node := testInputNode()
+	node.Annotations = gen.Annotations{
+		VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+			FilterableColumns: []string{"author"},
+		},
+	}
+
+	_, err := buildRenderConfig(node)
+	if err == nil {
+		t.Fatal("buildRenderConfig() error = nil, want unsupported filterable column")
+	}
+	if !strings.Contains(err.Error(), `filterable column "author" has unsupported type`) {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+}
+
 func TestBuildProjectedRenderConfigReadOnlyFields(t *testing.T) {
 	node := &gen.Type{
 		Name: "Permission",
@@ -335,7 +391,8 @@ func authUserLikeNode() *gen.Type {
 		Annotations: gen.Annotations{
 			VentAuthMixinAnnotation{}.Name(): VentAuthMixinAnnotation{Role: AuthRoleUser},
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
-				TableColumns: []string{"email", "is_staff", "is_superuser", "is_active"},
+				TableColumns:      []string{"email", "is_staff", "is_superuser", "is_active"},
+				FilterableColumns: []string{"email", "is_staff", "is_active"},
 				FieldSets: []FieldSet{{
 					Fields: []string{
 						"id", "email", "password", "is_staff", "is_superuser", "is_active", "groups",
@@ -446,4 +503,27 @@ func findTableColumn(t *testing.T, columns []TableColumn, name string) TableColu
 	}
 	t.Fatalf("table column %q not found in %#v", name, columns)
 	return TableColumn{}
+}
+
+func assertFilterableColumnNames(t *testing.T, columns []FilterableColumnConfig, want []string) {
+	t.Helper()
+	if len(columns) != len(want) {
+		t.Fatalf("FilterableColumns length = %d, want %d: %#v", len(columns), len(want), columns)
+	}
+	for i, name := range want {
+		if columns[i].Name != name {
+			t.Fatalf("FilterableColumns[%d].Name = %q, want %q", i, columns[i].Name, name)
+		}
+	}
+}
+
+func findFilterableColumn(t *testing.T, columns []FilterableColumnConfig, name string) FilterableColumnConfig {
+	t.Helper()
+	for _, column := range columns {
+		if column.Name == name {
+			return column
+		}
+	}
+	t.Fatalf("filterable column %q not found in %#v", name, columns)
+	return FilterableColumnConfig{}
 }
