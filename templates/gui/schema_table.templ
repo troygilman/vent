@@ -42,29 +42,23 @@ type SchemaTableFilterableColumn struct {
 }
 
 type tableFilters struct {
-	Signals   map[string]map[string]string
 	ShowClear string
 	OnClear   string
 }
 
 func newTableFilters(columns []SchemaTableFilterableColumn) tableFilters {
-	filter := make(map[string]string, len(columns))
 	active := make([]string, len(columns))
 	reset := make([]string, 0, len(columns)+1)
 	for i, column := range columns {
 		empty := "''"
-		value := column.Value
 		if column.Type == "bool" {
-			value = vent.BoolFilter(column.Value).Normalize().String()
 			empty = "'" + vent.BoolFilterAll.String() + "'"
 		}
-		filter[column.Name] = value
 		active[i] = fmt.Sprintf("$filter.%s !== %s", column.Name, empty)
 		reset = append(reset, fmt.Sprintf("$filter.%s = %s", column.Name, empty))
 	}
 	reset = append(reset, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
 	return tableFilters{
-		Signals:   map[string]map[string]string{"filter": filter},
 		ShowClear: strings.Join(active, " || "),
 		OnClear:   strings.Join(reset, "; "),
 	}
@@ -86,7 +80,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 					class="table-filters"
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
-					data-signals={ templ.JSONString(filters.Signals) }
 					data-push-url="{include: /^filter\./}"
 					data-on:submit__prevent="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 				>
@@ -110,7 +103,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
-									<input type="number" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="text" inputmode="numeric" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							}
 						</label>
