@@ -86,6 +86,14 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 			RenderContext: renderCtx,
 		}
 
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
 			vent.HandleError(w, r, err)
 		}
@@ -304,6 +312,14 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
+		}
+
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -686,6 +702,14 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
+		}
+
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {

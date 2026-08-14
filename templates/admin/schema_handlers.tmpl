@@ -114,6 +114,14 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			RenderContext: renderCtx,
 		}
 
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(gui.SchemaTableResults(props)); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
 			vent.HandleError(w, r, err)
 		}

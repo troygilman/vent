@@ -2,6 +2,8 @@ package gui
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/troygilman/vent/requestctx"
 )
@@ -39,13 +41,37 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
-func hasActiveTableFilters(columns []SchemaTableFilterableColumn) bool {
+func tableFilterSignals(columns []SchemaTableFilterableColumn) map[string]string {
+	signals := make(map[string]string, len(columns))
 	for _, column := range columns {
-		if column.Value != "" {
-			return true
-		}
+		signals[column.Name] = column.Value
 	}
-	return false
+	return signals
+}
+
+func tableFilterIncludePattern(columns []SchemaTableFilterableColumn) string {
+	names := make([]string, len(columns))
+	for i, column := range columns {
+		names[i] = regexp.QuoteMeta(column.Name)
+	}
+	return "^(" + strings.Join(names, "|") + ")$"
+}
+
+func tableFilterActiveExpr(columns []SchemaTableFilterableColumn) string {
+	parts := make([]string, len(columns))
+	for i, column := range columns {
+		parts[i] = fmt.Sprintf("$%s !== ''", column.Name)
+	}
+	return strings.Join(parts, " || ")
+}
+
+func tableFilterClearExpr(columns []SchemaTableFilterableColumn) string {
+	parts := make([]string, 0, len(columns)+1)
+	for _, column := range columns {
+		parts = append(parts, fmt.Sprintf("$%s = ''", column.Name))
+	}
+	parts = append(parts, "@get(location.pathname, {filterSignals: {exclude: /.*/}})")
+	return strings.Join(parts, "; ")
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -59,69 +85,87 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			if len(props.FilterableColumns) > 0 {
-				<form class="table-filters" method="get" action={ templ.SafeURL(schemaPath) }>
+				<form
+					class="table-filters"
+					method="get"
+					action={ templ.SafeURL(schemaPath) }
+					data-signals={ templ.JSONString(tableFilterSignals(props.FilterableColumns)) }
+					data-query-string__filter={ "{include: /" + tableFilterIncludePattern(props.FilterableColumns) + "/}" }
+					data-on:submit__prevent="@get(location.pathname + location.search, {filterSignals: {exclude: /.*/}})"
+				>
 					for _, filter := range props.FilterableColumns {
 						<label class="table-filter">
 							<span class="table-filter-label">{ filter.Label }</span>
 							if filter.Type == "string" {
 								<div class="input">
-									<input type="text" name={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="text" name={ filter.Name } data-bind={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								<select class="select" name={ filter.Name }>
+								<select class="select" name={ filter.Name } data-bind={ filter.Name }>
 									<option value="" selected?={ filter.Value == "" }>All</option>
 									<option value="true" selected?={ filter.Value == "true" }>Yes</option>
 									<option value="false" selected?={ filter.Value == "false" }>No</option>
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
-									<input type="number" name={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="number" name={ filter.Name } data-bind={ filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							}
 						</label>
 					}
 					<div class="table-filter-actions">
-						<button type="submit" class="btn btn-primary">Filter</button>
-						if hasActiveTableFilters(props.FilterableColumns) {
-							<a class="btn btn-neutral" href={ templ.SafeURL(schemaPath) }>Clear</a>
-						}
+						<button type="submit" class="btn btn-primary" data-indicator="_indicator">Filter</button>
+						<button
+							type="button"
+							class="btn btn-neutral"
+							data-show={ tableFilterActiveExpr(props.FilterableColumns) }
+							data-on:click={ tableFilterClearExpr(props.FilterableColumns) }
+							data-indicator="_indicator"
+						>
+							Clear
+						</button>
 					</div>
 				</form>
 			}
-			<div class="table-container">
-				<table class="data-table">
-					<thead>
-						<tr>
-							for _, column := range props.Columns {
-								<th>{ column.Label }</th>
-							}
-						</tr>
-					</thead>
-					<tbody>
-						if len(props.Rows) == 0 {
-							<tr>
-								<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
-							</tr>
-						} else {
-							for _, row := range props.Rows {
-								<tr>
-									for _, cell := range row.Cells {
-										if cell.LinkURL != "" {
-											<td>
-												<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
-													{ cell.Display }
-												</a>
-											</td>
-										} else {
-											<td>{ cell.Display }</td>
-										}
-									}
-								</tr>
-							}
-						}
-					</tbody>
-				</table>
-			</div>
+			@SchemaTableResults(props)
+			@Indicator()
 		}
 	}
+}
+
+templ SchemaTableResults(props SchemaTableProps) {
+	<div id="schema-table-results" class="table-container">
+		<table class="data-table">
+			<thead>
+				<tr>
+					for _, column := range props.Columns {
+						<th>{ column.Label }</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				if len(props.Rows) == 0 {
+					<tr>
+						<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
+					</tr>
+				} else {
+					for _, row := range props.Rows {
+						<tr>
+							for _, cell := range row.Cells {
+								if cell.LinkURL != "" {
+									<td>
+										<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
+											{ cell.Display }
+										</a>
+									</td>
+								} else {
+									<td>{ cell.Display }</td>
+								}
+							}
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	</div>
 }
