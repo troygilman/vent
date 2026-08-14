@@ -35,7 +35,9 @@ type PermissionUpdateInput struct {
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionFields.eagerLoadQuery(h.client.Permission.Query()).
+		query := h.permissionFields.eagerLoadQuery(h.client.Permission.Query())
+
+		entities, err := query.
 			Order(permission.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -74,8 +76,9 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -248,7 +251,9 @@ type PermissionGroupUpdateInput struct {
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query()).
+		query := h.permissionGroupFields.eagerLoadQuery(h.client.PermissionGroup.Query())
+
+		entities, err := query.
 			Order(permissiongroup.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -286,8 +291,9 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
 			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -602,7 +608,27 @@ type UserUpdateInput struct {
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		entities, err := h.userFields.eagerLoadQuery(h.client.User.Query()).
+		query := h.userFields.eagerLoadQuery(h.client.User.Query())
+		// Apply filters from query parameters
+		if filterVal := r.URL.Query().Get("email"); filterVal != "" {
+			query = query.Where(user.EmailContainsFold(filterVal))
+		}
+		if filterVal := r.URL.Query().Get("is_staff"); filterVal != "" {
+			if filterVal == "true" {
+				query = query.Where(user.IsStaffEQ(true))
+			} else if filterVal == "false" {
+				query = query.Where(user.IsStaffEQ(false))
+			}
+		}
+		if filterVal := r.URL.Query().Get("is_active"); filterVal != "" {
+			if filterVal == "true" {
+				query = query.Where(user.IsActiveEQ(true))
+			} else if filterVal == "false" {
+				query = query.Where(user.IsActiveEQ(false))
+			}
+		}
+
+		entities, err := query.
 			Order(user.ByID()).
 			All(r.Context())
 		if err != nil {
@@ -643,6 +669,11 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "is_superuser", Label: "IsSuperuser", Type: "bool"},
 				{Name: "is_active", Label: "IsActive", Type: "bool"},
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
+			},
+			FilterableColumns: []gui.SchemaTableFilterableColumn{
+				{Name: "email", Label: "Email", Type: "string"},
+				{Name: "is_staff", Label: "IsStaff", Type: "bool"},
+				{Name: "is_active", Label: "IsActive", Type: "bool"},
 			},
 			Rows:          rows,
 			RenderContext: renderCtx,
