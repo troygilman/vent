@@ -130,11 +130,7 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
 				{{- range $filter := $rc.FilterableColumns }}
-				{{- if eq $filter.Type "bool" }}
-				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}.Normalize().String()},
-				{{- else }}
-				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}", Value: filter.{{ $filter.PredicateName }}},
-				{{- end }}
+				{Name: "{{ $filter.Name }}", Label: "{{ $filter.Label }}", Type: "{{ $filter.Type }}"},
 				{{- end }}
 			},
 			Rows:          rows,

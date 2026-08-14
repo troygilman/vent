@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
@@ -38,30 +37,6 @@ type SchemaTableFilterableColumn struct {
 	Name  string
 	Label string
 	Type  string
-	Value string
-}
-
-type tableFilters struct {
-	ShowClear string
-	OnClear   string
-}
-
-func newTableFilters(columns []SchemaTableFilterableColumn) tableFilters {
-	active := make([]string, len(columns))
-	reset := make([]string, 0, len(columns)+1)
-	for i, column := range columns {
-		empty := "''"
-		if column.Type == "bool" {
-			empty = "'" + vent.BoolFilterAll.String() + "'"
-		}
-		active[i] = fmt.Sprintf("$filter.%s !== %s", column.Name, empty)
-		reset = append(reset, fmt.Sprintf("$filter.%s = %s", column.Name, empty))
-	}
-	reset = append(reset, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
-	return tableFilters{
-		ShowClear: strings.Join(active, " || "),
-		OnClear:   strings.Join(reset, "; "),
-	}
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -75,11 +50,11 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			if len(props.FilterableColumns) > 0 {
-				{{ filters := newTableFilters(props.FilterableColumns) }}
 				<form
 					class="table-filters"
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
+					data-ignore-morph
 					data-push-url="{include: /^filter\./}"
 					data-on:submit__prevent="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 				>
@@ -88,22 +63,21 @@ templ SchemaTablePage(props SchemaTableProps) {
 							<span class="table-filter-label">{ filter.Label }</span>
 							if filter.Type == "string" {
 								<div class="input">
-									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							} else if filter.Type == "bool" {
-								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
 								<select
 									class="select"
 									name={ filter.Name }
 									data-bind={ "filter." + filter.Name }
 								>
-									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
-									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
-									<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
+									<option value={ vent.BoolFilterAll.String() } selected>All</option>
+									<option value={ vent.BoolFilterTrue.String() }>Yes</option>
+									<option value={ vent.BoolFilterFalse.String() }>No</option>
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
-									<input type="text" inputmode="numeric" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input type="text" inputmode="numeric" name={ filter.Name } data-bind={ "filter." + filter.Name } placeholder={ "Filter by " + filter.Label }/>
 								</div>
 							}
 						</label>
@@ -113,8 +87,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<button
 							type="button"
 							class="btn btn-neutral"
-							data-show={ filters.ShowClear }
-							data-on:click={ filters.OnClear }
+							data-show={ fmt.Sprintf("Object.values($filter ?? {}).some((v) => v !== '' && v !== '%s')", vent.BoolFilterAll) }
+							data-on:click="el.closest('form').reset(); el.closest('form').querySelectorAll('[data-bind]').forEach((c) => c.dispatchEvent(new Event('datastar-prop-change'))); @get(location.pathname, {filterSignals: {include: /^filter\./}})"
 							data-indicator="_indicator"
 						>
 							Clear

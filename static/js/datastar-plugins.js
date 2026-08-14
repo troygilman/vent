@@ -1,4 +1,13 @@
-import { attribute, filtered } from "datastar";
+import { attribute, filtered, mergePatch } from "datastar";
+
+try {
+    const raw = new URLSearchParams(location.search).get("datastar");
+    if (raw) {
+        mergePatch(JSON.parse(raw));
+    }
+} catch {
+    // Ignore a malformed datastar query; data-bind still initializes from the form.
+}
 
 attribute({
     name: "confirm",
