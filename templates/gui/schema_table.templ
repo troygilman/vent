@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
@@ -41,29 +40,6 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
-type tableFilters struct {
-	ShowClear string
-	OnClear   string
-}
-
-func newTableFilters(columns []SchemaTableFilterableColumn) tableFilters {
-	active := make([]string, len(columns))
-	reset := make([]string, 0, len(columns)+1)
-	for i, column := range columns {
-		empty := "''"
-		if column.Type == "bool" {
-			empty = "'" + vent.BoolFilterAll.String() + "'"
-		}
-		active[i] = fmt.Sprintf("$filter.%s !== %s", column.Name, empty)
-		reset = append(reset, fmt.Sprintf("$filter.%s = %s", column.Name, empty))
-	}
-	reset = append(reset, `@get(location.pathname, {filterSignals: {include: /^filter\./}})`)
-	return tableFilters{
-		ShowClear: strings.Join(active, " || "),
-		OnClear:   strings.Join(reset, "; "),
-	}
-}
-
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	@Index() {
@@ -75,20 +51,28 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			if len(props.FilterableColumns) > 0 {
-				{{ filters := newTableFilters(props.FilterableColumns) }}
 				<form
 					class="table-filters"
 					method="get"
 					action={ templ.SafeURL(schemaPath) }
 					data-push-url="{include: /^filter\./}"
-					data-on:submit__prevent="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:submit__prevent="void 0"
+					data-indicator="_indicator"
 				>
 					for _, filter := range props.FilterableColumns {
 						<label class="table-filter">
 							<span class="table-filter-label">{ filter.Label }</span>
 							if filter.Type == "string" {
 								<div class="input">
-									<input type="text" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input
+										type="text"
+										name={ filter.Name }
+										data-bind={ "filter." + filter.Name }
+										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+										value={ filter.Value }
+										placeholder={ "Filter by " + filter.Label }
+									/>
 								</div>
 							} else if filter.Type == "bool" {
 								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
@@ -96,6 +80,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 									class="select"
 									name={ filter.Name }
 									data-bind={ "filter." + filter.Name }
+									data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
 								>
 									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
 									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
@@ -103,7 +88,15 @@ templ SchemaTablePage(props SchemaTableProps) {
 								</select>
 							} else if filter.Type == "int" {
 								<div class="input">
-									<input type="text" inputmode="numeric" name={ filter.Name } data-bind={ "filter." + filter.Name } value={ filter.Value } placeholder={ "Filter by " + filter.Label }/>
+									<input
+										type="text"
+										inputmode="numeric"
+										name={ filter.Name }
+										data-bind={ "filter." + filter.Name }
+										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+										value={ filter.Value }
+										placeholder={ "Filter by " + filter.Label }
+									/>
 								</div>
 							}
 						</label>
@@ -113,8 +106,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<button
 							type="button"
 							class="btn btn-neutral"
-							data-show={ filters.ShowClear }
-							data-on:click={ filters.OnClear }
+							data-show={ fmt.Sprintf("Object.values($filter ?? {}).some((v) => v !== '' && v !== '%s')", vent.BoolFilterAll) }
+							data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
 							data-indicator="_indicator"
 						>
 							Clear
