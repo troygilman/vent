@@ -74,7 +74,7 @@ func (a Admin) User() UserAdmin {
 // schema CRUD permissions (read_/create_/...) own schema-level access for
 // routes, menu visibility, and create.
 type AuthorAdmin interface {
-	FieldName() AuthorField
+	FieldUser() AuthorField
 	FieldActive() AuthorField
 	Name(e *ent.Author) string
 	ValidateCreate(ctx context.Context, input AuthorCreateInput) error
@@ -99,11 +99,11 @@ func NewDefaultAuthorAdmin(client *ent.Client) DefaultAuthorAdmin {
 }
 
 func (DefaultAuthorAdmin) Name(e *ent.Author) string {
-	return fmt.Sprintf("%v", e.Name)
+	return fmt.Sprintf("%v", e.ID)
 }
 
-func (a DefaultAuthorAdmin) FieldName() AuthorField {
-	return NewAuthorNameField(a.Client)
+func (a DefaultAuthorAdmin) FieldUser() AuthorField {
+	return NewAuthorUserField(a.Client)
 }
 
 func (a DefaultAuthorAdmin) FieldActive() AuthorField {
@@ -423,7 +423,7 @@ func (DefaultPermissionGroupAdmin) CanDelete(ctx context.Context, e *ent.Permiss
 // schema CRUD permissions (read_/create_/...) own schema-level access for
 // routes, menu visibility, and create.
 type ReviewAdmin interface {
-	FieldReviewer() ReviewField
+	FieldUser() ReviewField
 	FieldRating() ReviewField
 	FieldBody() ReviewField
 	FieldBook() ReviewField
@@ -453,8 +453,8 @@ func (DefaultReviewAdmin) Name(e *ent.Review) string {
 	return fmt.Sprintf("%v", e.ID)
 }
 
-func (a DefaultReviewAdmin) FieldReviewer() ReviewField {
-	return NewReviewReviewerField(a.Client)
+func (a DefaultReviewAdmin) FieldUser() ReviewField {
+	return NewReviewUserField(a.Client)
 }
 
 func (a DefaultReviewAdmin) FieldRating() ReviewField {

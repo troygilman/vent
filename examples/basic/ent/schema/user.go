@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/troygilman/vent"
 )
@@ -20,7 +21,11 @@ func (User) Fields() []ent.Field {
 }
 
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		// FK lives on authors.id so Author and User share a primary key.
+		edge.To("author", Author.Type).Unique().StorageKey(edge.Column("id")),
+		edge.To("reviews", Review.Type),
+	}
 }
 
 func (User) Mixin() []ent.Mixin {

@@ -53,11 +53,6 @@ func IDLTE(id int) predicate.Review {
 	return predicate.Review(sql.FieldLTE(FieldID, id))
 }
 
-// Reviewer applies equality check predicate on the "reviewer" field. It's identical to ReviewerEQ.
-func Reviewer(v string) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldReviewer, v))
-}
-
 // Rating applies equality check predicate on the "rating" field. It's identical to RatingEQ.
 func Rating(v int) predicate.Review {
 	return predicate.Review(sql.FieldEQ(FieldRating, v))
@@ -66,71 +61,6 @@ func Rating(v int) predicate.Review {
 // Body applies equality check predicate on the "body" field. It's identical to BodyEQ.
 func Body(v string) predicate.Review {
 	return predicate.Review(sql.FieldEQ(FieldBody, v))
-}
-
-// ReviewerEQ applies the EQ predicate on the "reviewer" field.
-func ReviewerEQ(v string) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldReviewer, v))
-}
-
-// ReviewerNEQ applies the NEQ predicate on the "reviewer" field.
-func ReviewerNEQ(v string) predicate.Review {
-	return predicate.Review(sql.FieldNEQ(FieldReviewer, v))
-}
-
-// ReviewerIn applies the In predicate on the "reviewer" field.
-func ReviewerIn(vs ...string) predicate.Review {
-	return predicate.Review(sql.FieldIn(FieldReviewer, vs...))
-}
-
-// ReviewerNotIn applies the NotIn predicate on the "reviewer" field.
-func ReviewerNotIn(vs ...string) predicate.Review {
-	return predicate.Review(sql.FieldNotIn(FieldReviewer, vs...))
-}
-
-// ReviewerGT applies the GT predicate on the "reviewer" field.
-func ReviewerGT(v string) predicate.Review {
-	return predicate.Review(sql.FieldGT(FieldReviewer, v))
-}
-
-// ReviewerGTE applies the GTE predicate on the "reviewer" field.
-func ReviewerGTE(v string) predicate.Review {
-	return predicate.Review(sql.FieldGTE(FieldReviewer, v))
-}
-
-// ReviewerLT applies the LT predicate on the "reviewer" field.
-func ReviewerLT(v string) predicate.Review {
-	return predicate.Review(sql.FieldLT(FieldReviewer, v))
-}
-
-// ReviewerLTE applies the LTE predicate on the "reviewer" field.
-func ReviewerLTE(v string) predicate.Review {
-	return predicate.Review(sql.FieldLTE(FieldReviewer, v))
-}
-
-// ReviewerContains applies the Contains predicate on the "reviewer" field.
-func ReviewerContains(v string) predicate.Review {
-	return predicate.Review(sql.FieldContains(FieldReviewer, v))
-}
-
-// ReviewerHasPrefix applies the HasPrefix predicate on the "reviewer" field.
-func ReviewerHasPrefix(v string) predicate.Review {
-	return predicate.Review(sql.FieldHasPrefix(FieldReviewer, v))
-}
-
-// ReviewerHasSuffix applies the HasSuffix predicate on the "reviewer" field.
-func ReviewerHasSuffix(v string) predicate.Review {
-	return predicate.Review(sql.FieldHasSuffix(FieldReviewer, v))
-}
-
-// ReviewerEqualFold applies the EqualFold predicate on the "reviewer" field.
-func ReviewerEqualFold(v string) predicate.Review {
-	return predicate.Review(sql.FieldEqualFold(FieldReviewer, v))
-}
-
-// ReviewerContainsFold applies the ContainsFold predicate on the "reviewer" field.
-func ReviewerContainsFold(v string) predicate.Review {
-	return predicate.Review(sql.FieldContainsFold(FieldReviewer, v))
 }
 
 // RatingEQ applies the EQ predicate on the "rating" field.
@@ -263,6 +193,29 @@ func HasBook() predicate.Review {
 func HasBookWith(preds ...predicate.Book) predicate.Review {
 	return predicate.Review(func(s *sql.Selector) {
 		step := newBookStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasUser applies the HasEdge predicate on the "user" edge.
+func HasUser() predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
+func HasUserWith(preds ...predicate.User) predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := newUserStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

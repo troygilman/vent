@@ -27,19 +27,18 @@ import (
 
 // AuthorCreateInput is the typed input for creating a Author
 type AuthorCreateInput struct {
-	Name   string `json:"name"`
+	User   string `json:"user"`
 	Active *bool  `json:"active"`
 }
 
 // AuthorUpdateInput is the typed input for updating a Author
 type AuthorUpdateInput struct {
-	Name   *string `json:"name"`
+	User   *string `json:"user"`
 	Active *bool   `json:"active"`
 }
 
 // AuthorListFilter is the typed Datastar filter signal for listing Author.
 type AuthorListFilter struct {
-	Name   string          `json:"name"`
 	Active vent.BoolFilter `json:"active"`
 }
 
@@ -58,9 +57,6 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				return
 			}
 			filter = signals.Filter
-			if filterVal := filter.Name; filterVal != "" {
-				query = query.Where(author.NameContainsFold(filterVal))
-			}
 			if v, ok := filter.Active.Bool(); ok {
 				query = query.Where(author.ActiveEQ(v))
 			}
@@ -102,11 +98,10 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 			SingularDisplayName: "Author",
 			PluralDisplayName:   "Authors",
 			Columns: []gui.SchemaTableColumn{
-				{Name: "name", Label: "Name", Type: "string"},
+				{Name: "user", Label: "User", Type: "edge"},
 				{Name: "active", Label: "Active", Type: "bool"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 				{Name: "active", Label: "Active", Type: "bool", Value: filter.Active.Normalize().String()},
 			},
 			Rows:          rows,
@@ -1405,24 +1400,23 @@ func (h *AdminHandler) deletePermissionGroupHandler() http.Handler {
 
 // ReviewCreateInput is the typed input for creating a Review
 type ReviewCreateInput struct {
-	Reviewer string  `json:"reviewer"`
-	Rating   int     `json:"rating"`
-	Body     *string `json:"body"`
-	Book     string  `json:"book"`
+	User   string  `json:"user"`
+	Rating int     `json:"rating"`
+	Body   *string `json:"body"`
+	Book   string  `json:"book"`
 }
 
 // ReviewUpdateInput is the typed input for updating a Review
 type ReviewUpdateInput struct {
-	Reviewer *string               `json:"reviewer"`
-	Rating   *int                  `json:"rating"`
-	Body     OptionalInput[string] `json:"body"`
-	Book     *string               `json:"book"`
+	User   *string               `json:"user"`
+	Rating *int                  `json:"rating"`
+	Body   OptionalInput[string] `json:"body"`
+	Book   *string               `json:"book"`
 }
 
 // ReviewListFilter is the typed Datastar filter signal for listing Review.
 type ReviewListFilter struct {
-	Reviewer string `json:"reviewer"`
-	Rating   string `json:"rating"`
+	Rating string `json:"rating"`
 }
 
 // getReviewListHandler returns the handler for GET /admin/reviews/
@@ -1440,9 +1434,6 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				return
 			}
 			filter = signals.Filter
-			if filterVal := filter.Reviewer; filterVal != "" {
-				query = query.Where(review.ReviewerContainsFold(filterVal))
-			}
 			if filterVal := filter.Rating; filterVal != "" {
 				if intVal, err := strconv.Atoi(filterVal); err == nil {
 					query = query.Where(review.RatingEQ(intVal))
@@ -1486,12 +1477,11 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 			SingularDisplayName: "Review",
 			PluralDisplayName:   "Reviews",
 			Columns: []gui.SchemaTableColumn{
-				{Name: "reviewer", Label: "Reviewer", Type: "string"},
+				{Name: "user", Label: "User", Type: "edge"},
 				{Name: "rating", Label: "Rating", Type: "int"},
 				{Name: "book", Label: "Book", Type: "edge"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "reviewer", Label: "Reviewer", Type: "string", Value: filter.Reviewer},
 				{Name: "rating", Label: "Rating", Type: "int", Value: filter.Rating},
 			},
 			Rows:          rows,

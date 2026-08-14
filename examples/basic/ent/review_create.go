@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/review"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // ReviewCreate is the builder for creating a Review entity.
@@ -20,12 +21,6 @@ type ReviewCreate struct {
 	mutation *ReviewMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
-}
-
-// SetReviewer sets the "reviewer" field.
-func (_c *ReviewCreate) SetReviewer(v string) *ReviewCreate {
-	_c.mutation.SetReviewer(v)
-	return _c
 }
 
 // SetRating sets the "rating" field.
@@ -57,6 +52,17 @@ func (_c *ReviewCreate) SetBookID(id int) *ReviewCreate {
 // SetBook sets the "book" edge to the Book entity.
 func (_c *ReviewCreate) SetBook(v *Book) *ReviewCreate {
 	return _c.SetBookID(v.ID)
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_c *ReviewCreate) SetUserID(id int) *ReviewCreate {
+	_c.mutation.SetUserID(id)
+	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *ReviewCreate) SetUser(v *User) *ReviewCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // Mutation returns the ReviewMutation object of the builder.
@@ -93,14 +99,6 @@ func (_c *ReviewCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ReviewCreate) check() error {
-	if _, ok := _c.mutation.Reviewer(); !ok {
-		return &ValidationError{Name: "reviewer", err: errors.New(`ent: missing required field "Review.reviewer"`)}
-	}
-	if v, ok := _c.mutation.Reviewer(); ok {
-		if err := review.ReviewerValidator(v); err != nil {
-			return &ValidationError{Name: "reviewer", err: fmt.Errorf(`ent: validator failed for field "Review.reviewer": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.Rating(); !ok {
 		return &ValidationError{Name: "rating", err: errors.New(`ent: missing required field "Review.rating"`)}
 	}
@@ -111,6 +109,9 @@ func (_c *ReviewCreate) check() error {
 	}
 	if len(_c.mutation.BookIDs()) == 0 {
 		return &ValidationError{Name: "book", err: errors.New(`ent: missing required edge "Review.book"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Review.user"`)}
 	}
 	return nil
 }
@@ -139,10 +140,6 @@ func (_c *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(review.Table, sqlgraph.NewFieldSpec(review.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = _c.conflict
-	if value, ok := _c.mutation.Reviewer(); ok {
-		_spec.SetField(review.FieldReviewer, field.TypeString, value)
-		_node.Reviewer = value
-	}
 	if value, ok := _c.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
 		_node.Rating = value
@@ -168,6 +165,23 @@ func (_c *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 		_node.book_reviews = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.user_reviews = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -175,7 +189,7 @@ func (_c *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Review.Create().
-//		SetReviewer(v).
+//		SetRating(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -184,7 +198,7 @@ func (_c *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.ReviewUpsert) {
-//			SetReviewer(v+v).
+//			SetRating(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *ReviewCreate) OnConflict(opts ...sql.ConflictOption) *ReviewUpsertOne {
@@ -219,18 +233,6 @@ type (
 		*sql.UpdateSet
 	}
 )
-
-// SetReviewer sets the "reviewer" field.
-func (u *ReviewUpsert) SetReviewer(v string) *ReviewUpsert {
-	u.Set(review.FieldReviewer, v)
-	return u
-}
-
-// UpdateReviewer sets the "reviewer" field to the value that was provided on create.
-func (u *ReviewUpsert) UpdateReviewer() *ReviewUpsert {
-	u.SetExcluded(review.FieldReviewer)
-	return u
-}
 
 // SetRating sets the "rating" field.
 func (u *ReviewUpsert) SetRating(v int) *ReviewUpsert {
@@ -306,20 +308,6 @@ func (u *ReviewUpsertOne) Update(set func(*ReviewUpsert)) *ReviewUpsertOne {
 		set(&ReviewUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetReviewer sets the "reviewer" field.
-func (u *ReviewUpsertOne) SetReviewer(v string) *ReviewUpsertOne {
-	return u.Update(func(s *ReviewUpsert) {
-		s.SetReviewer(v)
-	})
-}
-
-// UpdateReviewer sets the "reviewer" field to the value that was provided on create.
-func (u *ReviewUpsertOne) UpdateReviewer() *ReviewUpsertOne {
-	return u.Update(func(s *ReviewUpsert) {
-		s.UpdateReviewer()
-	})
 }
 
 // SetRating sets the "rating" field.
@@ -498,7 +486,7 @@ func (_c *ReviewCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.ReviewUpsert) {
-//			SetReviewer(v+v).
+//			SetRating(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *ReviewCreateBulk) OnConflict(opts ...sql.ConflictOption) *ReviewUpsertBulk {
@@ -565,20 +553,6 @@ func (u *ReviewUpsertBulk) Update(set func(*ReviewUpsert)) *ReviewUpsertBulk {
 		set(&ReviewUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetReviewer sets the "reviewer" field.
-func (u *ReviewUpsertBulk) SetReviewer(v string) *ReviewUpsertBulk {
-	return u.Update(func(s *ReviewUpsert) {
-		s.SetReviewer(v)
-	})
-}
-
-// UpdateReviewer sets the "reviewer" field to the value that was provided on create.
-func (u *ReviewUpsertBulk) UpdateReviewer() *ReviewUpsertBulk {
-	return u.Update(func(s *ReviewUpsert) {
-		s.UpdateReviewer()
-	})
 }
 
 // SetRating sets the "rating" field.

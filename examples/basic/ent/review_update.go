@@ -13,6 +13,7 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/predicate"
 	"github.com/troygilman/vent/examples/basic/ent/review"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // ReviewUpdate is the builder for updating Review entities.
@@ -25,20 +26,6 @@ type ReviewUpdate struct {
 // Where appends a list predicates to the ReviewUpdate builder.
 func (_u *ReviewUpdate) Where(ps ...predicate.Review) *ReviewUpdate {
 	_u.mutation.Where(ps...)
-	return _u
-}
-
-// SetReviewer sets the "reviewer" field.
-func (_u *ReviewUpdate) SetReviewer(v string) *ReviewUpdate {
-	_u.mutation.SetReviewer(v)
-	return _u
-}
-
-// SetNillableReviewer sets the "reviewer" field if the given value is not nil.
-func (_u *ReviewUpdate) SetNillableReviewer(v *string) *ReviewUpdate {
-	if v != nil {
-		_u.SetReviewer(*v)
-	}
 	return _u
 }
 
@@ -94,6 +81,17 @@ func (_u *ReviewUpdate) SetBook(v *Book) *ReviewUpdate {
 	return _u.SetBookID(v.ID)
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *ReviewUpdate) SetUserID(id int) *ReviewUpdate {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *ReviewUpdate) SetUser(v *User) *ReviewUpdate {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the ReviewMutation object of the builder.
 func (_u *ReviewUpdate) Mutation() *ReviewMutation {
 	return _u.mutation
@@ -102,6 +100,12 @@ func (_u *ReviewUpdate) Mutation() *ReviewMutation {
 // ClearBook clears the "book" edge to the Book entity.
 func (_u *ReviewUpdate) ClearBook() *ReviewUpdate {
 	_u.mutation.ClearBook()
+	return _u
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *ReviewUpdate) ClearUser() *ReviewUpdate {
+	_u.mutation.ClearUser()
 	return _u
 }
 
@@ -134,11 +138,6 @@ func (_u *ReviewUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ReviewUpdate) check() error {
-	if v, ok := _u.mutation.Reviewer(); ok {
-		if err := review.ReviewerValidator(v); err != nil {
-			return &ValidationError{Name: "reviewer", err: fmt.Errorf(`ent: validator failed for field "Review.reviewer": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Rating(); ok {
 		if err := review.RatingValidator(v); err != nil {
 			return &ValidationError{Name: "rating", err: fmt.Errorf(`ent: validator failed for field "Review.rating": %w`, err)}
@@ -146,6 +145,9 @@ func (_u *ReviewUpdate) check() error {
 	}
 	if _u.mutation.BookCleared() && len(_u.mutation.BookIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Review.book"`)
+	}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.user"`)
 	}
 	return nil
 }
@@ -161,9 +163,6 @@ func (_u *ReviewUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.Reviewer(); ok {
-		_spec.SetField(review.FieldReviewer, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
@@ -206,6 +205,35 @@ func (_u *ReviewUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{review.Label}
@@ -224,20 +252,6 @@ type ReviewUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *ReviewMutation
-}
-
-// SetReviewer sets the "reviewer" field.
-func (_u *ReviewUpdateOne) SetReviewer(v string) *ReviewUpdateOne {
-	_u.mutation.SetReviewer(v)
-	return _u
-}
-
-// SetNillableReviewer sets the "reviewer" field if the given value is not nil.
-func (_u *ReviewUpdateOne) SetNillableReviewer(v *string) *ReviewUpdateOne {
-	if v != nil {
-		_u.SetReviewer(*v)
-	}
-	return _u
 }
 
 // SetRating sets the "rating" field.
@@ -292,6 +306,17 @@ func (_u *ReviewUpdateOne) SetBook(v *Book) *ReviewUpdateOne {
 	return _u.SetBookID(v.ID)
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *ReviewUpdateOne) SetUserID(id int) *ReviewUpdateOne {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *ReviewUpdateOne) SetUser(v *User) *ReviewUpdateOne {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the ReviewMutation object of the builder.
 func (_u *ReviewUpdateOne) Mutation() *ReviewMutation {
 	return _u.mutation
@@ -300,6 +325,12 @@ func (_u *ReviewUpdateOne) Mutation() *ReviewMutation {
 // ClearBook clears the "book" edge to the Book entity.
 func (_u *ReviewUpdateOne) ClearBook() *ReviewUpdateOne {
 	_u.mutation.ClearBook()
+	return _u
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *ReviewUpdateOne) ClearUser() *ReviewUpdateOne {
+	_u.mutation.ClearUser()
 	return _u
 }
 
@@ -345,11 +376,6 @@ func (_u *ReviewUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ReviewUpdateOne) check() error {
-	if v, ok := _u.mutation.Reviewer(); ok {
-		if err := review.ReviewerValidator(v); err != nil {
-			return &ValidationError{Name: "reviewer", err: fmt.Errorf(`ent: validator failed for field "Review.reviewer": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Rating(); ok {
 		if err := review.RatingValidator(v); err != nil {
 			return &ValidationError{Name: "rating", err: fmt.Errorf(`ent: validator failed for field "Review.rating": %w`, err)}
@@ -357,6 +383,9 @@ func (_u *ReviewUpdateOne) check() error {
 	}
 	if _u.mutation.BookCleared() && len(_u.mutation.BookIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Review.book"`)
+	}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.user"`)
 	}
 	return nil
 }
@@ -389,9 +418,6 @@ func (_u *ReviewUpdateOne) sqlSave(ctx context.Context) (_node *Review, err erro
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.Reviewer(); ok {
-		_spec.SetField(review.FieldReviewer, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
@@ -427,6 +453,35 @@ func (_u *ReviewUpdateOne) sqlSave(ctx context.Context) (_node *Review, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(book.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

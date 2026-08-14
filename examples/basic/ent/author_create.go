@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // AuthorCreate is the builder for creating a Author entity.
@@ -20,12 +21,6 @@ type AuthorCreate struct {
 	mutation *AuthorMutation
 	hooks    []Hook
 	conflict []sql.ConflictOption
-}
-
-// SetName sets the "name" field.
-func (_c *AuthorCreate) SetName(v string) *AuthorCreate {
-	_c.mutation.SetName(v)
-	return _c
 }
 
 // SetActive sets the "active" field.
@@ -40,6 +35,23 @@ func (_c *AuthorCreate) SetNillableActive(v *bool) *AuthorCreate {
 		_c.SetActive(*v)
 	}
 	return _c
+}
+
+// SetID sets the "id" field.
+func (_c *AuthorCreate) SetID(v int) *AuthorCreate {
+	_c.mutation.SetID(v)
+	return _c
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_c *AuthorCreate) SetUserID(id int) *AuthorCreate {
+	_c.mutation.SetUserID(id)
+	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *AuthorCreate) SetUser(v *User) *AuthorCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // AddBookIDs adds the "books" edge to the Book entity by IDs.
@@ -100,16 +112,11 @@ func (_c *AuthorCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *AuthorCreate) check() error {
-	if _, ok := _c.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Author.name"`)}
-	}
-	if v, ok := _c.mutation.Name(); ok {
-		if err := author.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Author.name": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.Active(); !ok {
 		return &ValidationError{Name: "active", err: errors.New(`ent: missing required field "Author.active"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Author.user"`)}
 	}
 	return nil
 }
@@ -125,8 +132,10 @@ func (_c *AuthorCreate) sqlSave(ctx context.Context) (*Author, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != _node.ID {
+		id := _spec.ID.Value.(int64)
+		_node.ID = int(id)
+	}
 	_c.mutation.id = &_node.ID
 	_c.mutation.done = true
 	return _node, nil
@@ -138,13 +147,30 @@ func (_c *AuthorCreate) createSpec() (*Author, *sqlgraph.CreateSpec) {
 		_spec = sqlgraph.NewCreateSpec(author.Table, sqlgraph.NewFieldSpec(author.FieldID, field.TypeInt))
 	)
 	_spec.OnConflict = _c.conflict
-	if value, ok := _c.mutation.Name(); ok {
-		_spec.SetField(author.FieldName, field.TypeString, value)
-		_node.Name = value
+	if id, ok := _c.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = id
 	}
 	if value, ok := _c.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)
 		_node.Active = value
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   author.UserTable,
+			Columns: []string{author.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.BooksIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -169,7 +195,7 @@ func (_c *AuthorCreate) createSpec() (*Author, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Author.Create().
-//		SetName(v).
+//		SetActive(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -178,7 +204,7 @@ func (_c *AuthorCreate) createSpec() (*Author, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.AuthorUpsert) {
-//			SetName(v+v).
+//			SetActive(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *AuthorCreate) OnConflict(opts ...sql.ConflictOption) *AuthorUpsertOne {
@@ -214,18 +240,6 @@ type (
 	}
 )
 
-// SetName sets the "name" field.
-func (u *AuthorUpsert) SetName(v string) *AuthorUpsert {
-	u.Set(author.FieldName, v)
-	return u
-}
-
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *AuthorUpsert) UpdateName() *AuthorUpsert {
-	u.SetExcluded(author.FieldName)
-	return u
-}
-
 // SetActive sets the "active" field.
 func (u *AuthorUpsert) SetActive(v bool) *AuthorUpsert {
 	u.Set(author.FieldActive, v)
@@ -238,16 +252,24 @@ func (u *AuthorUpsert) UpdateActive() *AuthorUpsert {
 	return u
 }
 
-// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
 //	client.Author.Create().
 //		OnConflict(
 //			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(author.FieldID)
+//			}),
 //		).
 //		Exec(ctx)
 func (u *AuthorUpsertOne) UpdateNewValues() *AuthorUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(author.FieldID)
+		}
+	}))
 	return u
 }
 
@@ -276,20 +298,6 @@ func (u *AuthorUpsertOne) Update(set func(*AuthorUpsert)) *AuthorUpsertOne {
 		set(&AuthorUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetName sets the "name" field.
-func (u *AuthorUpsertOne) SetName(v string) *AuthorUpsertOne {
-	return u.Update(func(s *AuthorUpsert) {
-		s.SetName(v)
-	})
-}
-
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *AuthorUpsertOne) UpdateName() *AuthorUpsertOne {
-	return u.Update(func(s *AuthorUpsert) {
-		s.UpdateName()
-	})
 }
 
 // SetActive sets the "active" field.
@@ -386,7 +394,7 @@ func (_c *AuthorCreateBulk) Save(ctx context.Context) ([]*Author, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
+				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
 					id := specs[i].ID.Value.(int64)
 					nodes[i].ID = int(id)
 				}
@@ -441,7 +449,7 @@ func (_c *AuthorCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.AuthorUpsert) {
-//			SetName(v+v).
+//			SetActive(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *AuthorCreateBulk) OnConflict(opts ...sql.ConflictOption) *AuthorUpsertBulk {
@@ -476,10 +484,20 @@ type AuthorUpsertBulk struct {
 //	client.Author.Create().
 //		OnConflict(
 //			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(author.FieldID)
+//			}),
 //		).
 //		Exec(ctx)
 func (u *AuthorUpsertBulk) UpdateNewValues() *AuthorUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(author.FieldID)
+			}
+		}
+	}))
 	return u
 }
 
@@ -508,20 +526,6 @@ func (u *AuthorUpsertBulk) Update(set func(*AuthorUpsert)) *AuthorUpsertBulk {
 		set(&AuthorUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetName sets the "name" field.
-func (u *AuthorUpsertBulk) SetName(v string) *AuthorUpsertBulk {
-	return u.Update(func(s *AuthorUpsert) {
-		s.SetName(v)
-	})
-}
-
-// UpdateName sets the "name" field to the value that was provided on create.
-func (u *AuthorUpsertBulk) UpdateName() *AuthorUpsertBulk {
-	return u.Update(func(s *AuthorUpsert) {
-		s.UpdateName()
-	})
 }
 
 // SetActive sets the "active" field.

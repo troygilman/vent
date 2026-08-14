@@ -20,10 +20,6 @@ import (
 func init() {
 	authorFields := schema.Author{}.Fields()
 	_ = authorFields
-	// authorDescName is the schema descriptor for name field.
-	authorDescName := authorFields[0].Descriptor()
-	// author.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	author.NameValidator = authorDescName.Validators[0].(func(string) error)
 	// authorDescActive is the schema descriptor for active field.
 	authorDescActive := authorFields[1].Descriptor()
 	// author.DefaultActive holds the default value on creation for the active field.
@@ -68,12 +64,8 @@ func init() {
 	permissiongroup.NameValidator = permissiongroupDescName.Validators[0].(func(string) error)
 	reviewFields := schema.Review{}.Fields()
 	_ = reviewFields
-	// reviewDescReviewer is the schema descriptor for reviewer field.
-	reviewDescReviewer := reviewFields[0].Descriptor()
-	// review.ReviewerValidator is a validator for the "reviewer" field. It is called by the builders before save.
-	review.ReviewerValidator = reviewDescReviewer.Validators[0].(func(string) error)
 	// reviewDescRating is the schema descriptor for rating field.
-	reviewDescRating := reviewFields[1].Descriptor()
+	reviewDescRating := reviewFields[0].Descriptor()
 	// review.RatingValidator is a validator for the "rating" field. It is called by the builders before save.
 	review.RatingValidator = func() func(int) error {
 		validators := reviewDescRating.Validators

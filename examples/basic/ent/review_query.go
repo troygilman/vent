@@ -14,6 +14,7 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/predicate"
 	"github.com/troygilman/vent/examples/basic/ent/review"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // ReviewQuery is the builder for querying Review entities.
@@ -24,6 +25,7 @@ type ReviewQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Review
 	withBook   *BookQuery
+	withUser   *UserQuery
 	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -76,6 +78,28 @@ func (_q *ReviewQuery) QueryBook() *BookQuery {
 			sqlgraph.From(review.Table, review.FieldID, selector),
 			sqlgraph.To(book.Table, book.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, review.BookTable, review.BookColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryUser chains the current query on the "user" edge.
+func (_q *ReviewQuery) QueryUser() *UserQuery {
+	query := (&UserClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(review.Table, review.FieldID, selector),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, review.UserTable, review.UserColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +300,7 @@ func (_q *ReviewQuery) Clone() *ReviewQuery {
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Review{}, _q.predicates...),
 		withBook:   _q.withBook.Clone(),
+		withUser:   _q.withUser.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -293,18 +318,29 @@ func (_q *ReviewQuery) WithBook(opts ...func(*BookQuery)) *ReviewQuery {
 	return _q
 }
 
+// WithUser tells the query-builder to eager-load the nodes that are connected to
+// the "user" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ReviewQuery) WithUser(opts ...func(*UserQuery)) *ReviewQuery {
+	query := (&UserClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withUser = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
 //
 //	var v []struct {
-//		Reviewer string `json:"reviewer,omitempty"`
+//		Rating int `json:"rating,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Review.Query().
-//		GroupBy(review.FieldReviewer).
+//		GroupBy(review.FieldRating).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *ReviewQuery) GroupBy(field string, fields ...string) *ReviewGroupBy {
@@ -322,11 +358,11 @@ func (_q *ReviewQuery) GroupBy(field string, fields ...string) *ReviewGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Reviewer string `json:"reviewer,omitempty"`
+//		Rating int `json:"rating,omitempty"`
 //	}
 //
 //	client.Review.Query().
-//		Select(review.FieldReviewer).
+//		Select(review.FieldRating).
 //		Scan(ctx, &v)
 func (_q *ReviewQuery) Select(fields ...string) *ReviewSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -372,11 +408,12 @@ func (_q *ReviewQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Revie
 		nodes       = []*Review{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withBook != nil,
+			_q.withUser != nil,
 		}
 	)
-	if _q.withBook != nil {
+	if _q.withBook != nil || _q.withUser != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -403,6 +440,12 @@ func (_q *ReviewQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Revie
 	if query := _q.withBook; query != nil {
 		if err := _q.loadBook(ctx, query, nodes, nil,
 			func(n *Review, e *Book) { n.Edges.Book = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withUser; query != nil {
+		if err := _q.loadUser(ctx, query, nodes, nil,
+			func(n *Review, e *User) { n.Edges.User = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -434,6 +477,38 @@ func (_q *ReviewQuery) loadBook(ctx context.Context, query *BookQuery, nodes []*
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "book_reviews" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *ReviewQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Review, init func(*Review), assign func(*Review, *User)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Review)
+	for i := range nodes {
+		if nodes[i].user_reviews == nil {
+			continue
+		}
+		fk := *nodes[i].user_reviews
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(user.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "user_reviews" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

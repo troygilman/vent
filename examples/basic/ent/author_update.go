@@ -13,6 +13,7 @@ import (
 	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/predicate"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // AuthorUpdate is the builder for updating Author entities.
@@ -28,20 +29,6 @@ func (_u *AuthorUpdate) Where(ps ...predicate.Author) *AuthorUpdate {
 	return _u
 }
 
-// SetName sets the "name" field.
-func (_u *AuthorUpdate) SetName(v string) *AuthorUpdate {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *AuthorUpdate) SetNillableName(v *string) *AuthorUpdate {
-	if v != nil {
-		_u.SetName(*v)
-	}
-	return _u
-}
-
 // SetActive sets the "active" field.
 func (_u *AuthorUpdate) SetActive(v bool) *AuthorUpdate {
 	_u.mutation.SetActive(v)
@@ -54,6 +41,17 @@ func (_u *AuthorUpdate) SetNillableActive(v *bool) *AuthorUpdate {
 		_u.SetActive(*v)
 	}
 	return _u
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *AuthorUpdate) SetUserID(id int) *AuthorUpdate {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *AuthorUpdate) SetUser(v *User) *AuthorUpdate {
+	return _u.SetUserID(v.ID)
 }
 
 // AddBookIDs adds the "books" edge to the Book entity by IDs.
@@ -74,6 +72,12 @@ func (_u *AuthorUpdate) AddBooks(v ...*Book) *AuthorUpdate {
 // Mutation returns the AuthorMutation object of the builder.
 func (_u *AuthorUpdate) Mutation() *AuthorMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *AuthorUpdate) ClearUser() *AuthorUpdate {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // ClearBooks clears all "books" edges to the Book entity.
@@ -126,10 +130,8 @@ func (_u *AuthorUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AuthorUpdate) check() error {
-	if v, ok := _u.mutation.Name(); ok {
-		if err := author.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Author.name": %w`, err)}
-		}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Author.user"`)
 	}
 	return nil
 }
@@ -146,11 +148,37 @@ func (_u *AuthorUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(author.FieldName, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   author.UserTable,
+			Columns: []string{author.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   author.UserTable,
+			Columns: []string{author.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.BooksCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -217,20 +245,6 @@ type AuthorUpdateOne struct {
 	mutation *AuthorMutation
 }
 
-// SetName sets the "name" field.
-func (_u *AuthorUpdateOne) SetName(v string) *AuthorUpdateOne {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *AuthorUpdateOne) SetNillableName(v *string) *AuthorUpdateOne {
-	if v != nil {
-		_u.SetName(*v)
-	}
-	return _u
-}
-
 // SetActive sets the "active" field.
 func (_u *AuthorUpdateOne) SetActive(v bool) *AuthorUpdateOne {
 	_u.mutation.SetActive(v)
@@ -243,6 +257,17 @@ func (_u *AuthorUpdateOne) SetNillableActive(v *bool) *AuthorUpdateOne {
 		_u.SetActive(*v)
 	}
 	return _u
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *AuthorUpdateOne) SetUserID(id int) *AuthorUpdateOne {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *AuthorUpdateOne) SetUser(v *User) *AuthorUpdateOne {
+	return _u.SetUserID(v.ID)
 }
 
 // AddBookIDs adds the "books" edge to the Book entity by IDs.
@@ -263,6 +288,12 @@ func (_u *AuthorUpdateOne) AddBooks(v ...*Book) *AuthorUpdateOne {
 // Mutation returns the AuthorMutation object of the builder.
 func (_u *AuthorUpdateOne) Mutation() *AuthorMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *AuthorUpdateOne) ClearUser() *AuthorUpdateOne {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // ClearBooks clears all "books" edges to the Book entity.
@@ -328,10 +359,8 @@ func (_u *AuthorUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AuthorUpdateOne) check() error {
-	if v, ok := _u.mutation.Name(); ok {
-		if err := author.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Author.name": %w`, err)}
-		}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Author.user"`)
 	}
 	return nil
 }
@@ -365,11 +394,37 @@ func (_u *AuthorUpdateOne) sqlSave(ctx context.Context) (_node *Author, err erro
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(author.FieldName, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.Active(); ok {
 		_spec.SetField(author.FieldActive, field.TypeBool, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   author.UserTable,
+			Columns: []string{author.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   author.UserTable,
+			Columns: []string{author.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.BooksCleared() {
 		edge := &sqlgraph.EdgeSpec{

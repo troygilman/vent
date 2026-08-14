@@ -27,7 +27,7 @@ func main() {
 	if err := seedAdminUser(ctx, client, credentialGenerator); err != nil {
 		log.Fatalf("failed seeding admin user: %v", err)
 	}
-	if err := seedDemoData(ctx, client); err != nil {
+	if err := seedDemoData(ctx, client, credentialGenerator); err != nil {
 		log.Fatalf("failed seeding demo data: %v", err)
 	}
 
@@ -42,8 +42,14 @@ func main() {
 			User: UserAdmin{
 				DefaultUserAdmin: admin.NewDefaultUserAdmin(client),
 			},
+			Author: AuthorAdmin{
+				DefaultAuthorAdmin: admin.NewDefaultAuthorAdmin(client),
+			},
 			Book: BookAdmin{
 				DefaultBookAdmin: admin.NewDefaultBookAdmin(client),
+			},
+			Review: ReviewAdmin{
+				DefaultReviewAdmin: admin.NewDefaultReviewAdmin(client),
 			},
 		},
 	})
@@ -82,21 +88,59 @@ func seedAdminUser(ctx context.Context, client *ent.Client, credentialGenerator 
 	return err
 }
 
-func seedDemoData(ctx context.Context, client *ent.Client) error {
+func seedUser(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator, email, password string, staff bool) (*ent.User, error) {
+	existing, err := client.User.Query().Where(user.EmailEQ(email)).Only(ctx)
+	if err == nil {
+		return existing, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+
+	passwordHash, err := credentialGenerator.Generate(password)
+	if err != nil {
+		return nil, err
+	}
+	return client.User.Create().
+		SetEmail(email).
+		SetPasswordHash(passwordHash).
+		SetIsStaff(staff).
+		Save(ctx)
+}
+
+func seedDemoData(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator) error {
 	if count, err := client.Book.Query().Count(ctx); err != nil {
 		return err
 	} else if count > 0 {
 		return nil
 	}
 
+	ada, err := seedUser(ctx, client, credentialGenerator, "ada@vent.com", "test_user", true)
+	if err != nil {
+		return err
+	}
+	charles, err := seedUser(ctx, client, credentialGenerator, "charles@vent.com", "test_user", true)
+	if err != nil {
+		return err
+	}
+	casey, err := seedUser(ctx, client, credentialGenerator, "casey@vent.com", "test_user", false)
+	if err != nil {
+		return err
+	}
+	riley, err := seedUser(ctx, client, credentialGenerator, "riley@vent.com", "test_user", false)
+	if err != nil {
+		return err
+	}
+
 	author, err := client.Author.Create().
-		SetName("Ada Lovelace").
+		SetUser(ada).
+		SetActive(true).
 		Save(ctx)
 	if err != nil {
 		return err
 	}
 	inactiveAuthor, err := client.Author.Create().
-		SetName("Charles Babbage").
+		SetUser(charles).
 		SetActive(false).
 		Save(ctx)
 	if err != nil {
@@ -127,7 +171,7 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 	}
 
 	_, err = client.Review.Create().
-		SetReviewer("Casey").
+		SetUser(casey).
 		SetRating(5).
 		SetBody("A clear tour of Vent's schema features.").
 		SetBook(book).
@@ -136,7 +180,7 @@ func seedDemoData(ctx context.Context, client *ent.Client) error {
 		return err
 	}
 	_, err = client.Review.Create().
-		SetReviewer("Riley").
+		SetUser(riley).
 		SetRating(3).
 		SetBody("Useful, but still a draft.").
 		SetBook(book).

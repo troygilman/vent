@@ -8,20 +8,25 @@ import (
 	"github.com/troygilman/vent"
 )
 
-// Author is a unique foreign-key target for Book.
+// Author is a 1:1 extension of User: Author.id is the User primary key.
 type Author struct {
 	ent.Schema
 }
 
 func (Author) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("name").NotEmpty(),
+		// Application-assigned so Author.id can equal User.id (shared PK / FK).
+		field.Int("id"),
 		field.Bool("active").Default(true),
 	}
 }
 
 func (Author) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.From("user", User.Type).
+			Ref("author").
+			Unique().
+			Required(),
 		edge.From("books", Book.Type).Ref("author"),
 	}
 }
@@ -31,10 +36,10 @@ func (Author) Annotations() []schema.Annotation {
 		vent.VentSchemaAnnotation{
 			SingularDisplayName: "Author",
 			PluralDisplayName:   "Authors",
-			TableColumns:        []string{"name", "active"},
-			FilterableColumns:   []string{"name", "active"},
+			TableColumns:        []string{"user", "active"},
+			FilterableColumns:   []string{"active"},
 			FieldSets: []vent.FieldSet{{
-				Fields: []string{"name", "active"},
+				Fields: []string{"user", "active"},
 			}},
 		},
 	}

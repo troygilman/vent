@@ -52,81 +52,136 @@ type AuthorFields struct {
 
 func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 	f := AuthorFields{}
-	NameField := schemaAdmin.FieldName()
-	if NameField == nil {
-		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldName() returned nil")
+	UserField := schemaAdmin.FieldUser()
+	if UserField == nil {
+		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldUser() returned nil")
 	}
 	ActiveField := schemaAdmin.FieldActive()
 	if ActiveField == nil {
 		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldActive() returned nil")
 	}
 	f.listColumns = []AuthorField{
-		NameField,
+		UserField,
 		ActiveField,
 	}
 	f.createFormFields = []AuthorField{
-		NameField,
+		UserField,
 		ActiveField,
 	}
 	f.updateFormFields = []AuthorField{
-		NameField,
+		UserField,
 		ActiveField,
 	}
 	f.createBindFields = []AuthorField{
-		NameField,
+		UserField,
 		ActiveField,
 	}
 	f.updateBindFields = []AuthorField{
-		NameField,
+		UserField,
 		ActiveField,
 	}
 	return f, nil
 }
 
 func (f AuthorFields) eagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery {
+	q = q.WithUser()
 	return q
 }
 
-type AuthorNameField struct {
+type AuthorUserField struct {
 	client *ent.Client
 }
 
-// NewAuthorNameField returns the generated default implementation for name.
-func NewAuthorNameField(client *ent.Client) AuthorNameField {
-	return AuthorNameField{client: client}
+// NewAuthorUserField returns the generated default implementation for user.
+func NewAuthorUserField(client *ent.Client) AuthorUserField {
+	return AuthorUserField{client: client}
 }
 
-func (f AuthorNameField) ListCell(ctx context.Context, e *ent.Author) string {
-	return MustAdmin(ctx).Author().Name(e)
+func (f AuthorUserField) ListCell(ctx context.Context, e *ent.Author) string {
+	if e.Edges.User != nil {
+		return MustAdmin(ctx).User().Name(e.Edges.User)
+	}
+	return ""
 }
 
-func (f AuthorNameField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
+func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
+	options, err := f.loadUserOptions(ctx)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
 	})
 }
 
-func (f AuthorNameField) UpdateHTML(ctx context.Context, e *ent.Author) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "name",
-		Label:    "Name",
-		Value:    vent.FormatFormValue(e.Name),
+func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string, error) {
+	options, err := f.loadUserOptionsWithSelection(ctx, e)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
 	})
 }
 
-func (f AuthorNameField) ApplyCreate(_ context.Context, builder *ent.AuthorCreate, input AuthorCreateInput) error {
-	builder.SetName(input.Name)
-	return nil
-}
-
-func (f AuthorNameField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error {
-	if input.Name != nil {
-		builder.SetName(*input.Name)
+func (f AuthorUserField) ApplyCreate(_ context.Context, builder *ent.AuthorCreate, input AuthorCreateInput) error {
+	if input.User != "" {
+		id, err := parseID(input.User, "user")
+		if err != nil {
+			return err
+		}
+		builder.SetUserID(id)
 	}
 	return nil
+}
+
+func (f AuthorUserField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error {
+	if input.User != nil {
+		if *input.User != "" {
+			id, err := parseID(*input.User, "user")
+			if err != nil {
+				return err
+			}
+			builder.SetUserID(id)
+		} else {
+			builder.ClearUser()
+		}
+	}
+	return nil
+}
+func (f AuthorUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.User.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := make([]gui.SelectOption, len(entities))
+	for i, entity := range entities {
+		options[i] = gui.SelectOption{
+			Value: entity.ID,
+			Label: MustAdmin(ctx).User().Name(entity),
+		}
+	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
+	return options, nil
+}
+
+func (f AuthorUserField) loadUserOptionsWithSelection(ctx context.Context, e *ent.Author) ([]gui.SelectOption, error) {
+	options, err := f.loadUserOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range options {
+		options[i].Selected = e.Edges.User != nil && e.Edges.User.ID == options[i].Value
+	}
+	return options, nil
 }
 
 type AuthorActiveField struct {
@@ -1015,9 +1070,9 @@ type ReviewFields struct {
 
 func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 	f := ReviewFields{}
-	ReviewerField := schemaAdmin.FieldReviewer()
-	if ReviewerField == nil {
-		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldReviewer() returned nil")
+	UserField := schemaAdmin.FieldUser()
+	if UserField == nil {
+		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldUser() returned nil")
 	}
 	RatingField := schemaAdmin.FieldRating()
 	if RatingField == nil {
@@ -1032,30 +1087,30 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldBook() returned nil")
 	}
 	f.listColumns = []ReviewField{
-		ReviewerField,
+		UserField,
 		RatingField,
 		BookField,
 	}
 	f.createFormFields = []ReviewField{
-		ReviewerField,
+		UserField,
 		RatingField,
 		BodyField,
 		BookField,
 	}
 	f.updateFormFields = []ReviewField{
-		ReviewerField,
+		UserField,
 		RatingField,
 		BodyField,
 		BookField,
 	}
 	f.createBindFields = []ReviewField{
-		ReviewerField,
+		UserField,
 		RatingField,
 		BodyField,
 		BookField,
 	}
 	f.updateBindFields = []ReviewField{
-		ReviewerField,
+		UserField,
 		RatingField,
 		BodyField,
 		BookField,
@@ -1064,50 +1119,105 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 }
 
 func (f ReviewFields) eagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery {
+	q = q.WithUser()
 	q = q.WithBook()
 	return q
 }
 
-type ReviewReviewerField struct {
+type ReviewUserField struct {
 	client *ent.Client
 }
 
-// NewReviewReviewerField returns the generated default implementation for reviewer.
-func NewReviewReviewerField(client *ent.Client) ReviewReviewerField {
-	return ReviewReviewerField{client: client}
+// NewReviewUserField returns the generated default implementation for user.
+func NewReviewUserField(client *ent.Client) ReviewUserField {
+	return ReviewUserField{client: client}
 }
 
-func (f ReviewReviewerField) ListCell(ctx context.Context, e *ent.Review) string {
-	return vent.FormatFormValue(e.Reviewer)
+func (f ReviewUserField) ListCell(ctx context.Context, e *ent.Review) string {
+	if e.Edges.User != nil {
+		return MustAdmin(ctx).User().Name(e.Edges.User)
+	}
+	return ""
 }
 
-func (f ReviewReviewerField) CreateHTML(ctx context.Context) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "reviewer",
-		Label:    "Reviewer",
+func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
+	options, err := f.loadUserOptions(ctx)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
 	})
 }
 
-func (f ReviewReviewerField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
-	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "reviewer",
-		Label:    "Reviewer",
-		Value:    vent.FormatFormValue(e.Reviewer),
+func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
+	options, err := f.loadUserOptionsWithSelection(ctx, e)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
 	})
 }
 
-func (f ReviewReviewerField) ApplyCreate(_ context.Context, builder *ent.ReviewCreate, input ReviewCreateInput) error {
-	builder.SetReviewer(input.Reviewer)
-	return nil
-}
-
-func (f ReviewReviewerField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdateOne, input ReviewUpdateInput) error {
-	if input.Reviewer != nil {
-		builder.SetReviewer(*input.Reviewer)
+func (f ReviewUserField) ApplyCreate(_ context.Context, builder *ent.ReviewCreate, input ReviewCreateInput) error {
+	if input.User != "" {
+		id, err := parseID(input.User, "user")
+		if err != nil {
+			return err
+		}
+		builder.SetUserID(id)
 	}
 	return nil
+}
+
+func (f ReviewUserField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdateOne, input ReviewUpdateInput) error {
+	if input.User != nil {
+		if *input.User != "" {
+			id, err := parseID(*input.User, "user")
+			if err != nil {
+				return err
+			}
+			builder.SetUserID(id)
+		} else {
+			builder.ClearUser()
+		}
+	}
+	return nil
+}
+func (f ReviewUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
+	entities, err := f.client.User.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := make([]gui.SelectOption, len(entities))
+	for i, entity := range entities {
+		options[i] = gui.SelectOption{
+			Value: entity.ID,
+			Label: MustAdmin(ctx).User().Name(entity),
+		}
+	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
+	return options, nil
+}
+
+func (f ReviewUserField) loadUserOptionsWithSelection(ctx context.Context, e *ent.Review) ([]gui.SelectOption, error) {
+	options, err := f.loadUserOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range options {
+		options[i].Selected = e.Edges.User != nil && e.Edges.User.ID == options[i].Value
+	}
+	return options, nil
 }
 
 type ReviewRatingField struct {

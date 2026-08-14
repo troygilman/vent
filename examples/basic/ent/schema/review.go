@@ -8,14 +8,13 @@ import (
 	"github.com/troygilman/vent"
 )
 
-// Review is a required unique FK back to Book, with delete disabled.
+// Review belongs to one Book and one User. Deletes are disabled in admin.
 type Review struct {
 	ent.Schema
 }
 
 func (Review) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("reviewer").NotEmpty(),
 		field.Int("rating").Min(1).Max(5),
 		field.String("body").Optional().Nillable(),
 	}
@@ -24,6 +23,10 @@ func (Review) Fields() []ent.Field {
 func (Review) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("book", Book.Type).
+			Ref("reviews").
+			Unique().
+			Required(),
+		edge.From("user", User.Type).
 			Ref("reviews").
 			Unique().
 			Required(),
@@ -36,10 +39,10 @@ func (Review) Annotations() []schema.Annotation {
 			SingularDisplayName: "Review",
 			PluralDisplayName:   "Reviews",
 			DisableDelete:       true,
-			TableColumns:        []string{"reviewer", "rating", "book"},
-			FilterableColumns:   []string{"reviewer", "rating"},
+			TableColumns:        []string{"user", "rating", "book"},
+			FilterableColumns:   []string{"rating"},
 			FieldSets: []vent.FieldSet{{
-				Fields: []string{"reviewer", "rating", "body", "book"},
+				Fields: []string{"user", "rating", "body", "book"},
 			}},
 		},
 	}

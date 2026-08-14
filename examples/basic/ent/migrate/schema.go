@@ -11,7 +11,6 @@ var (
 	// AuthorsColumns holds the columns for the "authors" table.
 	AuthorsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "name", Type: field.TypeString},
 		{Name: "active", Type: field.TypeBool, Default: true},
 	}
 	// AuthorsTable holds the schema information for the "authors" table.
@@ -19,6 +18,14 @@ var (
 		Name:       "authors",
 		Columns:    AuthorsColumns,
 		PrimaryKey: []*schema.Column{AuthorsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "authors_users_author",
+				Columns:    []*schema.Column{AuthorsColumns[0]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// BooksColumns holds the columns for the "books" table.
 	BooksColumns = []*schema.Column{
@@ -70,10 +77,10 @@ var (
 	// ReviewsColumns holds the columns for the "reviews" table.
 	ReviewsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "reviewer", Type: field.TypeString},
 		{Name: "rating", Type: field.TypeInt},
 		{Name: "body", Type: field.TypeString, Nullable: true},
 		{Name: "book_reviews", Type: field.TypeInt},
+		{Name: "user_reviews", Type: field.TypeInt},
 	}
 	// ReviewsTable holds the schema information for the "reviews" table.
 	ReviewsTable = &schema.Table{
@@ -83,8 +90,14 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "reviews_books_reviews",
-				Columns:    []*schema.Column{ReviewsColumns[4]},
+				Columns:    []*schema.Column{ReviewsColumns[3]},
 				RefColumns: []*schema.Column{BooksColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "reviews_users_reviews",
+				Columns:    []*schema.Column{ReviewsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -169,8 +182,10 @@ var (
 )
 
 func init() {
+	AuthorsTable.ForeignKeys[0].RefTable = UsersTable
 	BooksTable.ForeignKeys[0].RefTable = AuthorsTable
 	ReviewsTable.ForeignKeys[0].RefTable = BooksTable
+	ReviewsTable.ForeignKeys[1].RefTable = UsersTable
 	PermissionGroupPermissionsTable.ForeignKeys[0].RefTable = PermissionGroupsTable
 	PermissionGroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
 	UserGroupsTable.ForeignKeys[0].RefTable = UsersTable

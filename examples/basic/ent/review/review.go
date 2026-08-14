@@ -12,14 +12,14 @@ const (
 	Label = "review"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldReviewer holds the string denoting the reviewer field in the database.
-	FieldReviewer = "reviewer"
 	// FieldRating holds the string denoting the rating field in the database.
 	FieldRating = "rating"
 	// FieldBody holds the string denoting the body field in the database.
 	FieldBody = "body"
 	// EdgeBook holds the string denoting the book edge name in mutations.
 	EdgeBook = "book"
+	// EdgeUser holds the string denoting the user edge name in mutations.
+	EdgeUser = "user"
 	// Table holds the table name of the review in the database.
 	Table = "reviews"
 	// BookTable is the table that holds the book relation/edge.
@@ -29,12 +29,18 @@ const (
 	BookInverseTable = "books"
 	// BookColumn is the table column denoting the book relation/edge.
 	BookColumn = "book_reviews"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "reviews"
+	// UserInverseTable is the table name for the User entity.
+	// It exists in this package in order to avoid circular dependency with the "user" package.
+	UserInverseTable = "users"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "user_reviews"
 )
 
 // Columns holds all SQL columns for review fields.
 var Columns = []string{
 	FieldID,
-	FieldReviewer,
 	FieldRating,
 	FieldBody,
 }
@@ -43,6 +49,7 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"book_reviews",
+	"user_reviews",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -61,8 +68,6 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// ReviewerValidator is a validator for the "reviewer" field. It is called by the builders before save.
-	ReviewerValidator func(string) error
 	// RatingValidator is a validator for the "rating" field. It is called by the builders before save.
 	RatingValidator func(int) error
 )
@@ -73,11 +78,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// ByReviewer orders the results by the reviewer field.
-func ByReviewer(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldReviewer, opts...).ToFunc()
 }
 
 // ByRating orders the results by the rating field.
@@ -96,10 +96,24 @@ func ByBookField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newBookStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByUserField orders the results by user field.
+func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newBookStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(BookInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, BookTable, BookColumn),
+	)
+}
+func newUserStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(UserInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
 }

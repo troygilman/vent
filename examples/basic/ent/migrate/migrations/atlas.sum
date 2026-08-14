@@ -1,4 +1,4 @@
-h1:Xlr7VlK2Aifu9FWgR2Fds3A/UmG0ntPpIAgT4++X4Hc=
+h1:ozbu/sk2hJkTim61s0u17qg4duN6b9uClqvgP+p3QEU=
 0000_init.sql h1:SHyIZcCjApXlkYtZn9bGU4O+KwJ2wkZpnEkeNn6Le1Y=
 0001_update_auth_permissions.sql h1:Dur8v7A9k2DLyxsHD73g9RoDpLUdOoGDZpIp0hjJmu0=
 0002_null_password_hash.sql h1:P5GtEdBs2ptFIDOxtchSJ2FYQ74xuCUDggcppFp8hYQ=
@@ -13,3 +13,4 @@ h1:Xlr7VlK2Aifu9FWgR2Fds3A/UmG0ntPpIAgT4++X4Hc=
 0011_update_auth_permissions.sql h1:sZsRnEcJpvFmFI7He+E2fHigzM+bNYDyhVvYAlYm6Gc=
 0012_simplify_library.sql h1:VM2eM1CSyfeehGgA33pMKVU9QsqawFnakdiOZCJ3eZ8=
 0013_update_auth_permissions.sql h1:E14LHXXPkhrunAJ1v1db87rPSMz1k8KR6H/ByxasQD0=
+0014_authors_reviews_user.sql h1:A9jRxa61ybPXtho1lZyjCM8U7i6QCDEjUD3YAo/XfNc=

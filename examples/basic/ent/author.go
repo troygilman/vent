@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/troygilman/vent/examples/basic/ent/author"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // Author is the model entity for the Author schema.
@@ -16,8 +17,6 @@ type Author struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
 	// Active holds the value of the "active" field.
 	Active bool `json:"active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -28,17 +27,30 @@ type Author struct {
 
 // AuthorEdges holds the relations/edges for other nodes in the graph.
 type AuthorEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
 	// Books holds the value of the books edge.
 	Books []*Book `json:"books,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e AuthorEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // BooksOrErr returns the Books value or an error if the edge
 // was not loaded in eager-loading.
 func (e AuthorEdges) BooksOrErr() ([]*Book, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Books, nil
 	}
 	return nil, &NotLoadedError{edge: "books"}
@@ -53,8 +65,6 @@ func (*Author) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case author.FieldID:
 			values[i] = new(sql.NullInt64)
-		case author.FieldName:
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -76,12 +86,6 @@ func (_m *Author) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
-		case author.FieldName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
-			} else if value.Valid {
-				_m.Name = value.String
-			}
 		case author.FieldActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field active", values[i])
@@ -99,6 +103,11 @@ func (_m *Author) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Author) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryUser queries the "user" edge of the Author entity.
+func (_m *Author) QueryUser() *UserQuery {
+	return NewAuthorClient(_m.config).QueryUser(_m)
 }
 
 // QueryBooks queries the "books" edge of the Author entity.
@@ -129,9 +138,6 @@ func (_m *Author) String() string {
 	var builder strings.Builder
 	builder.WriteString("Author(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("name=")
-	builder.WriteString(_m.Name)
-	builder.WriteString(", ")
 	builder.WriteString("active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Active))
 	builder.WriteByte(')')

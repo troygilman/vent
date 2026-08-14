@@ -43,9 +43,10 @@ type AuthorMutation struct {
 	op            Op
 	typ           string
 	id            *int
-	name          *string
 	active        *bool
 	clearedFields map[string]struct{}
+	user          *int
+	cleareduser   bool
 	books         map[int]struct{}
 	removedbooks  map[int]struct{}
 	clearedbooks  bool
@@ -124,6 +125,12 @@ func (m AuthorMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Author entities.
+func (m *AuthorMutation) SetID(id int) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
 func (m *AuthorMutation) ID() (id int, exists bool) {
@@ -150,42 +157,6 @@ func (m *AuthorMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetName sets the "name" field.
-func (m *AuthorMutation) SetName(s string) {
-	m.name = &s
-}
-
-// Name returns the value of the "name" field in the mutation.
-func (m *AuthorMutation) Name() (r string, exists bool) {
-	v := m.name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldName returns the old "name" field's value of the Author entity.
-// If the Author object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AuthorMutation) OldName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
-	}
-	return oldValue.Name, nil
-}
-
-// ResetName resets all changes to the "name" field.
-func (m *AuthorMutation) ResetName() {
-	m.name = nil
 }
 
 // SetActive sets the "active" field.
@@ -222,6 +193,45 @@ func (m *AuthorMutation) OldActive(ctx context.Context) (v bool, err error) {
 // ResetActive resets all changes to the "active" field.
 func (m *AuthorMutation) ResetActive() {
 	m.active = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *AuthorMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *AuthorMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *AuthorMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *AuthorMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *AuthorMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *AuthorMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
 }
 
 // AddBookIDs adds the "books" edge to the Book entity by ids.
@@ -312,10 +322,7 @@ func (m *AuthorMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AuthorMutation) Fields() []string {
-	fields := make([]string, 0, 2)
-	if m.name != nil {
-		fields = append(fields, author.FieldName)
-	}
+	fields := make([]string, 0, 1)
 	if m.active != nil {
 		fields = append(fields, author.FieldActive)
 	}
@@ -327,8 +334,6 @@ func (m *AuthorMutation) Fields() []string {
 // schema.
 func (m *AuthorMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case author.FieldName:
-		return m.Name()
 	case author.FieldActive:
 		return m.Active()
 	}
@@ -340,8 +345,6 @@ func (m *AuthorMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *AuthorMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case author.FieldName:
-		return m.OldName(ctx)
 	case author.FieldActive:
 		return m.OldActive(ctx)
 	}
@@ -353,13 +356,6 @@ func (m *AuthorMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *AuthorMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case author.FieldName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetName(v)
-		return nil
 	case author.FieldActive:
 		v, ok := value.(bool)
 		if !ok {
@@ -416,9 +412,6 @@ func (m *AuthorMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *AuthorMutation) ResetField(name string) error {
 	switch name {
-	case author.FieldName:
-		m.ResetName()
-		return nil
 	case author.FieldActive:
 		m.ResetActive()
 		return nil
@@ -428,7 +421,10 @@ func (m *AuthorMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AuthorMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, author.EdgeUser)
+	}
 	if m.books != nil {
 		edges = append(edges, author.EdgeBooks)
 	}
@@ -439,6 +435,10 @@ func (m *AuthorMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *AuthorMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case author.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
 	case author.EdgeBooks:
 		ids := make([]ent.Value, 0, len(m.books))
 		for id := range m.books {
@@ -451,7 +451,7 @@ func (m *AuthorMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AuthorMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedbooks != nil {
 		edges = append(edges, author.EdgeBooks)
 	}
@@ -474,7 +474,10 @@ func (m *AuthorMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AuthorMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, author.EdgeUser)
+	}
 	if m.clearedbooks {
 		edges = append(edges, author.EdgeBooks)
 	}
@@ -485,6 +488,8 @@ func (m *AuthorMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *AuthorMutation) EdgeCleared(name string) bool {
 	switch name {
+	case author.EdgeUser:
+		return m.cleareduser
 	case author.EdgeBooks:
 		return m.clearedbooks
 	}
@@ -495,6 +500,9 @@ func (m *AuthorMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *AuthorMutation) ClearEdge(name string) error {
 	switch name {
+	case author.EdgeUser:
+		m.ClearUser()
+		return nil
 	}
 	return fmt.Errorf("unknown Author unique edge %s", name)
 }
@@ -503,6 +511,9 @@ func (m *AuthorMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *AuthorMutation) ResetEdge(name string) error {
 	switch name {
+	case author.EdgeUser:
+		m.ResetUser()
+		return nil
 	case author.EdgeBooks:
 		m.ResetBooks()
 		return nil
@@ -2262,13 +2273,14 @@ type ReviewMutation struct {
 	op            Op
 	typ           string
 	id            *int
-	reviewer      *string
 	rating        *int
 	addrating     *int
 	body          *string
 	clearedFields map[string]struct{}
 	book          *int
 	clearedbook   bool
+	user          *int
+	cleareduser   bool
 	done          bool
 	oldValue      func(context.Context) (*Review, error)
 	predicates    []predicate.Review
@@ -2370,42 +2382,6 @@ func (m *ReviewMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetReviewer sets the "reviewer" field.
-func (m *ReviewMutation) SetReviewer(s string) {
-	m.reviewer = &s
-}
-
-// Reviewer returns the value of the "reviewer" field in the mutation.
-func (m *ReviewMutation) Reviewer() (r string, exists bool) {
-	v := m.reviewer
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldReviewer returns the old "reviewer" field's value of the Review entity.
-// If the Review object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ReviewMutation) OldReviewer(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldReviewer is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldReviewer requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldReviewer: %w", err)
-	}
-	return oldValue.Reviewer, nil
-}
-
-// ResetReviewer resets all changes to the "reviewer" field.
-func (m *ReviewMutation) ResetReviewer() {
-	m.reviewer = nil
 }
 
 // SetRating sets the "rating" field.
@@ -2552,6 +2528,45 @@ func (m *ReviewMutation) ResetBook() {
 	m.clearedbook = false
 }
 
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *ReviewMutation) SetUserID(id int) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *ReviewMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *ReviewMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *ReviewMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *ReviewMutation) UserIDs() (ids []int) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *ReviewMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
 // Where appends a list predicates to the ReviewMutation builder.
 func (m *ReviewMutation) Where(ps ...predicate.Review) {
 	m.predicates = append(m.predicates, ps...)
@@ -2586,10 +2601,7 @@ func (m *ReviewMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ReviewMutation) Fields() []string {
-	fields := make([]string, 0, 3)
-	if m.reviewer != nil {
-		fields = append(fields, review.FieldReviewer)
-	}
+	fields := make([]string, 0, 2)
 	if m.rating != nil {
 		fields = append(fields, review.FieldRating)
 	}
@@ -2604,8 +2616,6 @@ func (m *ReviewMutation) Fields() []string {
 // schema.
 func (m *ReviewMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case review.FieldReviewer:
-		return m.Reviewer()
 	case review.FieldRating:
 		return m.Rating()
 	case review.FieldBody:
@@ -2619,8 +2629,6 @@ func (m *ReviewMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *ReviewMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case review.FieldReviewer:
-		return m.OldReviewer(ctx)
 	case review.FieldRating:
 		return m.OldRating(ctx)
 	case review.FieldBody:
@@ -2634,13 +2642,6 @@ func (m *ReviewMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *ReviewMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case review.FieldReviewer:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetReviewer(v)
-		return nil
 	case review.FieldRating:
 		v, ok := value.(int)
 		if !ok {
@@ -2728,9 +2729,6 @@ func (m *ReviewMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *ReviewMutation) ResetField(name string) error {
 	switch name {
-	case review.FieldReviewer:
-		m.ResetReviewer()
-		return nil
 	case review.FieldRating:
 		m.ResetRating()
 		return nil
@@ -2743,9 +2741,12 @@ func (m *ReviewMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ReviewMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.book != nil {
 		edges = append(edges, review.EdgeBook)
+	}
+	if m.user != nil {
+		edges = append(edges, review.EdgeUser)
 	}
 	return edges
 }
@@ -2758,13 +2759,17 @@ func (m *ReviewMutation) AddedIDs(name string) []ent.Value {
 		if id := m.book; id != nil {
 			return []ent.Value{*id}
 		}
+	case review.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ReviewMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -2776,9 +2781,12 @@ func (m *ReviewMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ReviewMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedbook {
 		edges = append(edges, review.EdgeBook)
+	}
+	if m.cleareduser {
+		edges = append(edges, review.EdgeUser)
 	}
 	return edges
 }
@@ -2789,6 +2797,8 @@ func (m *ReviewMutation) EdgeCleared(name string) bool {
 	switch name {
 	case review.EdgeBook:
 		return m.clearedbook
+	case review.EdgeUser:
+		return m.cleareduser
 	}
 	return false
 }
@@ -2799,6 +2809,9 @@ func (m *ReviewMutation) ClearEdge(name string) error {
 	switch name {
 	case review.EdgeBook:
 		m.ClearBook()
+		return nil
+	case review.EdgeUser:
+		m.ClearUser()
 		return nil
 	}
 	return fmt.Errorf("unknown Review unique edge %s", name)
@@ -2811,6 +2824,9 @@ func (m *ReviewMutation) ResetEdge(name string) error {
 	case review.EdgeBook:
 		m.ResetBook()
 		return nil
+	case review.EdgeUser:
+		m.ResetUser()
+		return nil
 	}
 	return fmt.Errorf("unknown Review edge %s", name)
 }
@@ -2818,22 +2834,27 @@ func (m *ReviewMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	email         *string
-	password_hash *string
-	is_staff      *bool
-	is_superuser  *bool
-	is_active     *bool
-	last_login    *time.Time
-	clearedFields map[string]struct{}
-	groups        map[int]struct{}
-	removedgroups map[int]struct{}
-	clearedgroups bool
-	done          bool
-	oldValue      func(context.Context) (*User, error)
-	predicates    []predicate.User
+	op             Op
+	typ            string
+	id             *int
+	email          *string
+	password_hash  *string
+	is_staff       *bool
+	is_superuser   *bool
+	is_active      *bool
+	last_login     *time.Time
+	clearedFields  map[string]struct{}
+	groups         map[int]struct{}
+	removedgroups  map[int]struct{}
+	clearedgroups  bool
+	author         *int
+	clearedauthor  bool
+	reviews        map[int]struct{}
+	removedreviews map[int]struct{}
+	clearedreviews bool
+	done           bool
+	oldValue       func(context.Context) (*User, error)
+	predicates     []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -3230,6 +3251,99 @@ func (m *UserMutation) ResetGroups() {
 	m.removedgroups = nil
 }
 
+// SetAuthorID sets the "author" edge to the Author entity by id.
+func (m *UserMutation) SetAuthorID(id int) {
+	m.author = &id
+}
+
+// ClearAuthor clears the "author" edge to the Author entity.
+func (m *UserMutation) ClearAuthor() {
+	m.clearedauthor = true
+}
+
+// AuthorCleared reports if the "author" edge to the Author entity was cleared.
+func (m *UserMutation) AuthorCleared() bool {
+	return m.clearedauthor
+}
+
+// AuthorID returns the "author" edge ID in the mutation.
+func (m *UserMutation) AuthorID() (id int, exists bool) {
+	if m.author != nil {
+		return *m.author, true
+	}
+	return
+}
+
+// AuthorIDs returns the "author" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AuthorID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) AuthorIDs() (ids []int) {
+	if id := m.author; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAuthor resets all changes to the "author" edge.
+func (m *UserMutation) ResetAuthor() {
+	m.author = nil
+	m.clearedauthor = false
+}
+
+// AddReviewIDs adds the "reviews" edge to the Review entity by ids.
+func (m *UserMutation) AddReviewIDs(ids ...int) {
+	if m.reviews == nil {
+		m.reviews = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.reviews[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReviews clears the "reviews" edge to the Review entity.
+func (m *UserMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the Review entity was cleared.
+func (m *UserMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// RemoveReviewIDs removes the "reviews" edge to the Review entity by IDs.
+func (m *UserMutation) RemoveReviewIDs(ids ...int) {
+	if m.removedreviews == nil {
+		m.removedreviews = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.reviews, ids[i])
+		m.removedreviews[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReviews returns the removed IDs of the "reviews" edge to the Review entity.
+func (m *UserMutation) RemovedReviewsIDs() (ids []int) {
+	for id := range m.removedreviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+func (m *UserMutation) ReviewsIDs() (ids []int) {
+	for id := range m.reviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *UserMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+	m.removedreviews = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -3463,9 +3577,15 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.groups != nil {
 		edges = append(edges, user.EdgeGroups)
+	}
+	if m.author != nil {
+		edges = append(edges, user.EdgeAuthor)
+	}
+	if m.reviews != nil {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -3480,15 +3600,28 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeAuthor:
+		if id := m.author; id != nil {
+			return []ent.Value{*id}
+		}
+	case user.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.reviews))
+		for id := range m.reviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.removedgroups != nil {
 		edges = append(edges, user.EdgeGroups)
+	}
+	if m.removedreviews != nil {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -3503,15 +3636,27 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.removedreviews))
+		for id := range m.removedreviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.clearedgroups {
 		edges = append(edges, user.EdgeGroups)
+	}
+	if m.clearedauthor {
+		edges = append(edges, user.EdgeAuthor)
+	}
+	if m.clearedreviews {
+		edges = append(edges, user.EdgeReviews)
 	}
 	return edges
 }
@@ -3522,6 +3667,10 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeGroups:
 		return m.clearedgroups
+	case user.EdgeAuthor:
+		return m.clearedauthor
+	case user.EdgeReviews:
+		return m.clearedreviews
 	}
 	return false
 }
@@ -3530,6 +3679,9 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
 	switch name {
+	case user.EdgeAuthor:
+		m.ClearAuthor()
+		return nil
 	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
@@ -3540,6 +3692,12 @@ func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
 	case user.EdgeGroups:
 		m.ResetGroups()
+		return nil
+	case user.EdgeAuthor:
+		m.ResetAuthor()
+		return nil
+	case user.EdgeReviews:
+		m.ResetReviews()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

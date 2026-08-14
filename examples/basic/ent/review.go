@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/review"
+	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
 // Review is the model entity for the Review schema.
@@ -17,8 +18,6 @@ type Review struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
-	// Reviewer holds the value of the "reviewer" field.
-	Reviewer string `json:"reviewer,omitempty"`
 	// Rating holds the value of the "rating" field.
 	Rating int `json:"rating,omitempty"`
 	// Body holds the value of the "body" field.
@@ -27,6 +26,7 @@ type Review struct {
 	// The values are being populated by the ReviewQuery when eager-loading is set.
 	Edges        ReviewEdges `json:"edges"`
 	book_reviews *int
+	user_reviews *int
 	selectValues sql.SelectValues
 }
 
@@ -34,9 +34,11 @@ type Review struct {
 type ReviewEdges struct {
 	// Book holds the value of the book edge.
 	Book *Book `json:"book,omitempty"`
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // BookOrErr returns the Book value or an error if the edge
@@ -50,6 +52,17 @@ func (e ReviewEdges) BookOrErr() (*Book, error) {
 	return nil, &NotLoadedError{edge: "book"}
 }
 
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ReviewEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Review) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -57,9 +70,11 @@ func (*Review) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case review.FieldID, review.FieldRating:
 			values[i] = new(sql.NullInt64)
-		case review.FieldReviewer, review.FieldBody:
+		case review.FieldBody:
 			values[i] = new(sql.NullString)
 		case review.ForeignKeys[0]: // book_reviews
+			values[i] = new(sql.NullInt64)
+		case review.ForeignKeys[1]: // user_reviews
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -82,12 +97,6 @@ func (_m *Review) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
-		case review.FieldReviewer:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field reviewer", values[i])
-			} else if value.Valid {
-				_m.Reviewer = value.String
-			}
 		case review.FieldRating:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field rating", values[i])
@@ -108,6 +117,13 @@ func (_m *Review) assignValues(columns []string, values []any) error {
 				_m.book_reviews = new(int)
 				*_m.book_reviews = int(value.Int64)
 			}
+		case review.ForeignKeys[1]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field user_reviews", value)
+			} else if value.Valid {
+				_m.user_reviews = new(int)
+				*_m.user_reviews = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -124,6 +140,11 @@ func (_m *Review) Value(name string) (ent.Value, error) {
 // QueryBook queries the "book" edge of the Review entity.
 func (_m *Review) QueryBook() *BookQuery {
 	return NewReviewClient(_m.config).QueryBook(_m)
+}
+
+// QueryUser queries the "user" edge of the Review entity.
+func (_m *Review) QueryUser() *UserQuery {
+	return NewReviewClient(_m.config).QueryUser(_m)
 }
 
 // Update returns a builder for updating this Review.
@@ -149,9 +170,6 @@ func (_m *Review) String() string {
 	var builder strings.Builder
 	builder.WriteString("Review(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("reviewer=")
-	builder.WriteString(_m.Reviewer)
-	builder.WriteString(", ")
 	builder.WriteString("rating=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Rating))
 	builder.WriteString(", ")
