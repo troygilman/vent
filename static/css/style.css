@@ -949,11 +949,12 @@ a {
 }
 .widget-drawer-icon {
     position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
     width: 2.15rem;
     height: 2.15rem;
+    padding: 0;
+    line-height: 0;
     border-radius: var(--radius);
     color: var(--color-text-muted);
     transition:
