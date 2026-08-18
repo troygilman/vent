@@ -107,3 +107,28 @@ func TestSchemaTableAddButtonIsALink(t *testing.T) {
 		t.Fatal("add control must not nest a button inside a link (submits the filter form)")
 	}
 }
+
+func TestSchemaTableFilterChipDelimiter(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: vent.BoolFilterFalse.String()},
+		},
+		RenderContext: RenderContext{CanCreate: true},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, "IsStaff: <b>No</b>") {
+		t.Fatal("active filter chips should delimit the label and value with \": \"")
+	}
+}
