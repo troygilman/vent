@@ -150,15 +150,17 @@ templ SchemaTablePage(props SchemaTableProps) {
 						aria-label="Widgets"
 					>
 						<div class="widget-drawer-rail" role="toolbar" aria-label="Widgets">
-							<button
-								type="button"
-								class="widget-drawer-icon"
-								data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
-								data-attr:aria-expanded="$widgets._open"
-								data-on:click="widgetDrawer.toggleOpen($widgets)"
-							>
-								@DrawerToggleIcon()
-							</button>
+							<div class="widget-drawer-rail-header">
+								<button
+									type="button"
+									class="widget-drawer-icon"
+									data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
+									data-attr:aria-expanded="$widgets._open"
+									data-on:click="widgetDrawer.toggleOpen($widgets)"
+								>
+									@DrawerToggleIcon()
+								</button>
+							</div>
 							<div class="widget-drawer-rail-widgets">
 								<button
 									type="button"

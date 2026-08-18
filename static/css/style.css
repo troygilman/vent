@@ -77,6 +77,11 @@
     );
     --content-max-width: 72rem;
     --widget-rail-width: 2.75rem;
+    --widget-icon-size: 2.15rem;
+    --widget-rail-inset: calc((var(--widget-rail-width) - var(--widget-icon-size)) / 2);
+    --widget-drawer-chrome-height: calc(
+        var(--widget-icon-size) + 2 * var(--widget-rail-inset) + 1px
+    );
     --widget-panel-width: 18.5rem;
     --field-label-width: 11rem;
     --field-label-col: 9.5rem;
@@ -942,17 +947,23 @@ a {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-2) 0;
+    align-items: stretch;
     background: var(--color-bg-secondary);
+}
+.widget-drawer-rail-header {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: var(--widget-drawer-chrome-height);
+    padding: var(--widget-rail-inset);
+    border-bottom: 1px solid var(--color-border);
 }
 .widget-drawer-icon {
     position: relative;
     display: grid;
     place-items: center;
-    width: 2.15rem;
-    height: 2.15rem;
+    width: var(--widget-icon-size);
+    height: var(--widget-icon-size);
     padding: 0;
     line-height: 0;
     border-radius: var(--radius);
@@ -989,10 +1000,9 @@ a {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--widget-rail-inset);
     width: 100%;
-    padding-top: var(--space-1);
-    border-top: 1px solid var(--color-border);
+    padding: var(--widget-rail-inset);
 }
 .widget-drawer-badge {
     position: absolute;
@@ -1027,7 +1037,7 @@ a {
 .widget-drawer.is-open .widget-drawer-panel {
     width: var(--widget-panel-width);
     opacity: 1;
-    border-left-color: var(--color-border-subtle);
+    border-left-color: var(--color-border);
 }
 .widget-drawer-widget {
     display: flex;
@@ -1042,8 +1052,9 @@ a {
     justify-content: space-between;
     gap: var(--space-3);
     flex-shrink: 0;
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--color-border-subtle);
+    height: var(--widget-drawer-chrome-height);
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--color-border);
 }
 .widget-drawer-title {
     font-size: 0.9375rem;
