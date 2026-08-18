@@ -324,6 +324,13 @@ just gen   # Templ GUI + Vent admin codegen
 just dev   # gen, then run the example server on :8080
 ```
 
+Or run the same example with Docker:
+
+```bash
+docker build -t vent-example .
+docker run --rm -p 8080:8080 vent-example
+```
+
 Default login after first run: `admin@vent.com` / `test_user`.
 
 The example is a small library domain (`Author`, `Book`, `Review`) plus Vent auth:

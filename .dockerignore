@@ -1,0 +1,7 @@
+.git
+.github
+.cursor
+tmp
+server
+*.md
+TODO.md
