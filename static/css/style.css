@@ -968,10 +968,21 @@ a {
     color: var(--color-primary);
     background: var(--color-primary-light);
 }
+.widget-drawer-icon svg {
+    display: block;
+    flex-shrink: 0;
+}
 .widget-drawer-icon .filter-icon,
 .widget-drawer-icon .drawer-toggle-icon {
     width: 1.125rem;
     height: 1.125rem;
+}
+.widget-drawer-icon .drawer-toggle-icon {
+    transform-origin: center;
+    transition: transform var(--ease);
+}
+.widget-drawer.is-open .drawer-toggle-icon {
+    transform: rotate(180deg);
 }
 .widget-drawer-rail-widgets {
     display: flex;

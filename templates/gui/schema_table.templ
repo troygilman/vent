@@ -155,15 +155,9 @@ templ SchemaTablePage(props SchemaTableProps) {
 								class="widget-drawer-icon"
 								data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
 								data-attr:aria-expanded="$widgets._open"
-								data-class:is-active="$widgets._open"
 								data-on:click="widgetDrawer.toggleOpen($widgets)"
 							>
-								<span data-show="!$widgets._open">
-									@DrawerExpandIcon()
-								</span>
-								<span data-show="$widgets._open" style="display: none">
-									@DrawerCollapseIcon()
-								</span>
+								@DrawerToggleIcon()
 							</button>
 							<div class="widget-drawer-rail-widgets">
 								<button
