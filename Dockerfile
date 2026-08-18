@@ -15,8 +15,14 @@ COPY . .
 RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o /out/vent-example ./examples/basic/cmd/server
 
 # Same community Atlas CLI the repo's Cloud Agent install script uses.
-ARG TARGETARCH
-RUN curl -fsSL "https://atlasbinaries.com/atlas/atlas-community-linux-${TARGETARCH}-latest" -o /out/atlas \
+# uname mapping works with both BuildKit and the classic builder (TARGETARCH is BuildKit-only).
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64) atlas_arch=amd64 ;; \
+         aarch64|arm64) atlas_arch=arm64 ;; \
+         *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL "https://atlasbinaries.com/atlas/atlas-community-linux-${atlas_arch}-latest" -o /out/atlas \
     && chmod +x /out/atlas
 
 FROM debian:bookworm-slim
