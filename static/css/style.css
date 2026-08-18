@@ -783,6 +783,20 @@ a {
 .btn-neutral:hover:not(:disabled) {
     background: var(--color-neutral-hover);
 }
+.btn-outline {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+.btn-outline:hover:not(:disabled) {
+    background: var(--color-bg-secondary);
+    box-shadow: var(--shadow-sm);
+}
+.btn-outline.is-active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+}
 .btn-error {
     background: var(--color-error);
     color: var(--color-error-content);
@@ -837,22 +851,95 @@ a {
 }
 
 .table-filters {
+    position: relative;
+    margin-bottom: var(--space-3);
+}
+.table-filter-toolbar {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-4);
-    padding: var(--space-4);
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.45rem;
+}
+.table-filter-add {
+    position: relative;
+}
+.filter-icon {
+    width: 1rem;
+    height: 1rem;
+}
+.table-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
+.table-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.75rem;
+    padding: 0 0.3rem 0 0.65rem;
+    border-radius: 9999px;
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid color-mix(in oklab, var(--color-primary) 18%, var(--color-border));
+}
+.table-filter-chip-text b {
+    font-weight: 700;
+}
+.table-filter-chip-remove {
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    opacity: 0.7;
+}
+.table-filter-chip-remove:hover {
+    background: color-mix(in oklab, var(--color-primary) 16%, transparent);
+    opacity: 1;
+}
+.table-filter-panel {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    z-index: 24;
+    width: 20rem;
+    overflow: hidden;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+.table-filter-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+.table-filter-panel-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+}
+.table-filter-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
 }
 .table-filter {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-    min-width: 10rem;
+    min-width: 0;
 }
 .table-filter-label {
     font-size: 0.75rem;
@@ -860,18 +947,10 @@ a {
     color: var(--color-text-muted);
     letter-spacing: 0.01em;
 }
-.table-filters .input,
-.table-filters .select {
-    flex: 0 0 auto;
-    min-width: 12rem;
-}
-.table-filters .select {
-    min-width: 8.5rem;
-}
-.table-filter-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+.table-filter-panel .input,
+.table-filter-panel .select {
+    min-width: 0;
+    width: 100%;
 }
 
 /* Entity form grid */

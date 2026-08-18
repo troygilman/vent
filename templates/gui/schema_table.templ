@@ -40,23 +40,44 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
+func tableFilterActive(column SchemaTableFilterableColumn) bool {
+	if column.Type == "bool" {
+		_, ok := vent.BoolFilter(column.Value).Bool()
+		return ok
+	}
+	return column.Value != ""
+}
+
 func tableFiltersActive(columns []SchemaTableFilterableColumn) bool {
 	for _, column := range columns {
-		if column.Type == "bool" {
-			if _, ok := vent.BoolFilter(column.Value).Bool(); ok {
-				return true
-			}
-			continue
-		}
-		if column.Value != "" {
+		if tableFilterActive(column) {
 			return true
 		}
 	}
 	return false
 }
 
+func tableFilterChipValue(column SchemaTableFilterableColumn) string {
+	if column.Type == "bool" {
+		v, ok := vent.BoolFilter(column.Value).Bool()
+		if !ok {
+			return ""
+		}
+		if v {
+			return "Yes"
+		}
+		return "No"
+	}
+	return column.Value
+}
+
+func tableFilterClearClick(name string) string {
+	return "$filter." + name + " = ''; el.closest('form').dispatchEvent(new Event('change'))"
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
+	{{ filtersActive := tableFiltersActive(props.FilterableColumns) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			<div class="page-header">
@@ -66,107 +87,169 @@ templ SchemaTablePage(props SchemaTableProps) {
 				}
 			</div>
 			<div class="schema-table">
-			if len(props.FilterableColumns) > 0 {
-				<form
-					id="schema-table-filters"
-					class="table-filters"
-					data-query-string__history="{include: /^filter\./}"
-					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-					data-on:submit__prevent="void 0"
-					data-indicator="_indicator"
-				>
-					for _, filter := range props.FilterableColumns {
-						<label class="table-filter">
-							<span class="table-filter-label">{ filter.Label }</span>
-							if filter.Type == "string" {
-								<div class="input">
-									<input
-										type="text"
-										name={ "filter." + filter.Name }
-										data-bind__event.change={ "filter." + filter.Name }
-										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
-										value={ filter.Value }
-										placeholder={ "Filter by " + filter.Label }
-									/>
-								</div>
-							} else if filter.Type == "bool" {
-								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
-								<select
-									class="select"
-									name={ "filter." + filter.Name }
-									data-bind={ "filter." + filter.Name }
-									data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
+				if len(props.FilterableColumns) > 0 {
+					<form
+						id="schema-table-filters"
+						class="table-filters"
+						data-signals__ifmissing="{filtersui: {_open: false}}"
+						data-query-string__history="{include: /^filter\./}"
+						data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+						data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+						data-on:submit__prevent="void 0"
+						data-on:click__window="el.contains(evt.target) || ($filtersui._open = false)"
+						data-on:keydown__window="evt.key === 'Escape' && ($filtersui._open = false)"
+						data-indicator="_indicator"
+					>
+						<div class="table-filter-toolbar">
+							<div class="table-filter-add">
+								<button
+									type="button"
+									class="btn btn-outline"
+									aria-controls="schema-table-filter-panel"
+									data-attr:aria-expanded="$filtersui._open"
+									data-class:is-active="$filtersui._open"
+									data-on:click="$filtersui._open = !$filtersui._open"
 								>
-									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
-									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
-									<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
-								</select>
-							} else if filter.Type == "int" {
-								<div class="input">
-									<input
-										type="text"
-										inputmode="numeric"
-										name={ "filter." + filter.Name }
-										data-bind__event.change={ "filter." + filter.Name }
-										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
-										value={ filter.Value }
-										placeholder={ "Filter by " + filter.Label }
-									/>
+									@FilterIcon()
+									Filter
+								</button>
+								<div
+									id="schema-table-filter-panel"
+									class="table-filter-panel"
+									role="dialog"
+									aria-label="Filters"
+									data-show="$filtersui._open"
+									data-attr:aria-hidden="!$filtersui._open"
+									style="display: none"
+								>
+									<div class="table-filter-panel-header">
+										<div class="table-filter-panel-title">Filters</div>
+										<button
+											type="button"
+											class="btn btn-sm btn-outline"
+											data-on:click="$filtersui._open = false"
+										>
+											Close
+										</button>
+									</div>
+									<div class="table-filter-panel-body">
+										for _, filter := range props.FilterableColumns {
+											@schemaTableFilterField(filter)
+										}
+									</div>
 								</div>
-							}
-						</label>
-					}
-					if tableFiltersActive(props.FilterableColumns) {
-						<div class="table-filter-actions">
-							<button
-								type="button"
-								class="btn btn-neutral"
-								data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
-								data-indicator="_indicator"
-							>
-								Clear
-							</button>
-						</div>
-					}
-				</form>
-			}
-			<div class="table-container">
-				<table class="data-table">
-					<thead>
-						<tr>
-							for _, column := range props.Columns {
-								<th>{ column.Label }</th>
-							}
-						</tr>
-					</thead>
-					<tbody>
-						if len(props.Rows) == 0 {
-							<tr>
-								<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
-							</tr>
-						} else {
-							for _, row := range props.Rows {
-								<tr>
-									for _, cell := range row.Cells {
-										if cell.LinkURL != "" {
-											<td>
-												<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
-													{ cell.Display }
-												</a>
-											</td>
-										} else {
-											<td>{ cell.Display }</td>
+							</div>
+							if filtersActive {
+								<div class="table-filter-chips">
+									for _, filter := range props.FilterableColumns {
+										if tableFilterActive(filter) {
+											<span class="table-filter-chip">
+												<span class="table-filter-chip-text">
+													{ filter.Label } <b>{ tableFilterChipValue(filter) }</b>
+												</span>
+												<button
+													type="button"
+													class="table-filter-chip-remove"
+													aria-label={ "Remove " + filter.Label + " filter" }
+													data-on:click={ tableFilterClearClick(filter.Name) }
+													data-indicator="_indicator"
+												>
+													×
+												</button>
+											</span>
 										}
 									}
-								</tr>
+								</div>
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+									data-indicator="_indicator"
+								>
+									Clear
+								</button>
 							}
-						}
-					</tbody>
-				</table>
-			</div>
+						</div>
+					</form>
+				}
+				<div class="table-container">
+					<table class="data-table">
+						<thead>
+							<tr>
+								for _, column := range props.Columns {
+									<th>{ column.Label }</th>
+								}
+							</tr>
+						</thead>
+						<tbody>
+							if len(props.Rows) == 0 {
+								<tr>
+									<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
+								</tr>
+							} else {
+								for _, row := range props.Rows {
+									<tr>
+										for _, cell := range row.Cells {
+											if cell.LinkURL != "" {
+												<td>
+													<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
+														{ cell.Display }
+													</a>
+												</td>
+											} else {
+												<td>{ cell.Display }</td>
+											}
+										}
+									</tr>
+								}
+							}
+						</tbody>
+					</table>
+				</div>
 			</div>
 			@Indicator()
 		}
 	}
+}
+
+templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
+	<label class="table-filter">
+		<span class="table-filter-label">{ filter.Label }</span>
+		if filter.Type == "string" {
+			<div class="input">
+				<input
+					type="text"
+					name={ "filter." + filter.Name }
+					data-bind__event.change={ "filter." + filter.Name }
+					data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+					value={ filter.Value }
+					placeholder={ "Filter by " + filter.Label }
+				/>
+			</div>
+		} else if filter.Type == "bool" {
+			{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
+			<select
+				class="select"
+				name={ "filter." + filter.Name }
+				data-bind={ "filter." + filter.Name }
+				data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
+			>
+				<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
+				<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
+				<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
+			</select>
+		} else if filter.Type == "int" {
+			<div class="input">
+				<input
+					type="text"
+					inputmode="numeric"
+					name={ "filter." + filter.Name }
+					data-bind__event.change={ "filter." + filter.Name }
+					data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
+					value={ filter.Value }
+					placeholder={ "Filter by " + filter.Label }
+				/>
+			</div>
+		}
+	</label>
 }
