@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/troygilman/vent/examples/basic/ent/author"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
@@ -39,9 +40,13 @@ type User struct {
 type UserEdges struct {
 	// Groups holds the value of the groups edge.
 	Groups []*PermissionGroup `json:"groups,omitempty"`
+	// Author holds the value of the author edge.
+	Author *Author `json:"author,omitempty"`
+	// Reviews holds the value of the reviews edge.
+	Reviews []*Review `json:"reviews,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [3]bool
 }
 
 // GroupsOrErr returns the Groups value or an error if the edge
@@ -51,6 +56,26 @@ func (e UserEdges) GroupsOrErr() ([]*PermissionGroup, error) {
 		return e.Groups, nil
 	}
 	return nil, &NotLoadedError{edge: "groups"}
+}
+
+// AuthorOrErr returns the Author value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) AuthorOrErr() (*Author, error) {
+	if e.Author != nil {
+		return e.Author, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: author.Label}
+	}
+	return nil, &NotLoadedError{edge: "author"}
+}
+
+// ReviewsOrErr returns the Reviews value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ReviewsOrErr() ([]*Review, error) {
+	if e.loadedTypes[2] {
+		return e.Reviews, nil
+	}
+	return nil, &NotLoadedError{edge: "reviews"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -140,6 +165,16 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QueryGroups queries the "groups" edge of the User entity.
 func (_m *User) QueryGroups() *PermissionGroupQuery {
 	return NewUserClient(_m.config).QueryGroups(_m)
+}
+
+// QueryAuthor queries the "author" edge of the User entity.
+func (_m *User) QueryAuthor() *AuthorQuery {
+	return NewUserClient(_m.config).QueryAuthor(_m)
+}
+
+// QueryReviews queries the "reviews" edge of the User entity.
+func (_m *User) QueryReviews() *ReviewQuery {
+	return NewUserClient(_m.config).QueryReviews(_m)
 }
 
 // Update returns a builder for updating this User.

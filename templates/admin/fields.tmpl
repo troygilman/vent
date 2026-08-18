@@ -106,15 +106,6 @@ func new{{ $node.Name }}Fields(schemaAdmin {{ $node.Name }}Admin) ({{ $node.Name
 	return f, nil
 }
 
-func (f {{ $node.Name }}Fields) eagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query {
-	{{- range $member := $rc.AdminSurface }}
-	{{- if $member.EagerLoad }}
-	q = q.With{{ pascal $member.Name }}()
-	{{- end }}
-	{{- end }}
-	return q
-}
-
 {{ range $member := $rc.AdminSurface }}
 {{- if hasGeneratedFieldDefault $member }}
 {{ $ctx := dict "Node" $node "RC" $rc "Member" $member }}
@@ -163,6 +154,11 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ListCell(ctx context.Context, e 
 	{{- end }}
 	{{- else if and (eq $member.Name "name") (eq $rc.DefaultNameField "Name") }}
 	return MustAdmin(ctx).{{ $node.Name }}().Name(e)
+	{{- else if $member.Nillable }}
+	if e.{{ pascal $member.Name }} == nil {
+		return ""
+	}
+	return vent.FormatFormValue(*e.{{ pascal $member.Name }})
 	{{- else }}
 	return vent.FormatFormValue(e.{{ pascal $member.Name }})
 	{{- end }}
@@ -245,11 +241,17 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 			Editable: editable,
 		})
 		{{- else }}
+		{{- if $member.Nillable }}
+	value := ""
+	if e.{{ pascal $member.Name }} != nil {
+		value = vent.FormatFormValue(*e.{{ pascal $member.Name }})
+	}
+		{{- end }}
 		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
 			Name:     "{{ $member.Name }}",
 			Label:    "{{ $member.Label }}",
 			{{- if not (isFieldKindPassword $member.FieldKind) }}
-			Value:    vent.FormatFormValue(e.{{ pascal $member.Name }}),
+			Value:    {{ if $member.Nillable }}value{{ else }}vent.FormatFormValue(e.{{ pascal $member.Name }}){{ end }},
 			{{- end }}
 			Editable: {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
 		})
@@ -380,7 +382,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 
 {{- if isMemberKindEdge $member }}
 func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Options(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := f.client.{{ $member.EdgeTypeName }}.Query().All(ctx)
+	entities, err := MustAdmin(ctx).{{ $member.EdgeTypeName }}().EagerLoadQuery(f.client.{{ $member.EdgeTypeName }}.Query()).All(ctx)
 	if err != nil {
 		return nil, err
 	}

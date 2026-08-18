@@ -1,0 +1,2 @@
+-- Added permissions
+INSERT INTO `permissions` (`name`) VALUES ('read_audit_event'), ('read_author'), ('create_author'), ('update_author'), ('delete_author'), ('read_book'), ('create_book'), ('update_book'), ('delete_book'), ('publish'), ('read_category'), ('create_category'), ('update_category'), ('delete_category'), ('read_review'), ('create_review'), ('update_review'), ('read_tag'), ('create_tag'), ('update_tag'), ('delete_tag');

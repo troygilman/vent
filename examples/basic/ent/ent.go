@@ -12,8 +12,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/troygilman/vent/examples/basic/ent/author"
+	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/review"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 )
 
@@ -75,8 +78,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			author.Table:          author.ValidColumn,
+			book.Table:            book.ValidColumn,
 			permission.Table:      permission.ValidColumn,
 			permissiongroup.Table: permissiongroup.ValidColumn,
+			review.Table:          review.ValidColumn,
 			user.Table:            user.ValidColumn,
 		})
 	})

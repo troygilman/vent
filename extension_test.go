@@ -382,6 +382,27 @@ func testField(fieldType schemafield.Type) *gen.Field {
 	return &gen.Field{Type: &schemafield.TypeInfo{Type: fieldType}}
 }
 
+func TestValidateRouteNames(t *testing.T) {
+	ok := []NodeRenderConfig{
+		{Node: &gen.Type{Name: "Book"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "books"}}},
+		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "audit-events"}}},
+	}
+	if err := validateRouteNames(ok); err != nil {
+		t.Fatalf("validateRouteNames(valid) = %v", err)
+	}
+
+	bad := []NodeRenderConfig{
+		{Node: &gen.Type{Name: "AuditEvent"}, RC: RenderConfig{SchemaMeta: SchemaMeta{RouteName: "AuditEvents"}}},
+	}
+	err := validateRouteNames(bad)
+	if err == nil {
+		t.Fatal("validateRouteNames(uppercase) = nil, want error")
+	}
+	if !strings.Contains(err.Error(), `route name "AuditEvents" is invalid`) {
+		t.Fatalf("validateRouteNames(uppercase) = %v", err)
+	}
+}
+
 func TestNormalizeAdminPath(t *testing.T) {
 	tests := map[string]string{
 		"":           "/admin/",

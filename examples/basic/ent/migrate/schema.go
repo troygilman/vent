@@ -8,6 +8,51 @@ import (
 )
 
 var (
+	// AuthorsColumns holds the columns for the "authors" table.
+	AuthorsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "active", Type: field.TypeBool, Default: true},
+		{Name: "user_id", Type: field.TypeInt, Unique: true},
+	}
+	// AuthorsTable holds the schema information for the "authors" table.
+	AuthorsTable = &schema.Table{
+		Name:       "authors",
+		Columns:    AuthorsColumns,
+		PrimaryKey: []*schema.Column{AuthorsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "authors_users_author",
+				Columns:    []*schema.Column{AuthorsColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// BooksColumns holds the columns for the "books" table.
+	BooksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title", Type: field.TypeString},
+		{Name: "pages", Type: field.TypeInt, Default: 0},
+		{Name: "published", Type: field.TypeBool, Default: false},
+		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "internal_notes", Type: field.TypeString, Nullable: true},
+		{Name: "book_author", Type: field.TypeInt},
+	}
+	// BooksTable holds the schema information for the "books" table.
+	BooksTable = &schema.Table{
+		Name:       "books",
+		Columns:    BooksColumns,
+		PrimaryKey: []*schema.Column{BooksColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "books_authors_author",
+				Columns:    []*schema.Column{BooksColumns[7]},
+				RefColumns: []*schema.Column{AuthorsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// PermissionsColumns holds the columns for the "permissions" table.
 	PermissionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -29,6 +74,34 @@ var (
 		Name:       "permission_groups",
 		Columns:    PermissionGroupsColumns,
 		PrimaryKey: []*schema.Column{PermissionGroupsColumns[0]},
+	}
+	// ReviewsColumns holds the columns for the "reviews" table.
+	ReviewsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "rating", Type: field.TypeInt},
+		{Name: "body", Type: field.TypeString, Nullable: true},
+		{Name: "book_reviews", Type: field.TypeInt},
+		{Name: "user_reviews", Type: field.TypeInt},
+	}
+	// ReviewsTable holds the schema information for the "reviews" table.
+	ReviewsTable = &schema.Table{
+		Name:       "reviews",
+		Columns:    ReviewsColumns,
+		PrimaryKey: []*schema.Column{ReviewsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "reviews_books_reviews",
+				Columns:    []*schema.Column{ReviewsColumns[3]},
+				RefColumns: []*schema.Column{BooksColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "reviews_users_reviews",
+				Columns:    []*schema.Column{ReviewsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -98,8 +171,11 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AuthorsTable,
+		BooksTable,
 		PermissionsTable,
 		PermissionGroupsTable,
+		ReviewsTable,
 		UsersTable,
 		PermissionGroupPermissionsTable,
 		UserGroupsTable,
@@ -107,6 +183,10 @@ var (
 )
 
 func init() {
+	AuthorsTable.ForeignKeys[0].RefTable = UsersTable
+	BooksTable.ForeignKeys[0].RefTable = AuthorsTable
+	ReviewsTable.ForeignKeys[0].RefTable = BooksTable
+	ReviewsTable.ForeignKeys[1].RefTable = UsersTable
 	PermissionGroupPermissionsTable.ForeignKeys[0].RefTable = PermissionGroupsTable
 	PermissionGroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
 	UserGroupsTable.ForeignKeys[0].RefTable = UsersTable

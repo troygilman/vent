@@ -3,8 +3,13 @@
 package ent
 
 import (
+	"time"
+
+	"github.com/troygilman/vent/examples/basic/ent/author"
+	"github.com/troygilman/vent/examples/basic/ent/book"
 	"github.com/troygilman/vent/examples/basic/ent/permission"
 	"github.com/troygilman/vent/examples/basic/ent/permissiongroup"
+	"github.com/troygilman/vent/examples/basic/ent/review"
 	"github.com/troygilman/vent/examples/basic/ent/schema"
 	"github.com/troygilman/vent/examples/basic/ent/user"
 )
@@ -13,6 +18,32 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	authorFields := schema.Author{}.Fields()
+	_ = authorFields
+	// authorDescActive is the schema descriptor for active field.
+	authorDescActive := authorFields[1].Descriptor()
+	// author.DefaultActive holds the default value on creation for the active field.
+	author.DefaultActive = authorDescActive.Default.(bool)
+	bookFields := schema.Book{}.Fields()
+	_ = bookFields
+	// bookDescTitle is the schema descriptor for title field.
+	bookDescTitle := bookFields[0].Descriptor()
+	// book.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	book.TitleValidator = bookDescTitle.Validators[0].(func(string) error)
+	// bookDescPages is the schema descriptor for pages field.
+	bookDescPages := bookFields[1].Descriptor()
+	// book.DefaultPages holds the default value on creation for the pages field.
+	book.DefaultPages = bookDescPages.Default.(int)
+	// book.PagesValidator is a validator for the "pages" field. It is called by the builders before save.
+	book.PagesValidator = bookDescPages.Validators[0].(func(int) error)
+	// bookDescPublished is the schema descriptor for published field.
+	bookDescPublished := bookFields[2].Descriptor()
+	// book.DefaultPublished holds the default value on creation for the published field.
+	book.DefaultPublished = bookDescPublished.Default.(bool)
+	// bookDescCreatedAt is the schema descriptor for created_at field.
+	bookDescCreatedAt := bookFields[4].Descriptor()
+	// book.DefaultCreatedAt holds the default value on creation for the created_at field.
+	book.DefaultCreatedAt = bookDescCreatedAt.Default.(func() time.Time)
 	permissionMixin := schema.Permission{}.Mixin()
 	permissionMixinFields0 := permissionMixin[0].Fields()
 	_ = permissionMixinFields0
@@ -31,6 +62,26 @@ func init() {
 	permissiongroupDescName := permissiongroupMixinFields0[0].Descriptor()
 	// permissiongroup.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	permissiongroup.NameValidator = permissiongroupDescName.Validators[0].(func(string) error)
+	reviewFields := schema.Review{}.Fields()
+	_ = reviewFields
+	// reviewDescRating is the schema descriptor for rating field.
+	reviewDescRating := reviewFields[0].Descriptor()
+	// review.RatingValidator is a validator for the "rating" field. It is called by the builders before save.
+	review.RatingValidator = func() func(int) error {
+		validators := reviewDescRating.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(rating int) error {
+			for _, fn := range fns {
+				if err := fn(rating); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	userMixin := schema.User{}.Mixin()
 	userMixinFields0 := userMixin[0].Fields()
 	_ = userMixinFields0

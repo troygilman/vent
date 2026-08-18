@@ -1,4 +1,4 @@
-h1:u9+RQ509wdY2uVXsbJw3nkor4NfvHLi0MY5ek0ClkIo=
+h1:HLIGPlx+bAZlQfNnXWy0CRJL5n5ZFgJd18q3HqfzwAM=
 0000_init.sql h1:SHyIZcCjApXlkYtZn9bGU4O+KwJ2wkZpnEkeNn6Le1Y=
 0001_update_auth_permissions.sql h1:Dur8v7A9k2DLyxsHD73g9RoDpLUdOoGDZpIp0hjJmu0=
 0002_null_password_hash.sql h1:P5GtEdBs2ptFIDOxtchSJ2FYQ74xuCUDggcppFp8hYQ=
@@ -9,3 +9,9 @@ h1:u9+RQ509wdY2uVXsbJw3nkor4NfvHLi0MY5ek0ClkIo=
 0007_update_auth_permissions.sql h1:Rn+zppteX49Ry3JcNf/+eoeD1Xo/hfBEZJNhbJ2SjvE=
 0008_update_auth_permissions.sql h1:GWhX72nOMf4U0YZjVtcugNaWIwSC1ZVHcqSykUWju6E=
 0009_update_auth_permissions.sql h1:Wk+Qv9A2wZCtqE73+HGeYLVgExPDvJR7JvYo7hmUQco=
+0010_demo_library.sql h1:nhiUvKz7PVdHnFt5x+eHN3SHsJqETHJOPfcvWnO+Gnk=
+0011_update_auth_permissions.sql h1:sZsRnEcJpvFmFI7He+E2fHigzM+bNYDyhVvYAlYm6Gc=
+0012_simplify_library.sql h1:VM2eM1CSyfeehGgA33pMKVU9QsqawFnakdiOZCJ3eZ8=
+0013_update_auth_permissions.sql h1:E14LHXXPkhrunAJ1v1db87rPSMz1k8KR6H/ByxasQD0=
+0014_authors_reviews_user.sql h1:A9jRxa61ybPXtho1lZyjCM8U7i6QCDEjUD3YAo/XfNc=
+0015_authors_distinct_pk.sql h1:82+vN7fX01JsyLV2kcj2fvCeKzuLFUF9CnLGKIxsmNg=

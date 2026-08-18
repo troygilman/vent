@@ -48,9 +48,15 @@ type AdminHandler struct {
 	secureCookies           bool
 	schemas                 SchemaAdmins
 
+	authorFields AuthorFields
+
+	bookFields BookFields
+
 	permissionFields PermissionFields
 
 	permissionGroupFields PermissionGroupFields
+
+	reviewFields ReviewFields
 
 	userFields UserFields
 }
@@ -65,12 +71,24 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 
 	schemas := config.Schemas
 
+	if schemas.Author == nil {
+		schemas.Author = NewDefaultAuthorAdmin(config.Client)
+	}
+
+	if schemas.Book == nil {
+		schemas.Book = NewDefaultBookAdmin(config.Client)
+	}
+
 	if schemas.Permission == nil {
 		schemas.Permission = NewDefaultPermissionAdmin(config.Client)
 	}
 
 	if schemas.PermissionGroup == nil {
 		schemas.PermissionGroup = NewDefaultPermissionGroupAdmin(config.Client)
+	}
+
+	if schemas.Review == nil {
+		schemas.Review = NewDefaultReviewAdmin(config.Client)
 	}
 
 	if schemas.User == nil {
@@ -87,6 +105,22 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 	}
 
 	{
+		fields, err := newAuthorFields(schemas.Author)
+		if err != nil {
+			return nil, err
+		}
+		h.authorFields = fields
+	}
+
+	{
+		fields, err := newBookFields(schemas.Book)
+		if err != nil {
+			return nil, err
+		}
+		h.bookFields = fields
+	}
+
+	{
 		fields, err := newPermissionFields(schemas.Permission)
 		if err != nil {
 			return nil, err
@@ -100,6 +134,14 @@ func NewAdminHandler(config AdminConfig) (*AdminHandler, error) {
 			return nil, err
 		}
 		h.permissionGroupFields = fields
+	}
+
+	{
+		fields, err := newReviewFields(schemas.Review)
+		if err != nil {
+			return nil, err
+		}
+		h.reviewFields = fields
 	}
 
 	{
@@ -149,19 +191,45 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/command_palette/", h.getCommandPaletteHandler())
 			authed.GET("/{$}", h.getAdminHandler())
 
+			authed.Group("authors", func(schema *route.Router) {
+				schema.GET("/", h.getAuthorListHandler(), h.authorizePermission("read_author"))
+				schema.GET("/{id}/", h.getAuthorHandler(), h.authorizePermission("read_author"))
+				schema.POST("/", h.postAuthorHandler(), h.authorize(h.schemas.Author.CanCreate))
+				schema.GET("/add/{$}", h.getAuthorAddHandler(), h.authorize(h.schemas.Author.CanCreate))
+				schema.PATCH("/{id}/", h.patchAuthorHandler(), h.authorizePermission("update_author"))
+				schema.DELETE("/{id}/", h.deleteAuthorHandler(), h.authorizePermission("delete_author"))
+			})
+
+			authed.Group("books", func(schema *route.Router) {
+				schema.GET("/", h.getBookListHandler(), h.authorizePermission("read_book"))
+				schema.GET("/{id}/", h.getBookHandler(), h.authorizePermission("read_book"))
+				schema.POST("/", h.postBookHandler(), h.authorize(h.schemas.Book.CanCreate))
+				schema.GET("/add/{$}", h.getBookAddHandler(), h.authorize(h.schemas.Book.CanCreate))
+				schema.PATCH("/{id}/", h.patchBookHandler(), h.authorizePermission("update_book"))
+				schema.DELETE("/{id}/", h.deleteBookHandler(), h.authorizePermission("delete_book"))
+			})
+
 			authed.Group("permissions", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionListHandler(), h.authorizePermission("read_permission"))
 				schema.GET("/{id}/", h.getPermissionHandler(), h.authorizePermission("read_permission"))
 				schema.PATCH("/{id}/", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
 			})
 
-			authed.Group("permission_groups", func(schema *route.Router) {
+			authed.Group("permission-groups", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
 				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
 				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
 				schema.GET("/add/{$}", h.getPermissionGroupAddHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
 				schema.PATCH("/{id}/", h.patchPermissionGroupHandler(), h.authorizePermission("update_permission_group"))
 				schema.DELETE("/{id}/", h.deletePermissionGroupHandler(), h.authorizePermission("delete_permission_group"))
+			})
+
+			authed.Group("reviews", func(schema *route.Router) {
+				schema.GET("/", h.getReviewListHandler(), h.authorizePermission("read_review"))
+				schema.GET("/{id}/", h.getReviewHandler(), h.authorizePermission("read_review"))
+				schema.POST("/", h.postReviewHandler(), h.authorize(h.schemas.Review.CanCreate))
+				schema.GET("/add/{$}", h.getReviewAddHandler(), h.authorize(h.schemas.Review.CanCreate))
+				schema.PATCH("/{id}/", h.patchReviewHandler(), h.authorizePermission("update_review"))
 			})
 
 			authed.Group("users", func(schema *route.Router) {
@@ -226,6 +294,28 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 	schemas := make([]gui.SchemaMetadata, 0)
 	query := strings.ToLower(strings.TrimSpace(schemaSearch))
 
+	if ok, err := defaultCan(ctx, "read_author"); err == nil && ok {
+		displayName := "Authors"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("Author"), query) {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "Author",
+				DisplayName: displayName,
+				Path:        requestctx.MustAdminPath(ctx) + "authors/",
+			})
+		}
+	}
+
+	if ok, err := defaultCan(ctx, "read_book"); err == nil && ok {
+		displayName := "Books"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("Book"), query) {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "Book",
+				DisplayName: displayName,
+				Path:        requestctx.MustAdminPath(ctx) + "books/",
+			})
+		}
+	}
+
 	if ok, err := defaultCan(ctx, "read_permission"); err == nil && ok {
 		displayName := "Permissions"
 		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("Permission"), query) {
@@ -238,12 +328,23 @@ func (h *AdminHandler) listVisibleSchemas(ctx context.Context, schemaSearch stri
 	}
 
 	if ok, err := defaultCan(ctx, "read_permission_group"); err == nil && ok {
-		displayName := "PermissionGroups"
+		displayName := "Permission Groups"
 		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("PermissionGroup"), query) {
 			schemas = append(schemas, gui.SchemaMetadata{
 				Name:        "PermissionGroup",
 				DisplayName: displayName,
-				Path:        requestctx.MustAdminPath(ctx) + "permission_groups/",
+				Path:        requestctx.MustAdminPath(ctx) + "permission-groups/",
+			})
+		}
+	}
+
+	if ok, err := defaultCan(ctx, "read_review"); err == nil && ok {
+		displayName := "Reviews"
+		if query == "" || strings.Contains(strings.ToLower(displayName), query) || strings.Contains(strings.ToLower("Review"), query) {
+			schemas = append(schemas, gui.SchemaMetadata{
+				Name:        "Review",
+				DisplayName: displayName,
+				Path:        requestctx.MustAdminPath(ctx) + "reviews/",
 			})
 		}
 	}

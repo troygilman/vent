@@ -198,7 +198,7 @@ func (Book) Annotations() []schema.Annotation {
 | `ReadOnly` | Disable create, update, and delete |
 | `DisableCreate` / `DisableDelete` | Turn off individual mutation routes |
 | `ReadOnlyFields` | Show on forms but do not bind on create/update |
-| `RouteName` | URL segment (default: pluralized resource name) |
+| `RouteName` | URL segment (default: pluralized resource name; must match `[a-z][a-z0-9_-]*`) |
 | `SingularDisplayName` / `PluralDisplayName` | Nav and page titles |
 | `TableColumns` | List-view columns (fields or edges) |
 | `FilterableColumns` | List-view filters for string, bool, and int fields |
@@ -218,6 +218,7 @@ Each `*Admin` owns:
 
 - **`FieldX()`** — one method per surface member
 - **`Name(entity)`** — display label (lists, breadcrumbs, current-user chip)
+- **`EagerLoadQuery(q)`** — edges loaded for lists, detail pages, and FK option labels (override to nest `WithX`)
 - **`ValidateCreate` / `ValidateUpdate` / `ValidateDelete`** — mutation policy after bind, before save
 - **`CanRead` / `CanCreate` / `CanUpdate` / `CanDelete`** — permission checks for routes, nav, and UI controls
 
@@ -258,6 +259,16 @@ func (a UserAdmin) ValidateUpdate(ctx context.Context, id int, in admin.UserUpda
     }
     // additional checks...
     return nil
+}
+```
+
+Nest eager-loads so `Name()` on a related schema can use edges (the default only `WithX()`s one level):
+
+```go
+func (a BookAdmin) EagerLoadQuery(q *ent.BookQuery) *ent.BookQuery {
+    return a.DefaultBookAdmin.EagerLoadQuery(q).WithAuthor(func(aq *ent.AuthorQuery) {
+        aq.WithUser()
+    })
 }
 ```
 
@@ -314,6 +325,15 @@ just dev   # gen, then run the example server on :8080
 ```
 
 Default login after first run: `admin@vent.com` / `test_user`.
+
+The example is a small library domain (`Author`, `Book`, `Review`) plus Vent auth:
+
+| Schema | What it demonstrates |
+| ------ | -------------------- |
+| `User` / `Permission` / `PermissionGroup` | Auth mixins, custom permissions, fieldsets, table columns, list filters, field override (`is_superuser`) |
+| `Author` | Required unique FK to `User`, unique FK target for books, bool filter |
+| `Book` | Mixed field kinds, unique FK to author, list filters, read-only `created_at`, `CustomFields` (`notes`), extra `publish` permission |
+| `Review` | Required FKs to `Book` and `User`, `DisableDelete`, int filter |
 
 Other recipes: `just migrations`, `just migrate`.
 

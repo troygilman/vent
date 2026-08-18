@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/entc"
 	"entgo.io/ent/entc/gen"
 	schemafield "entgo.io/ent/schema/field"
+	"github.com/troygilman/vent/route"
 )
 
 //go:embed templates
@@ -485,8 +486,8 @@ func validateRouteNames(configs []NodeRenderConfig) error {
 			errs = append(errs, fmt.Sprintf("schema %q route name cannot be empty", node.Name))
 			continue
 		}
-		if strings.Contains(rc.RouteName, "/") {
-			errs = append(errs, fmt.Sprintf("schema %q route name %q must not contain slashes", node.Name, rc.RouteName))
+		if _, err := route.NormalizeSegment(rc.RouteName); err != nil {
+			errs = append(errs, fmt.Sprintf("schema %q route name %q is invalid: must match [a-z][a-z0-9_-]*", node.Name, rc.RouteName))
 		}
 		if existing, ok := seen[rc.RouteName]; ok {
 			errs = append(errs, fmt.Sprintf("schema %q route name %q conflicts with schema %q", node.Name, rc.RouteName, existing))

@@ -19,6 +19,12 @@ func TestMountAndGroupStripPrefix(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			}))
 		})
+		admin.Group("audit-events", func(events *Router) {
+			events.GET("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.WriteHeader(http.StatusNoContent)
+			}))
+		})
 	}); err != nil {
 		t.Fatalf("register routes: %v", err)
 	}
@@ -35,6 +41,16 @@ func TestMountAndGroupStripPrefix(t *testing.T) {
 	}
 	if gotID != "42" {
 		t.Fatalf("PathValue(id) = %q, want 42", gotID)
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/admin/audit-events/", nil)
+	root.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("hyphenated group status = %d, want 204", rec.Code)
+	}
+	if gotPath != "/" {
+		t.Fatalf("hyphenated group path = %q, want /", gotPath)
 	}
 }
 
