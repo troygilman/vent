@@ -1,9 +1,13 @@
 package gui
 
 import (
+	"bytes"
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/troygilman/vent"
+	"github.com/troygilman/vent/requestctx"
 )
 
 func TestTableFiltersActive(t *testing.T) {
@@ -73,5 +77,33 @@ func TestTableFilterClearClick(t *testing.T) {
 	want := "$filter.title = ''; el.closest('form').dispatchEvent(new Event('change'))"
 	if got != want {
 		t.Fatalf("clear click = %q, want %q", got, want)
+	}
+}
+
+func TestSchemaTableAddButtonIsALink(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "books",
+		SingularDisplayName: "Book",
+		PluralDisplayName:   "Books",
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "title", Type: "string", Value: ""},
+		},
+		RenderContext: RenderContext{CanCreate: true},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, `<a class="btn btn-primary" href="/admin/books/add/">Add Book</a>`) {
+		t.Fatal("add control should be an anchor button, not a nested submit button")
+	}
+	if strings.Contains(html, `<a href="/admin/books/add/"><button`) {
+		t.Fatal("add control must not nest a button inside a link (submits the filter form)")
 	}
 }

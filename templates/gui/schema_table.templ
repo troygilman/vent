@@ -107,7 +107,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 						<div class="page-header">
 							<div class="page-title">{ props.PluralDisplayName }</div>
 							if props.RenderContext.CanCreate {
-								<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+								<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
 							}
 						</div>
 						if filtersActive {
@@ -208,7 +208,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 				<div class="page-header">
 					<div class="page-title">{ props.PluralDisplayName }</div>
 					if props.RenderContext.CanCreate {
-						<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+						<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
 					}
 				</div>
 				@schemaTable(props)
