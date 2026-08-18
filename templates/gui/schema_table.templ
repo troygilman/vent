@@ -153,17 +153,34 @@ templ SchemaTablePage(props SchemaTableProps) {
 							<button
 								type="button"
 								class="widget-drawer-icon"
-								aria-label="Filters"
-								aria-controls="widget-filter-panel"
-								data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
-								data-class:is-active="$widgets._open && $widgets.active === 'filter'"
-								data-on:click="widgetDrawer.toggle($widgets, 'filter')"
+								data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
+								data-attr:aria-expanded="$widgets._open"
+								data-class:is-active="$widgets._open"
+								data-on:click="widgetDrawer.toggleOpen($widgets)"
 							>
-								@FilterIcon()
-								if filterCount > 0 {
-									<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
-								}
+								<span data-show="!$widgets._open">
+									@DrawerExpandIcon()
+								</span>
+								<span data-show="$widgets._open" style="display: none">
+									@DrawerCollapseIcon()
+								</span>
 							</button>
+							<div class="widget-drawer-rail-widgets">
+								<button
+									type="button"
+									class="widget-drawer-icon"
+									aria-label="Filters"
+									aria-controls="widget-filter-panel"
+									data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
+									data-class:is-active="$widgets._open && $widgets.active === 'filter'"
+									data-on:click="widgetDrawer.open($widgets, 'filter')"
+								>
+									@FilterIcon()
+									if filterCount > 0 {
+										<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
+									}
+								</button>
+							</div>
 						</div>
 						<div class="widget-drawer-panel">
 							<div id="widget-filter-panel" class="widget-drawer-widget">

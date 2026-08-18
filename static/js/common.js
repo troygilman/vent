@@ -20,11 +20,17 @@
 })();
 
 window.widgetDrawer = {
-    toggle(state, name) {
-        if (state._open && state.active === name) {
+    toggleOpen(state) {
+        if (state._open) {
             state._open = false;
             return;
         }
+        if (!state.active) {
+            state.active = "filter";
+        }
+        state._open = true;
+    },
+    open(state, name) {
         state.active = name;
         state._open = true;
     },

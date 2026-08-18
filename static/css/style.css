@@ -961,16 +961,26 @@ a {
         color var(--ease);
 }
 .widget-drawer-icon:hover {
-    background: var(--color-bg-secondary);
+    background: var(--color-surface);
     color: var(--color-text);
 }
 .widget-drawer-icon.is-active {
     color: var(--color-primary);
     background: var(--color-primary-light);
 }
-.widget-drawer-icon .filter-icon {
+.widget-drawer-icon .filter-icon,
+.widget-drawer-icon .drawer-toggle-icon {
     width: 1.125rem;
     height: 1.125rem;
+}
+.widget-drawer-rail-widgets {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    width: 100%;
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--color-border);
 }
 .widget-drawer-badge {
     position: absolute;
