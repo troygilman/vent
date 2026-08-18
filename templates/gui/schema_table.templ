@@ -57,6 +57,16 @@ func tableFiltersActive(columns []SchemaTableFilterableColumn) bool {
 	return false
 }
 
+func tableFilterActiveCount(columns []SchemaTableFilterableColumn) int {
+	n := 0
+	for _, column := range columns {
+		if tableFilterActive(column) {
+			n++
+		}
+	}
+	return n
+}
+
 func tableFilterChipValue(column SchemaTableFilterableColumn) string {
 	if column.Type == "bool" {
 		v, ok := vent.BoolFilter(column.Value).Bool()
@@ -78,68 +88,30 @@ func tableFilterClearClick(name string) string {
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
 	{{ filtersActive := tableFiltersActive(props.FilterableColumns) }}
+	{{ filterCount := tableFilterActiveCount(props.FilterableColumns) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
-			<div class="page-header">
-				<div class="page-title">{ props.PluralDisplayName }</div>
-				if props.RenderContext.CanCreate {
-					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
-				}
-			</div>
-			<div class="schema-table">
-				if len(props.FilterableColumns) > 0 {
-					<form
-						id="schema-table-filters"
-						class="table-filters"
-						data-signals__ifmissing="{filtersui: {_open: false}}"
-						data-query-string__history="{include: /^filter\./}"
-						data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-						data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-						data-on:submit__prevent="void 0"
-						data-on:click__window="el.contains(evt.target) || ($filtersui._open = false)"
-						data-on:keydown__window="evt.key === 'Escape' && ($filtersui._open = false)"
-						data-indicator="_indicator"
-					>
-						<div class="table-filter-toolbar">
-							<div class="table-filter-add">
-								<button
-									type="button"
-									class="btn btn-outline"
-									aria-controls="schema-table-filter-panel"
-									data-attr:aria-expanded="$filtersui._open"
-									data-class:is-active="$filtersui._open"
-									data-on:click="$filtersui._open = !$filtersui._open"
-								>
-									@FilterIcon()
-									Filter
-								</button>
-								<div
-									id="schema-table-filter-panel"
-									class="table-filter-panel"
-									role="dialog"
-									aria-label="Filters"
-									data-show="$filtersui._open"
-									data-attr:aria-hidden="!$filtersui._open"
-									style="display: none"
-								>
-									<div class="table-filter-panel-header">
-										<div class="table-filter-panel-title">Filters</div>
-										<button
-											type="button"
-											class="btn btn-sm btn-outline"
-											data-on:click="$filtersui._open = false"
-										>
-											Close
-										</button>
-									</div>
-									<div class="table-filter-panel-body">
-										for _, filter := range props.FilterableColumns {
-											@schemaTableFilterField(filter)
-										}
-									</div>
-								</div>
-							</div>
-							if filtersActive {
+			if len(props.FilterableColumns) > 0 {
+				<form
+					id="schema-table-filters"
+					class="table-filters"
+					data-signals__ifmissing="{widgets: {_open: false, active: ''}}"
+					data-query-string__history="{include: /^filter\./}"
+					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:submit__prevent="void 0"
+					data-on:keydown__window="evt.key === 'Escape' && !$commandpalette._open && ($widgets._open = false)"
+					data-indicator="_indicator"
+				>
+					<div class="page-with-widgets-main">
+						<div class="page-header">
+							<div class="page-title">{ props.PluralDisplayName }</div>
+							if props.RenderContext.CanCreate {
+								<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+							}
+						</div>
+						if filtersActive {
+							<div class="table-filter-toolbar">
 								<div class="table-filter-chips">
 									for _, filter := range props.FilterableColumns {
 										if tableFilterActive(filter) {
@@ -168,48 +140,108 @@ templ SchemaTablePage(props SchemaTableProps) {
 								>
 									Clear
 								</button>
-							}
+							</div>
+						}
+						@schemaTable(props)
+					</div>
+					<aside
+						class="widget-drawer"
+						data-class:is-open="$widgets._open"
+						aria-label="Widgets"
+					>
+						<div class="widget-drawer-rail" role="toolbar" aria-label="Widgets">
+							<button
+								type="button"
+								class="widget-drawer-icon"
+								aria-label="Filters"
+								aria-controls="widget-filter-panel"
+								data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
+								data-class:is-active="$widgets._open && $widgets.active === 'filter'"
+								data-on:click="widgetDrawer.toggle($widgets, 'filter')"
+							>
+								@FilterIcon()
+								if filterCount > 0 {
+									<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
+								}
+							</button>
 						</div>
-					</form>
-				}
-				<div class="table-container">
-					<table class="data-table">
-						<thead>
-							<tr>
-								for _, column := range props.Columns {
-									<th>{ column.Label }</th>
+						<div class="widget-drawer-panel">
+							<div id="widget-filter-panel" class="widget-drawer-widget">
+								<div class="widget-drawer-header">
+									<div class="widget-drawer-title">Filters</div>
+								</div>
+								<div class="widget-drawer-body">
+									for _, filter := range props.FilterableColumns {
+										@schemaTableFilterField(filter)
+									}
+								</div>
+								if filtersActive {
+									<div class="widget-drawer-footer">
+										<button
+											type="button"
+											class="btn btn-sm btn-outline"
+											data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+											data-indicator="_indicator"
+										>
+											Clear
+										</button>
+									</div>
 								}
-							</tr>
-						</thead>
-						<tbody>
-							if len(props.Rows) == 0 {
-								<tr>
-									<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
-								</tr>
-							} else {
-								for _, row := range props.Rows {
-									<tr>
-										for _, cell := range row.Cells {
-											if cell.LinkURL != "" {
-												<td>
-													<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
-														{ cell.Display }
-													</a>
-												</td>
-											} else {
-												<td>{ cell.Display }</td>
-											}
-										}
-									</tr>
-								}
-							}
-						</tbody>
-					</table>
+							</div>
+						</div>
+					</aside>
+				</form>
+			} else {
+				<div class="page-header">
+					<div class="page-title">{ props.PluralDisplayName }</div>
+					if props.RenderContext.CanCreate {
+						<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
+					}
 				</div>
-			</div>
+				@schemaTable(props)
+			}
 			@Indicator()
 		}
 	}
+}
+
+templ schemaTable(props SchemaTableProps) {
+	<div class="schema-table">
+		<div class="table-container">
+			<table class="data-table">
+				<thead>
+					<tr>
+						for _, column := range props.Columns {
+							<th>{ column.Label }</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					if len(props.Rows) == 0 {
+						<tr>
+							<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
+						</tr>
+					} else {
+						for _, row := range props.Rows {
+							<tr>
+								for _, cell := range row.Cells {
+									if cell.LinkURL != "" {
+										<td>
+											<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
+												{ cell.Display }
+											</a>
+										</td>
+									} else {
+										<td>{ cell.Display }</td>
+									}
+								}
+							</tr>
+						}
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
 }
 
 templ schemaTableFilterField(filter SchemaTableFilterableColumn) {

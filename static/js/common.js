@@ -18,3 +18,14 @@
         return originalFetch(input, init);
     };
 })();
+
+window.widgetDrawer = {
+    toggle(state, name) {
+        if (state._open && state.active === name) {
+            state._open = false;
+            return;
+        }
+        state.active = name;
+        state._open = true;
+    },
+};

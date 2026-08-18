@@ -30,6 +30,16 @@ func TestTableFiltersActive(t *testing.T) {
 	}
 }
 
+func TestTableFilterActiveCount(t *testing.T) {
+	if got := tableFilterActiveCount([]SchemaTableFilterableColumn{
+		{Name: "title", Type: "string", Value: "Dune"},
+		{Name: "published", Type: "bool", Value: vent.BoolFilterTrue.String()},
+		{Name: "pages", Type: "int", Value: ""},
+	}); got != 2 {
+		t.Fatalf("active count = %d, want 2", got)
+	}
+}
+
 func TestTableFilterChipValue(t *testing.T) {
 	if got := tableFilterChipValue(SchemaTableFilterableColumn{
 		Type: "string", Value: "Dune",
