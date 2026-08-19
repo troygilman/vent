@@ -35,3 +35,41 @@ window.widgetDrawer = {
         state._open = true;
     },
 };
+
+window.tableFilters = {
+    dispatch(el, detail) {
+        const form =
+            el.closest("#schema-table-filters") || el.closest("form") || el;
+        form.dispatchEvent(
+            new CustomEvent("table-filter-reset", {
+                bubbles: true,
+                detail: detail || {},
+            }),
+        );
+    },
+    onReset(filter, evt) {
+        const form = evt.currentTarget;
+        const detail = evt.detail || {};
+        let names;
+        if (detail.resetAll) {
+            names = [
+                ...new Set(
+                    [...form.querySelectorAll("[name^='filter.']")].map((field) =>
+                        field.name.slice("filter.".length),
+                    ),
+                ),
+            ];
+        } else if (Array.isArray(detail.filterNames)) {
+            names = detail.filterNames;
+        } else {
+            names = [];
+        }
+        if (!names.length) {
+            return;
+        }
+        for (const name of names) {
+            filter[name] = "";
+        }
+        form.dispatchEvent(new Event("change"));
+    },
+};

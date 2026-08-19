@@ -74,9 +74,17 @@ func TestTableFilterChipValue(t *testing.T) {
 
 func TestTableFilterClearClick(t *testing.T) {
 	got := tableFilterClearClick("title")
-	want := "$filter.title = ''; el.closest('form').dispatchEvent(new Event('change'))"
+	want := `tableFilters.dispatch(el, {filterNames: ["title"]})`
 	if got != want {
 		t.Fatalf("clear click = %q, want %q", got, want)
+	}
+}
+
+func TestTableFilterResetAllClick(t *testing.T) {
+	got := tableFilterResetAllClick()
+	want := "tableFilters.dispatch(el, {resetAll: true})"
+	if got != want {
+		t.Fatalf("reset all click = %q, want %q", got, want)
 	}
 }
 
@@ -130,5 +138,17 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	html := buf.String()
 	if !strings.Contains(html, "IsStaff: <b>No</b>") {
 		t.Fatal("active filter chips should delimit the label and value with \": \"")
+	}
+	if !strings.Contains(html, `data-on:table-filter-reset="tableFilters.onReset($filter, evt)"`) {
+		t.Fatal("filter form should listen for table-filter-reset")
+	}
+	if strings.Contains(html, "table-filter-reset__document") {
+		t.Fatal("filter fields should not listen for table-filter-reset")
+	}
+	if !strings.Contains(html, "filterNames:") || !strings.Contains(html, "is_staff") {
+		t.Fatal("chip remove should dispatch table-filter-reset with filterNames")
+	}
+	if !strings.Contains(html, `tableFilters.dispatch(el, {resetAll: true})`) {
+		t.Fatal("clear should dispatch table-filter-reset with resetAll")
 	}
 }

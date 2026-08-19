@@ -82,7 +82,11 @@ func tableFilterChipValue(column SchemaTableFilterableColumn) string {
 }
 
 func tableFilterClearClick(name string) string {
-	return "$filter." + name + " = ''; el.closest('form').dispatchEvent(new Event('change'))"
+	return fmt.Sprintf("tableFilters.dispatch(el, {filterNames: [%q]})", name)
+}
+
+func tableFilterResetAllClick() string {
+	return "tableFilters.dispatch(el, {resetAll: true})"
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -99,6 +103,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 					data-on:submit__prevent="void 0"
 					data-indicator="_indicator"
 				>
@@ -134,7 +139,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								<button
 									type="button"
 									class="btn btn-sm btn-outline"
-									data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+									data-on:click={ tableFilterResetAllClick() }
 									data-indicator="_indicator"
 								>
 									Clear
@@ -192,7 +197,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 										<button
 											type="button"
 											class="btn btn-sm btn-outline"
-											data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
+											data-on:click={ tableFilterResetAllClick() }
 											data-indicator="_indicator"
 										>
 											Clear
@@ -265,7 +270,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 					type="text"
 					name={ "filter." + filter.Name }
 					data-bind__event.change={ "filter." + filter.Name }
-					data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
 					value={ filter.Value }
 					placeholder={ "Filter by " + filter.Label }
 				/>
@@ -276,7 +280,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 				class="select"
 				name={ "filter." + filter.Name }
 				data-bind={ "filter." + filter.Name }
-				data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
 			>
 				<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
 				<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
@@ -289,7 +292,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 					inputmode="numeric"
 					name={ "filter." + filter.Name }
 					data-bind__event.change={ "filter." + filter.Name }
-					data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
 					value={ filter.Value }
 					placeholder={ "Filter by " + filter.Label }
 				/>
