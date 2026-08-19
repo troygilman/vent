@@ -48,10 +48,10 @@ func Index() templ.Component {
 		pluginsPath := templ.URL(staticAsset(adminPath, "static/js/datastar-plugins.js"))
 		commonPath := templ.SafeURL(staticAsset(adminPath, "static/js/common.js"))
 		commandPalettePath := templ.SafeURL(staticAsset(adminPath, "static/js/command-palette.js"))
-		fontPath := templ.SafeURL(adminPath + "static/fonts/inter-latin.woff2")
+		fontPath := templ.SafeURL(staticAsset(adminPath, "static/fonts/inter-latin.woff2"))
 		stylePath := templ.SafeURL(staticAsset(adminPath, "static/css/style.css"))
-		faviconIcoPath := templ.SafeURL(adminPath + "static/img/favicon.ico")
-		faviconPngPath := templ.SafeURL(adminPath + "static/img/vent-logo.png")
+		faviconIcoPath := templ.SafeURL(staticAsset(adminPath, "static/img/favicon.ico"))
+		faviconPngPath := templ.SafeURL(staticAsset(adminPath, "static/img/vent-logo.png"))
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" data-theme=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
