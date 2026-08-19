@@ -100,7 +100,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:submit__prevent="void 0"
-					data-on:keydown__window="evt.key === 'Escape' && !$commandpalette._open && ($widgets._open = false)"
 					data-indicator="_indicator"
 				>
 					<div class="page-with-widgets-main">
