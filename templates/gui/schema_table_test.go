@@ -81,8 +81,11 @@ func TestTableFilterClearClick(t *testing.T) {
 }
 
 func TestTableFilterResetAllClick(t *testing.T) {
-	got := tableFilterResetAllClick()
-	want := "tableFilters.dispatch(el, {resetAll: true})"
+	got := tableFilterResetAllClick([]SchemaTableFilterableColumn{
+		{Name: "email"},
+		{Name: "is_staff"},
+	})
+	want := `tableFilters.dispatch(el, {filterNames: ["email", "is_staff"]})`
 	if got != want {
 		t.Fatalf("reset all click = %q, want %q", got, want)
 	}
@@ -126,6 +129,7 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "email", Label: "Email", Type: "string", Value: "admin"},
 			{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: vent.BoolFilterFalse.String()},
 		},
 		RenderContext: RenderContext{CanCreate: true},
@@ -145,10 +149,13 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, "table-filter-reset__document") {
 		t.Fatal("filter fields should not listen for table-filter-reset")
 	}
-	if !strings.Contains(html, "filterNames:") || !strings.Contains(html, "is_staff") {
-		t.Fatal("chip remove should dispatch table-filter-reset with filterNames")
+	if !strings.Contains(html, `tableFilters.dispatch(el, {filterNames: [&#34;is_staff&#34;]})`) {
+		t.Fatal("chip remove should dispatch table-filter-reset with that filter name")
 	}
-	if !strings.Contains(html, `tableFilters.dispatch(el, {resetAll: true})`) {
-		t.Fatal("clear should dispatch table-filter-reset with resetAll")
+	if !strings.Contains(html, `tableFilters.dispatch(el, {filterNames: [&#34;email&#34;, &#34;is_staff&#34;]})`) {
+		t.Fatal("clear should dispatch table-filter-reset with all filter names")
+	}
+	if strings.Contains(html, "resetAll") {
+		t.Fatal("filter resets should not use a resetAll flag")
 	}
 }

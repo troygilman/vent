@@ -48,28 +48,13 @@ window.tableFilters = {
         );
     },
     onReset(filter, evt) {
-        const form = evt.currentTarget;
-        const detail = evt.detail || {};
-        let names;
-        if (detail.resetAll) {
-            names = [
-                ...new Set(
-                    [...form.querySelectorAll("[name^='filter.']")].map((field) =>
-                        field.name.slice("filter.".length),
-                    ),
-                ),
-            ];
-        } else if (Array.isArray(detail.filterNames)) {
-            names = detail.filterNames;
-        } else {
-            names = [];
-        }
-        if (!names.length) {
+        const names = (evt.detail || {}).filterNames;
+        if (!Array.isArray(names) || !names.length) {
             return;
         }
         for (const name of names) {
             filter[name] = "";
         }
-        form.dispatchEvent(new Event("change"));
+        evt.currentTarget.dispatchEvent(new Event("change"));
     },
 };

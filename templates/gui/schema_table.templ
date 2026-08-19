@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
@@ -81,12 +82,24 @@ func tableFilterChipValue(column SchemaTableFilterableColumn) string {
 	return column.Value
 }
 
-func tableFilterClearClick(name string) string {
-	return fmt.Sprintf("tableFilters.dispatch(el, {filterNames: [%q]})", name)
+func tableFilterResetClick(names []string) string {
+	quoted := make([]string, len(names))
+	for i, name := range names {
+		quoted[i] = fmt.Sprintf("%q", name)
+	}
+	return fmt.Sprintf("tableFilters.dispatch(el, {filterNames: [%s]})", strings.Join(quoted, ", "))
 }
 
-func tableFilterResetAllClick() string {
-	return "tableFilters.dispatch(el, {resetAll: true})"
+func tableFilterClearClick(name string) string {
+	return tableFilterResetClick([]string{name})
+}
+
+func tableFilterResetAllClick(columns []SchemaTableFilterableColumn) string {
+	names := make([]string, len(columns))
+	for i, column := range columns {
+		names[i] = column.Name
+	}
+	return tableFilterResetClick(names)
 }
 
 templ SchemaTablePage(props SchemaTableProps) {
@@ -139,7 +152,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 								<button
 									type="button"
 									class="btn btn-sm btn-outline"
-									data-on:click={ tableFilterResetAllClick() }
+									data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
 									data-indicator="_indicator"
 								>
 									Clear
@@ -197,7 +210,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 										<button
 											type="button"
 											class="btn btn-sm btn-outline"
-											data-on:click={ tableFilterResetAllClick() }
+											data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
 											data-indicator="_indicator"
 										>
 											Clear
