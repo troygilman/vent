@@ -186,3 +186,135 @@ attribute({
     }
   },
 })
+
+/**
+ * data-cookie plugin
+ *
+ * Persists filtered signals to a browser-readable cookie (not HttpOnly) and
+ * restores them on load. Mirrors data-query-string / Datastar Pro data-persist
+ * filtering, but uses a cookie so state survives full page navigations.
+ *
+ * Usage:
+ *   <div data-cookie:widgets="{include: /^widgets\./}"></div>
+ *   <div data-cookie:vent-widgets="{include: /^widgets\./, path: '/admin/'}"></div>
+ *
+ * The key is required and is the cookie name as written.
+ * path and maxAge on the expression set cookie Path and Max-Age.
+ */
+attribute({
+  name: "cookie",
+  requirement: {
+    key: "must",
+    value: "allowed",
+  },
+  returnsValue: true,
+
+  apply({ key, rx }) {
+    let filter = {}
+    try {
+      const result = rx?.()
+      if (result && typeof result === "object") {
+        filter = result
+      }
+    } catch {
+      // no filter expression
+    }
+
+    const cookieName = key
+    const cookiePath = typeof filter.path === "string" && filter.path ? filter.path : "/"
+    const maxAge =
+      Number.isFinite(filter.maxAge) && filter.maxAge > 0
+        ? filter.maxAge
+        : 365 * 24 * 60 * 60
+    const signalFilter = {}
+    if (filter.include) signalFilter.include = filter.include
+    if (filter.exclude) signalFilter.exclude = filter.exclude
+    const includeRe = filter.include ? new RegExp(filter.include) : /.*/
+    const excludeRe = filter.exclude ? new RegExp(filter.exclude) : /(?!)/
+
+    const flatten = (obj, prefix = "", paths = []) => {
+      if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+        if (prefix && includeRe.test(prefix) && !excludeRe.test(prefix)) {
+          paths.push([prefix, obj])
+        }
+        return paths
+      }
+      for (const [name, value] of Object.entries(obj)) {
+        const path = prefix ? `${prefix}.${name}` : name
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+          flatten(value, path, paths)
+        } else if (includeRe.test(path) && !excludeRe.test(path)) {
+          paths.push([path, value])
+        }
+      }
+      return paths
+    }
+
+    const getCookie = (name) => {
+      const prefix = `${encodeURIComponent(name)}=`
+      for (const part of document.cookie.split("; ")) {
+        if (part.startsWith(prefix)) {
+          return decodeURIComponent(part.slice(prefix.length))
+        }
+      }
+      return ""
+    }
+
+    const setCookie = (name, value) => {
+      const parts = [
+        `${encodeURIComponent(name)}=${encodeURIComponent(value)}`,
+        `Path=${cookiePath}`,
+        `Max-Age=${maxAge}`,
+        "SameSite=Lax",
+      ]
+      if (location.protocol === "https:") {
+        parts.push("Secure")
+      }
+      document.cookie = parts.join("; ")
+    }
+
+    const applyCookieToSignals = () => {
+      const raw = getCookie(cookieName)
+      if (!raw) return
+      let data
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        return
+      }
+      if (data === null || typeof data !== "object" || Array.isArray(data)) {
+        return
+      }
+      const paths = flatten(data)
+      if (paths.length) {
+        mergePaths(paths)
+      }
+    }
+
+    applyCookieToSignals()
+
+    let skipWrite = true
+    let lastMarshalled = ""
+    const stopEffect = effect(() => {
+      const marshalled = JSON.stringify(filtered(signalFilter, root))
+      if (skipWrite) {
+        skipWrite = false
+        lastMarshalled = marshalled
+        return
+      }
+      if (marshalled === lastMarshalled) {
+        return
+      }
+      lastMarshalled = marshalled
+      setCookie(cookieName, marshalled)
+    })
+
+    queueMicrotask(() => {
+      applyCookieToSignals()
+    })
+
+    return () => {
+      stopEffect()
+    }
+  },
+})

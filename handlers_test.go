@@ -27,6 +27,15 @@ func TestStaticDirHandlerServesJS(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `name: "confirm"`) {
 		t.Fatal("datastar-plugins.js does not contain confirm plugin")
 	}
+	if !strings.Contains(rec.Body.String(), `name: "cookie"`) {
+		t.Fatal("datastar-plugins.js does not contain cookie persist plugin")
+	}
+	if !strings.Contains(rec.Body.String(), `key: "must"`) {
+		t.Fatal("cookie plugin should require a cookie name key")
+	}
+	if strings.Contains(rec.Body.String(), "`vent-${key}`") || strings.Contains(rec.Body.String(), "vent-${key}") {
+		t.Fatal("cookie plugin should not prefix cookie names with vent-")
+	}
 	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
 		t.Fatalf("Cache-Control = %q, want immutable long cache", got)
 	}

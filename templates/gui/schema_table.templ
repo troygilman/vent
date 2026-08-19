@@ -102,8 +102,13 @@ func tableFilterResetAllClick(columns []SchemaTableFilterableColumn) string {
 	return tableFilterResetClick(names)
 }
 
+func tableWidgetsCookieExpr(adminPath string) string {
+	return fmt.Sprintf(`{include: /^widgets\./, path: %q}`, adminPath)
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
-	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
+	{{ adminPath := requestctx.MustAdminPath(ctx) }}
+	{{ schemaPath := fmt.Sprintf("%s%s/", adminPath, props.RouteName) }}
 	{{ filtersActive := tableFiltersActive(props.FilterableColumns) }}
 	{{ filterCount := tableFilterActiveCount(props.FilterableColumns) }}
 	@Index() {
@@ -113,6 +118,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					id="schema-table-filters"
 					class="table-filters"
 					data-signals__ifmissing="{widgets: {_open: false, active: ''}}"
+					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"

@@ -91,6 +91,14 @@ func TestTableFilterResetAllClick(t *testing.T) {
 	}
 }
 
+func TestTableWidgetsCookieExpr(t *testing.T) {
+	got := tableWidgetsCookieExpr("/admin/")
+	want := `{include: /^widgets\./, path: "/admin/"}`
+	if got != want {
+		t.Fatalf("widget cookie expr = %q, want %q", got, want)
+	}
+}
+
 func TestSchemaTableAddButtonIsALink(t *testing.T) {
 	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
 	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
@@ -157,5 +165,12 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	}
 	if strings.Contains(html, "resetAll") {
 		t.Fatal("filter resets should not use a resetAll flag")
+	}
+	if !strings.Contains(html, `data-cookie:vent-widgets="`) {
+		t.Fatal("filter form should persist widget drawer signals to a named cookie")
+	}
+	if !strings.Contains(html, `{include: /^widgets\./, path: &#34;/admin/&#34;}`) &&
+		!strings.Contains(html, `{include: /^widgets\./, path: "/admin/"}`) {
+		t.Fatal("widget cookie should include widgets.* and the admin path")
 	}
 }
