@@ -75,6 +75,8 @@
     --sidebar-inset: calc(
         var(--sidebar-gutter) + var(--sidebar-indicator) + var(--space-2)
     );
+    /* Shared by .sidebar-brand and .content-chrome so their bottom borders line up. */
+    --chrome-height: 3.5rem;
     --content-max-width: 72rem;
     --widget-rail-width: 2.75rem;
     --widget-icon-size: 2.15rem;
@@ -240,9 +242,11 @@ a {
     border-right: 1px solid var(--color-border);
 }
 .sidebar-brand {
-    padding: var(--space-4) var(--sidebar-gutter) var(--space-3);
-    padding-left: var(--sidebar-inset);
-    padding-right: var(--sidebar-inset);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: var(--chrome-height);
+    padding: 0 var(--sidebar-inset);
     border-bottom: 1px solid var(--color-border-subtle);
 }
 .sidebar-brand-link {
@@ -250,7 +254,6 @@ a {
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
-    padding: 0.125rem 0;
     border-radius: var(--radius);
     text-decoration: none;
     color: inherit;
@@ -595,13 +598,15 @@ a {
 }
 .content-chrome {
     flex-shrink: 0;
+    height: var(--chrome-height);
     border-bottom: 1px solid var(--color-border-subtle);
     background: var(--color-surface);
 }
 .content-chrome-inner {
     width: 100%;
+    height: 100%;
     margin-inline: auto;
-    padding: var(--space-3) var(--space-6);
+    padding: 0 var(--space-6);
     display: flex;
     align-items: center;
     justify-content: space-between;
