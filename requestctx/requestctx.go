@@ -78,9 +78,21 @@ func AdminPathMiddleware(path string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := WithAdminPath(r.Context(), path)
+			ctx = WithHTTPRequest(ctx, r)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+type httpRequestKey struct{}
+
+func WithHTTPRequest(ctx context.Context, r *http.Request) context.Context {
+	return context.WithValue(ctx, httpRequestKey{}, r)
+}
+
+func HTTPRequest(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(httpRequestKey{}).(*http.Request)
+	return r
 }
 
 // RotateCSRFToken issues a new CSRF cookie. Call on auth-boundary events

@@ -56,8 +56,10 @@ func TestMustCSRFToken(t *testing.T) {
 
 func TestAdminPathMiddleware(t *testing.T) {
 	var got string
+	var reqFromCtx *http.Request
 	handler := AdminPathMiddleware("/admin/")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got = MustAdminPath(r.Context())
+		reqFromCtx = HTTPRequest(r.Context())
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/", nil)
@@ -65,6 +67,9 @@ func TestAdminPathMiddleware(t *testing.T) {
 
 	if got != "/admin/" {
 		t.Fatalf("admin path = %q, want /admin/", got)
+	}
+	if reqFromCtx == nil {
+		t.Fatal("expected HTTP request in context")
 	}
 }
 
