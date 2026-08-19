@@ -164,14 +164,14 @@ func SchemaTablePage(props SchemaTableProps) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				if len(props.FilterableColumns) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"schema-table-filters\" class=\"table-filters\" data-signals__ifmissing=\"{widgets: {_open: false, active: ''}}\" data-cookie:widgets=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"schema-table-filters\" class=\"table-filters\" data-signals__ifmissing=\"{widgets: {_open: false, active: ''}}\" data-cookie:vent-widgets=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(tableWidgetsCookieExpr(adminPath))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 121, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_table.templ`, Line: 121, Col: 65}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 					if templ_7745c5c3_Err != nil {

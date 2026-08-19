@@ -166,8 +166,8 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, "resetAll") {
 		t.Fatal("filter resets should not use a resetAll flag")
 	}
-	if !strings.Contains(html, `data-cookie:widgets="`) {
-		t.Fatal("filter form should persist widget drawer signals to a cookie")
+	if !strings.Contains(html, `data-cookie:vent-widgets="`) {
+		t.Fatal("filter form should persist widget drawer signals to a named cookie")
 	}
 	if !strings.Contains(html, `{include: /^widgets\./, path: &#34;/admin/&#34;}`) &&
 		!strings.Contains(html, `{include: /^widgets\./, path: "/admin/"}`) {

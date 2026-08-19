@@ -118,7 +118,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 					id="schema-table-filters"
 					class="table-filters"
 					data-signals__ifmissing="{widgets: {_open: false, active: ''}}"
-					data-cookie:widgets={ tableWidgetsCookieExpr(adminPath) }
+					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"

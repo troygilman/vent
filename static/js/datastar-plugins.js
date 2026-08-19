@@ -195,18 +195,16 @@ attribute({
  * filtering, but uses a cookie so state survives full page navigations.
  *
  * Usage:
- *   <div data-cookie></div>
- *   <div data-cookie="{include: /^widgets\./}"></div>
- *   <div data-cookie:widgets="{include: /^widgets\./, path: '/admin/'}"></div>
+ *   <div data-cookie:widgets="{include: /^widgets\./}"></div>
+ *   <div data-cookie:vent-widgets="{include: /^widgets\./, path: '/admin/'}"></div>
  *
- * The optional key becomes the cookie name with a vent- prefix
- * (data-cookie:widgets → vent-widgets). Default name is vent-datastar.
+ * The key is required and is the cookie name as written.
  * path and maxAge on the expression set cookie Path and Max-Age.
  */
 attribute({
   name: "cookie",
   requirement: {
-    key: "allowed",
+    key: "must",
     value: "allowed",
   },
   returnsValue: true,
@@ -222,7 +220,7 @@ attribute({
       // no filter expression
     }
 
-    const cookieName = key ? `vent-${key}` : "vent-datastar"
+    const cookieName = key
     const cookiePath = typeof filter.path === "string" && filter.path ? filter.path : "/"
     const maxAge =
       Number.isFinite(filter.maxAge) && filter.maxAge > 0
