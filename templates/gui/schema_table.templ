@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
@@ -40,133 +41,274 @@ type SchemaTableFilterableColumn struct {
 	Value string
 }
 
+func tableFilterActive(column SchemaTableFilterableColumn) bool {
+	if column.Type == "bool" {
+		_, ok := vent.BoolFilter(column.Value).Bool()
+		return ok
+	}
+	return column.Value != ""
+}
+
 func tableFiltersActive(columns []SchemaTableFilterableColumn) bool {
 	for _, column := range columns {
-		if column.Type == "bool" {
-			if _, ok := vent.BoolFilter(column.Value).Bool(); ok {
-				return true
-			}
-			continue
-		}
-		if column.Value != "" {
+		if tableFilterActive(column) {
 			return true
 		}
 	}
 	return false
 }
 
+func tableFilterActiveCount(columns []SchemaTableFilterableColumn) int {
+	n := 0
+	for _, column := range columns {
+		if tableFilterActive(column) {
+			n++
+		}
+	}
+	return n
+}
+
+func tableFilterChipValue(column SchemaTableFilterableColumn) string {
+	if column.Type == "bool" {
+		v, ok := vent.BoolFilter(column.Value).Bool()
+		if !ok {
+			return ""
+		}
+		if v {
+			return "Yes"
+		}
+		return "No"
+	}
+	return column.Value
+}
+
+func tableFilterResetClick(names []string) string {
+	quoted := make([]string, len(names))
+	for i, name := range names {
+		quoted[i] = fmt.Sprintf("%q", name)
+	}
+	return fmt.Sprintf("tableFilters.dispatch(el, {filterNames: [%s]})", strings.Join(quoted, ", "))
+}
+
+func tableFilterClearClick(name string) string {
+	return tableFilterResetClick([]string{name})
+}
+
+func tableFilterResetAllClick(columns []SchemaTableFilterableColumn) string {
+	names := make([]string, len(columns))
+	for i, column := range columns {
+		names[i] = column.Name
+	}
+	return tableFilterResetClick(names)
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName) }}
+	{{ filtersActive := tableFiltersActive(props.FilterableColumns) }}
+	{{ filterCount := tableFilterActiveCount(props.FilterableColumns) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
-			<div class="page-header">
-				<div class="page-title">{ props.PluralDisplayName }</div>
-				if props.RenderContext.CanCreate {
-					<a href={ templ.SafeURL(schemaPath + "add/") }><button class="btn btn-primary">Add { props.SingularDisplayName }</button></a>
-				}
-			</div>
-			<div class="schema-table">
 			if len(props.FilterableColumns) > 0 {
 				<form
 					id="schema-table-filters"
 					class="table-filters"
+					data-signals__ifmissing="{widgets: {_open: false, active: ''}}"
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+					data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 					data-on:submit__prevent="void 0"
 					data-indicator="_indicator"
 				>
-					for _, filter := range props.FilterableColumns {
-						<label class="table-filter">
-							<span class="table-filter-label">{ filter.Label }</span>
-							if filter.Type == "string" {
-								<div class="input">
-									<input
-										type="text"
-										name={ "filter." + filter.Name }
-										data-bind__event.change={ "filter." + filter.Name }
-										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
-										value={ filter.Value }
-										placeholder={ "Filter by " + filter.Label }
-									/>
-								</div>
-							} else if filter.Type == "bool" {
-								{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
-								<select
-									class="select"
-									name={ "filter." + filter.Name }
-									data-bind={ "filter." + filter.Name }
-									data-on:table-filter-reset__document={ "$filter." + filter.Name + " = '" + vent.BoolFilterAll.String() + "'" }
-								>
-									<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
-									<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
-									<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
-								</select>
-							} else if filter.Type == "int" {
-								<div class="input">
-									<input
-										type="text"
-										inputmode="numeric"
-										name={ "filter." + filter.Name }
-										data-bind__event.change={ "filter." + filter.Name }
-										data-on:table-filter-reset__document={ "$filter." + filter.Name + " = ''" }
-										value={ filter.Value }
-										placeholder={ "Filter by " + filter.Label }
-									/>
-								</div>
+					<div class="page-with-widgets-main">
+						<div class="page-header">
+							<div class="page-title">{ props.PluralDisplayName }</div>
+							if props.RenderContext.CanCreate {
+								<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
 							}
-						</label>
-					}
-					if tableFiltersActive(props.FilterableColumns) {
-						<div class="table-filter-actions">
-							<button
-								type="button"
-								class="btn btn-neutral"
-								data-on:click="el.closest('form').dispatchEvent(new Event('table-filter-reset', {bubbles: true})); el.closest('form').dispatchEvent(new Event('change'))"
-								data-indicator="_indicator"
-							>
-								Clear
-							</button>
 						</div>
-					}
-				</form>
-			}
-			<div class="table-container">
-				<table class="data-table">
-					<thead>
-						<tr>
-							for _, column := range props.Columns {
-								<th>{ column.Label }</th>
-							}
-						</tr>
-					</thead>
-					<tbody>
-						if len(props.Rows) == 0 {
-							<tr>
-								<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
-							</tr>
-						} else {
-							for _, row := range props.Rows {
-								<tr>
-									for _, cell := range row.Cells {
-										if cell.LinkURL != "" {
-											<td>
-												<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
-													{ cell.Display }
-												</a>
-											</td>
-										} else {
-											<td>{ cell.Display }</td>
+						if filtersActive {
+							<div class="table-filter-toolbar">
+								<div class="table-filter-chips">
+									for _, filter := range props.FilterableColumns {
+										if tableFilterActive(filter) {
+											<span class="table-filter-chip">
+												<span class="table-filter-chip-text">
+													{ filter.Label }: <b>{ tableFilterChipValue(filter) }</b>
+												</span>
+												<button
+													type="button"
+													class="table-filter-chip-remove"
+													aria-label={ "Remove " + filter.Label + " filter" }
+													data-on:click={ tableFilterClearClick(filter.Name) }
+													data-indicator="_indicator"
+												>
+													×
+												</button>
+											</span>
 										}
 									}
-								</tr>
-							}
+								</div>
+								<button
+									type="button"
+									class="btn btn-sm btn-outline"
+									data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+									data-indicator="_indicator"
+								>
+									Clear
+								</button>
+							</div>
 						}
-					</tbody>
-				</table>
-			</div>
-			</div>
+						@schemaTable(props)
+					</div>
+					<aside
+						class="widget-drawer"
+						data-class:is-open="$widgets._open"
+						aria-label="Widgets"
+					>
+						<div class="widget-drawer-rail" role="toolbar" aria-label="Widgets">
+							<div class="widget-drawer-rail-header">
+								<button
+									type="button"
+									class="widget-drawer-icon"
+									data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
+									data-attr:aria-expanded="$widgets._open"
+									data-on:click="widgetDrawer.toggleOpen($widgets)"
+								>
+									@DrawerToggleIcon()
+								</button>
+							</div>
+							<div class="widget-drawer-rail-widgets">
+								<button
+									type="button"
+									class="widget-drawer-icon"
+									aria-label="Filters"
+									aria-controls="widget-filter-panel"
+									data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
+									data-class:is-active="$widgets._open && $widgets.active === 'filter'"
+									data-on:click="widgetDrawer.open($widgets, 'filter')"
+								>
+									@FilterIcon()
+									if filterCount > 0 {
+										<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
+									}
+								</button>
+							</div>
+						</div>
+						<div class="widget-drawer-panel">
+							<div id="widget-filter-panel" class="widget-drawer-widget">
+								<div class="widget-drawer-header">
+									<div class="widget-drawer-title">Filters</div>
+								</div>
+								<div class="widget-drawer-body">
+									for _, filter := range props.FilterableColumns {
+										@schemaTableFilterField(filter)
+									}
+								</div>
+								if filtersActive {
+									<div class="widget-drawer-footer">
+										<button
+											type="button"
+											class="btn btn-sm btn-outline"
+											data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+											data-indicator="_indicator"
+										>
+											Clear
+										</button>
+									</div>
+								}
+							</div>
+						</div>
+					</aside>
+				</form>
+			} else {
+				<div class="page-header">
+					<div class="page-title">{ props.PluralDisplayName }</div>
+					if props.RenderContext.CanCreate {
+						<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
+					}
+				</div>
+				@schemaTable(props)
+			}
 			@Indicator()
 		}
 	}
+}
+
+templ schemaTable(props SchemaTableProps) {
+	<div class="schema-table">
+		<div class="table-container">
+			<table class="data-table">
+				<thead>
+					<tr>
+						for _, column := range props.Columns {
+							<th>{ column.Label }</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					if len(props.Rows) == 0 {
+						<tr>
+							<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
+						</tr>
+					} else {
+						for _, row := range props.Rows {
+							<tr>
+								for _, cell := range row.Cells {
+									if cell.LinkURL != "" {
+										<td>
+											<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
+												{ cell.Display }
+											</a>
+										</td>
+									} else {
+										<td>{ cell.Display }</td>
+									}
+								}
+							</tr>
+						}
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
+	<label class="table-filter">
+		<span class="table-filter-label">{ filter.Label }</span>
+		if filter.Type == "string" {
+			<div class="input">
+				<input
+					type="text"
+					name={ "filter." + filter.Name }
+					data-bind__event.change={ "filter." + filter.Name }
+					value={ filter.Value }
+					placeholder={ "Filter by " + filter.Label }
+				/>
+			</div>
+		} else if filter.Type == "bool" {
+			{{ boolValue := vent.BoolFilter(filter.Value).Normalize() }}
+			<select
+				class="select"
+				name={ "filter." + filter.Name }
+				data-bind={ "filter." + filter.Name }
+			>
+				<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
+				<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
+				<option value={ vent.BoolFilterFalse.String() } selected?={ boolValue == vent.BoolFilterFalse }>No</option>
+			</select>
+		} else if filter.Type == "int" {
+			<div class="input">
+				<input
+					type="text"
+					inputmode="numeric"
+					name={ "filter." + filter.Name }
+					data-bind__event.change={ "filter." + filter.Name }
+					value={ filter.Value }
+					placeholder={ "Filter by " + filter.Label }
+				/>
+			</div>
+		}
+	</label>
 }

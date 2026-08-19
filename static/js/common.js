@@ -18,3 +18,43 @@
         return originalFetch(input, init);
     };
 })();
+
+window.widgetDrawer = {
+    toggleOpen(state) {
+        if (state._open) {
+            state._open = false;
+            return;
+        }
+        if (!state.active) {
+            state.active = "filter";
+        }
+        state._open = true;
+    },
+    open(state, name) {
+        state.active = name;
+        state._open = true;
+    },
+};
+
+window.tableFilters = {
+    dispatch(el, detail) {
+        const form =
+            el.closest("#schema-table-filters") || el.closest("form") || el;
+        form.dispatchEvent(
+            new CustomEvent("table-filter-reset", {
+                bubbles: true,
+                detail: detail || {},
+            }),
+        );
+    },
+    onReset(filter, evt) {
+        const names = (evt.detail || {}).filterNames;
+        if (!Array.isArray(names) || !names.length) {
+            return;
+        }
+        for (const name of names) {
+            filter[name] = "";
+        }
+        evt.currentTarget.dispatchEvent(new Event("change"));
+    },
+};
