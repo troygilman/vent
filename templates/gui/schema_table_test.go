@@ -3,6 +3,9 @@ package gui
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -172,5 +175,53 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if !strings.Contains(html, `{include: /^widgets\./, path: &#34;/admin/&#34;}`) &&
 		!strings.Contains(html, `{include: /^widgets\./, path: "/admin/"}`) {
 		t.Fatal("widget cookie should include widgets.* and the admin path")
+	}
+	if !strings.Contains(html, `data-signals__ifmissing="{&#34;widgets&#34;:{&#34;_open&#34;:false,&#34;active&#34;:&#34;&#34;}}"`) &&
+		!strings.Contains(html, `data-signals__ifmissing='{"widgets":{"_open":false,"active":""}}'`) {
+		t.Fatal("missing cookie should initialize the drawer closed")
+	}
+	if strings.Contains(html, `class="widget-drawer is-open"`) {
+		t.Fatal("missing cookie should not render the drawer open")
+	}
+}
+
+func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/admin/users/", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  WidgetDrawerCookieName,
+		Value: url.QueryEscape(`{"widgets":{"_open":true,"active":"filter"}}`),
+	})
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+	ctx = requestctx.WithHTTPRequest(ctx, req)
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "email", Label: "Email", Type: "string", Value: ""},
+		},
+		RenderContext: RenderContext{CanCreate: true},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, `class="widget-drawer is-open"`) {
+		t.Fatal("open cookie should render the drawer with is-open before JS runs")
+	}
+	if !strings.Contains(html, `data-signals__ifmissing="{&#34;widgets&#34;:{&#34;_open&#34;:true,&#34;active&#34;:&#34;filter&#34;}}"`) &&
+		!strings.Contains(html, `"_open":true`) {
+		t.Fatal("open cookie should initialize widget signals as open")
+	}
+	if !strings.Contains(html, `aria-label="Collapse drawer"`) {
+		t.Fatal("open cookie should label the toggle as collapse")
+	}
+	if !strings.Contains(html, `class="widget-drawer-icon is-active"`) {
+		t.Fatal("open filter cookie should mark the Filters icon active")
 	}
 }
