@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/troygilman/vent/requestctx"
 )
 
@@ -45,8 +46,14 @@ func TestParseWidgetDrawerCookie(t *testing.T) {
 			active: "filter",
 		},
 		{
-			name: "rejects unsafe active",
-			raw:  `{"widgets":{"_open":true,"active":"<script>"}}`,
+			name:   "unknown active defaults to filter when open",
+			raw:    `{"widgets":{"_open":true,"active":"<script>"}}`,
+			open:   true,
+			active: "filter",
+		},
+		{
+			name: "unknown active is ignored when closed",
+			raw:  `{"widgets":{"_open":false,"active":"search"}}`,
 		},
 	}
 
@@ -60,8 +67,11 @@ func TestParseWidgetDrawerCookie(t *testing.T) {
 	}
 }
 
-func TestTableWidgetsSignals(t *testing.T) {
-	got := tableWidgetsSignals(widgetDrawerState{Open: true, Active: "filter"})
+func TestWidgetDrawerSignalsJSON(t *testing.T) {
+	got, err := templ.JSONString(widgetDrawerSignals{Widgets: widgetDrawerState{Open: true, Active: "filter"}})
+	if err != nil {
+		t.Fatalf("JSONString: %v", err)
+	}
 	want := `{"widgets":{"_open":true,"active":"filter"}}`
 	if got != want {
 		t.Fatalf("signals = %q, want %q", got, want)

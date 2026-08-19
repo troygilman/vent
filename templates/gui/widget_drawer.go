@@ -12,9 +12,15 @@ import (
 // WidgetDrawerCookieName is the cookie written by data-cookie:vent-widgets.
 const WidgetDrawerCookieName = "vent-widgets"
 
+const widgetFilterName = "filter"
+
 type widgetDrawerState struct {
-	Open   bool
-	Active string
+	Open   bool   `json:"_open"`
+	Active string `json:"active"`
+}
+
+type widgetDrawerSignals struct {
+	Widgets widgetDrawerState `json:"widgets"`
 }
 
 func tableWidgetsState(ctx context.Context) widgetDrawerState {
@@ -37,74 +43,30 @@ func parseWidgetDrawerCookie(raw string) widgetDrawerState {
 	if err != nil {
 		decoded = raw
 	}
-	var payload struct {
-		Widgets struct {
-			Open   bool   `json:"_open"`
-			Active string `json:"active"`
-		} `json:"widgets"`
-	}
+	var payload widgetDrawerSignals
 	if err := json.Unmarshal([]byte(decoded), &payload); err != nil {
 		return widgetDrawerState{}
 	}
 	state := widgetDrawerState{
 		Open: payload.Widgets.Open,
 	}
-	if payload.Widgets.Active == "" {
-		if state.Open {
-			state.Active = "filter"
-		}
-		return state
-	}
-	state.Active = sanitizeWidgetName(payload.Widgets.Active)
-	if state.Active == "" {
-		return widgetDrawerState{}
+	if allowedWidgetName(payload.Widgets.Active) {
+		state.Active = payload.Widgets.Active
+	} else if state.Open {
+		state.Active = widgetFilterName
 	}
 	return state
 }
 
-func tableWidgetsSignals(state widgetDrawerState) string {
-	payload := struct {
-		Widgets struct {
-			Open   bool   `json:"_open"`
-			Active string `json:"active"`
-		} `json:"widgets"`
-	}{}
-	payload.Widgets.Open = state.Open
-	payload.Widgets.Active = state.Active
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return `{"widgets":{"_open":false,"active":""}}`
+func allowedWidgetName(name string) bool {
+	switch name {
+	case widgetFilterName:
+		return true
+	default:
+		return false
 	}
-	return string(b)
-}
-
-func sanitizeWidgetName(name string) string {
-	if name == "" {
-		return ""
-	}
-	for _, r := range name {
-		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
-			continue
-		}
-		return ""
-	}
-	return name
-}
-
-func tableWidgetsToggleLabel(open bool) string {
-	if open {
-		return "Collapse drawer"
-	}
-	return "Expand drawer"
-}
-
-func tableWidgetsAriaExpanded(open bool) string {
-	if open {
-		return "true"
-	}
-	return "false"
 }
 
 func tableWidgetsFilterActive(state widgetDrawerState) bool {
-	return state.Open && strings.EqualFold(state.Active, "filter")
+	return state.Open && strings.EqualFold(state.Active, widgetFilterName)
 }

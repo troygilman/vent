@@ -118,7 +118,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 				<form
 					id="schema-table-filters"
 					class="table-filters"
-					data-signals__ifmissing={ tableWidgetsSignals(widgets) }
+					data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
 					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
@@ -178,8 +178,13 @@ templ SchemaTablePage(props SchemaTableProps) {
 								<button
 									type="button"
 									class="widget-drawer-icon"
-									aria-label={ tableWidgetsToggleLabel(widgets.Open) }
-									aria-expanded={ tableWidgetsAriaExpanded(widgets.Open) }
+									if widgets.Open {
+										aria-label="Collapse drawer"
+										aria-expanded="true"
+									} else {
+										aria-label="Expand drawer"
+										aria-expanded="false"
+									}
 									data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
 									data-attr:aria-expanded="$widgets._open"
 									data-on:click="widgetDrawer.toggleOpen($widgets)"
@@ -193,7 +198,11 @@ templ SchemaTablePage(props SchemaTableProps) {
 									class={ "widget-drawer-icon", templ.KV("is-active", tableWidgetsFilterActive(widgets)) }
 									aria-label="Filters"
 									aria-controls="widget-filter-panel"
-									aria-expanded={ tableWidgetsAriaExpanded(tableWidgetsFilterActive(widgets)) }
+									if tableWidgetsFilterActive(widgets) {
+										aria-expanded="true"
+									} else {
+										aria-expanded="false"
+									}
 									data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
 									data-class:is-active="$widgets._open && $widgets.active === 'filter'"
 									data-on:click="widgetDrawer.open($widgets, 'filter')"
