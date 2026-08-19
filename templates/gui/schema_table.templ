@@ -111,13 +111,14 @@ templ SchemaTablePage(props SchemaTableProps) {
 	{{ schemaPath := fmt.Sprintf("%s%s/", adminPath, props.RouteName) }}
 	{{ filtersActive := tableFiltersActive(props.FilterableColumns) }}
 	{{ filterCount := tableFilterActiveCount(props.FilterableColumns) }}
+	{{ widgets := tableWidgetsState(ctx) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
 			if len(props.FilterableColumns) > 0 {
 				<form
 					id="schema-table-filters"
 					class="table-filters"
-					data-signals__ifmissing="{widgets: {_open: false, active: ''}}"
+					data-signals__ifmissing={ tableWidgetsSignals(widgets) }
 					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
 					data-query-string__history="{include: /^filter\./}"
 					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
@@ -168,7 +169,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 						@schemaTable(props)
 					</div>
 					<aside
-						class="widget-drawer"
+						class={ "widget-drawer", templ.KV("is-open", widgets.Open) }
 						data-class:is-open="$widgets._open"
 						aria-label="Widgets"
 					>
@@ -177,6 +178,8 @@ templ SchemaTablePage(props SchemaTableProps) {
 								<button
 									type="button"
 									class="widget-drawer-icon"
+									aria-label={ tableWidgetsToggleLabel(widgets.Open) }
+									aria-expanded={ tableWidgetsAriaExpanded(widgets.Open) }
 									data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
 									data-attr:aria-expanded="$widgets._open"
 									data-on:click="widgetDrawer.toggleOpen($widgets)"
@@ -187,9 +190,10 @@ templ SchemaTablePage(props SchemaTableProps) {
 							<div class="widget-drawer-rail-widgets">
 								<button
 									type="button"
-									class="widget-drawer-icon"
+									class={ "widget-drawer-icon", templ.KV("is-active", tableWidgetsFilterActive(widgets)) }
 									aria-label="Filters"
 									aria-controls="widget-filter-panel"
+									aria-expanded={ tableWidgetsAriaExpanded(tableWidgetsFilterActive(widgets)) }
 									data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
 									data-class:is-active="$widgets._open && $widgets.active === 'filter'"
 									data-on:click="widgetDrawer.open($widgets, 'filter')"
