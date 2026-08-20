@@ -502,8 +502,11 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	if !strings.Contains(html, `aria-label="Pagination"`) {
 		t.Fatal("pagination nav should be labeled")
 	}
-	if !strings.Contains(html, `aria-current="page"`) {
-		t.Fatal("current page button should set aria-current")
+	if strings.Contains(html, `aria-current="page"`) {
+		t.Fatal("pagination should not render numbered page buttons")
+	}
+	if strings.Contains(html, "table-pagination-ellipsis") {
+		t.Fatal("pagination should not render page ellipsis")
 	}
 	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
 		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
@@ -511,7 +514,7 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	}
 	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
 		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
-		t.Fatal("page 1 should clear $page then dispatch table-fetch")
+		t.Fatal("previous page should clear $page then dispatch table-fetch")
 	}
 	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {
 		t.Fatal("loaded table should bind the clamped $page signal")

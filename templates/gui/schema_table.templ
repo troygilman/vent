@@ -25,47 +25,26 @@ type SchemaTableProps struct {
 }
 
 type SchemaTablePagination struct {
-	Page       int
-	PageSize   int
-	Total      int
-	TotalPages int
-	From       int
-	To         int
-	HasPrev    bool
-	HasNext    bool
-	Signal     string
-	Pages      []SchemaTablePageItem
+	Page     int
+	PageSize int
+	Total    int
+	From     int
+	To       int
+	HasPrev  bool
+	HasNext  bool
+	Signal   string
 }
-
-type SchemaTablePageItem struct {
-	Number   int
-	Current  bool
-	Ellipsis bool
-}
-
-const tableListPageWindowRadius = 2
 
 func NewSchemaTablePagination(page vent.ListPage) SchemaTablePagination {
-	items := page.Window(tableListPageWindowRadius)
-	pages := make([]SchemaTablePageItem, len(items))
-	for i, item := range items {
-		pages[i] = SchemaTablePageItem{
-			Number:   item.Page,
-			Current:  item.Current,
-			Ellipsis: item.Ellipsis,
-		}
-	}
 	return SchemaTablePagination{
-		Page:       page.Page,
-		PageSize:   page.PageSize,
-		Total:      page.Total,
-		TotalPages: page.TotalPages(),
-		From:       page.From(),
-		To:         page.To(),
-		HasPrev:    page.HasPrev(),
-		HasNext:    page.HasNext(),
-		Signal:     page.Signal(),
-		Pages:      pages,
+		Page:     page.Page,
+		PageSize: page.PageSize,
+		Total:    page.Total,
+		From:     page.From(),
+		To:       page.To(),
+		HasPrev:  page.HasPrev(),
+		HasNext:  page.HasNext(),
+		Signal:   page.Signal(),
 	}
 }
 
@@ -432,11 +411,11 @@ templ schemaTable(props SchemaTableProps) {
 }
 
 templ schemaTablePagination(p SchemaTablePagination) {
-	<div class="table-pagination">
+	<nav class="table-pagination" aria-label="Pagination">
 		<div class="table-pagination-status">
 			{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }
 		</div>
-		<nav class="table-pagination-nav" aria-label="Pagination">
+		<div class="table-pagination-actions">
 			<button
 				type="button"
 				class="btn btn-sm btn-outline"
@@ -448,23 +427,6 @@ templ schemaTablePagination(p SchemaTablePagination) {
 			>
 				Prev
 			</button>
-			for _, item := range p.Pages {
-				if item.Ellipsis {
-					<span class="table-pagination-ellipsis" aria-hidden="true">…</span>
-				} else {
-					<button
-						type="button"
-						class={ "btn", "btn-sm", "btn-outline", templ.KV("is-active", item.Current) }
-						aria-label={ fmt.Sprintf("Page %d", item.Number) }
-						if item.Current {
-							aria-current="page"
-						}
-						data-on:click={ tablePageClickExpr(item.Number) }
-					>
-						{ fmt.Sprintf("%d", item.Number) }
-					</button>
-				}
-			}
 			<button
 				type="button"
 				class="btn btn-sm btn-outline"
@@ -476,8 +438,8 @@ templ schemaTablePagination(p SchemaTablePagination) {
 			>
 				Next
 			</button>
-		</nav>
-	</div>
+		</div>
+	</nav>
 }
 
 templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
