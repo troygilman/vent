@@ -41,15 +41,25 @@ func TestStaticDirHandlerServesJS(t *testing.T) {
 	}
 }
 
-func TestStaticDirHandlerServesFont(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/inter-latin.woff2", nil)
-	StaticDirHandler().ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+func TestStaticDirHandlerCacheControl(t *testing.T) {
+	paths := []string{
+		"/static/js/common.js",
+		"/static/css/style.css",
+		"/static/fonts/inter-latin.woff2",
+		"/static/img/favicon.ico",
+		"/static/img/vent-logo.png",
 	}
-	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
-		t.Fatalf("Cache-Control = %q, want public, max-age=3600", got)
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			StaticDirHandler().ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+				t.Fatalf("Cache-Control = %q, want immutable long cache", got)
+			}
+		})
 	}
 }
