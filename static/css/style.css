@@ -1076,6 +1076,8 @@ a {
 }
 .widget-drawer-empty {
     margin: 0;
+    width: 100%;
+    text-align: center;
     font-size: 0.875rem;
     color: var(--color-text-subtle);
 }
