@@ -383,11 +383,22 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if strings.Contains(html, "No data") {
 		t.Fatal("chrome-first paint must not flash No data")
 	}
-	if !strings.Contains(html, `data-on:load`) || !strings.Contains(html, "@get(location.pathname)") {
+	pageStart := strings.Index(html, `id="schema-table-page"`)
+	if pageStart < 0 {
+		t.Fatal("unfiltered table should wrap the page in #schema-table-page")
+	}
+	tagEnd := strings.Index(html[pageStart:], ">")
+	if tagEnd < 0 {
+		t.Fatal("schema-table-page tag is truncated")
+	}
+	tag := html[pageStart : pageStart+tagEnd]
+	indicatorAt := strings.Index(tag, `data-indicator="_indicator"`)
+	initAt := strings.Index(tag, `data-init="@get(location.pathname)"`)
+	if indicatorAt < 0 || initAt < 0 {
 		t.Fatal("tables without filters should lazy-load rows on first paint")
 	}
-	if !strings.Contains(html, `data-indicator="_indicator"`) {
-		t.Fatal("unfiltered list fetch should drive the existing page overlay")
+	if initAt < indicatorAt {
+		t.Fatal("data-indicator must precede data-init so the overlay signal exists before the fetch")
 	}
 }
 

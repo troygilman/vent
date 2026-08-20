@@ -300,8 +300,10 @@ templ SchemaTablePage(props SchemaTableProps) {
 			} else {
 				<div
 					id="schema-table-page"
-					data-on:load="@get(location.pathname)"
 					data-indicator="_indicator"
+					if props.Loading {
+						data-init="@get(location.pathname)"
+					}
 				>
 					<div class="page-header">
 						<div class="page-title">{ props.PluralDisplayName }</div>
