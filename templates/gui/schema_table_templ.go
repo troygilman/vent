@@ -106,7 +106,7 @@ func tableListQueryStringExpr() string {
 }
 
 func tableListFetchExpr() string {
-	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll())`
+	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll()); setTimeout(() => window.tableFetch.resetScroll(), 100)`
 }
 
 func tableFetchDispatchExpr() string {

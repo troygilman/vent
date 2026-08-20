@@ -73,14 +73,13 @@ window.tableFetch = {
         }
         box.scrollTop = 0;
         box.scrollLeft = 0;
-        if (box.scrollTop === 0 && box.scrollLeft === 0) {
-            return;
-        }
         const fresh = box.cloneNode(false);
         while (box.firstChild) {
             fresh.appendChild(box.firstChild);
         }
         box.replaceWith(fresh);
+        fresh.scrollTop = 0;
+        fresh.scrollLeft = 0;
     },
 };
 

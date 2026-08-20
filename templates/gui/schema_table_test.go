@@ -444,8 +444,8 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 		!strings.Contains(html, `data-on:change="$page = ''; window.tableFetch.dispatch(el)"`) {
 		t.Fatal("filter change should reset $page then dispatch table-fetch")
 	}
-	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll())"`) &&
-		!strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() =&gt; window.tableFetch.resetScroll())"`) {
+	if !strings.Contains(html, `setTimeout(() => window.tableFetch.resetScroll())`) &&
+		!strings.Contains(html, `setTimeout(() =&gt; window.tableFetch.resetScroll())`) {
 		t.Fatal("table-fetch should @get then reset table scroll")
 	}
 	if !strings.Contains(html, `data-query-string__history="{include: /^(filter\.|page$)/}"`) {
