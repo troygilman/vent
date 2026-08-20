@@ -1074,6 +1074,9 @@ a {
     overflow: auto;
     padding: var(--space-4);
 }
+.widget-drawer-body:has(.widget-drawer-empty) {
+    justify-content: center;
+}
 .widget-drawer-empty {
     margin: 0;
     width: 100%;
