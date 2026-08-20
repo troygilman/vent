@@ -325,3 +325,64 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 		t.Fatal("truncated cells should expose full value in title")
 	}
 }
+
+func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+		},
+		Loading: true,
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "No data") {
+		t.Fatal("chrome-first paint must not flash No data")
+	}
+	if !strings.Contains(html, `class="table-empty table-loading"`) {
+		t.Fatal("loading table should render a loading placeholder")
+	}
+	if !strings.Contains(html, `aria-busy="true"`) {
+		t.Fatal("loading table should set aria-busy")
+	}
+}
+
+func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, "No data") {
+		t.Fatal("loaded empty table should say No data")
+	}
+	if strings.Contains(html, "table-loading") {
+		t.Fatal("loaded empty table should not show the loading placeholder")
+	}
+	if !strings.Contains(html, `aria-busy="false"`) {
+		t.Fatal("loaded table should set aria-busy false")
+	}
+}
