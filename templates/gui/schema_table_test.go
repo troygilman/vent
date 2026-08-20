@@ -361,6 +361,12 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 	if !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("loading list fetch should drive the existing page overlay")
 	}
+	if strings.Contains(html, `aria-label="Pagination"`) {
+		t.Fatal("chrome-first paint must not render pagination")
+	}
+	if strings.Contains(html, `name="page"`) {
+		t.Fatal("chrome-first paint must not bind $page before the query-string plugin hydrates")
+	}
 }
 
 func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
@@ -395,8 +401,18 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer"`) {
 		t.Fatal("unfiltered tables should still render the widget drawer")
 	}
-	if !strings.Contains(html, `data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"`) {
-		t.Fatal("unfiltered tables should lazy-load rows the same way as filtered tables")
+	if !strings.Contains(html, `data-on:query-string="tableFetch.dispatch(el)"`) {
+		t.Fatal("query-string should dispatch table-fetch instead of fetching directly")
+	}
+	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; tableFetch.dispatch(el)"`) &&
+		!strings.Contains(html, `data-on:change="$page = ''; tableFetch.dispatch(el)"`) {
+		t.Fatal("filter change should reset $page then dispatch table-fetch")
+	}
+	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"`) {
+		t.Fatal("table-fetch should be the only list @get")
+	}
+	if !strings.Contains(html, `data-query-string__history="{include: /^(filter\.|page$)/}"`) {
+		t.Fatal("query string should include filter.* and page")
 	}
 	if !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("unfiltered list fetch should drive the existing page overlay")
@@ -430,5 +446,80 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 	html := buf.String()
 	if !strings.Contains(html, "No data") {
 		t.Fatal("loaded empty table should say No data")
+	}
+	if strings.Contains(html, `aria-label="Pagination"`) {
+		t.Fatal("empty loaded table should not render pagination")
+	}
+}
+
+func TestTablePageClickExpr(t *testing.T) {
+	if got := tablePageClickExpr(1); got != `$page = ""; tableFetch.dispatch(el)` {
+		t.Fatalf("page 1 click = %q", got)
+	}
+	if got := tablePageClickExpr(3); got != `$page = "3"; tableFetch.dispatch(el)` {
+		t.Fatalf("page 3 click = %q", got)
+	}
+}
+
+func TestTablePaginationVisible(t *testing.T) {
+	if tablePaginationVisible(SchemaTableProps{Loading: true, Pagination: SchemaTablePagination{Total: 100}}) {
+		t.Fatal("loading table should hide pagination")
+	}
+	if tablePaginationVisible(SchemaTableProps{Pagination: SchemaTablePagination{Total: 0}}) {
+		t.Fatal("empty table should hide pagination")
+	}
+	if !tablePaginationVisible(SchemaTableProps{Pagination: SchemaTablePagination{Total: 10}}) {
+		t.Fatal("loaded table with rows should show pagination")
+	}
+}
+
+func TestSchemaTablePaginationRendersFooter(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "books",
+		SingularDisplayName: "Book",
+		PluralDisplayName:   "Books",
+		Columns: []SchemaTableColumn{
+			{Name: "title", Label: "Title", Type: "string"},
+		},
+		Rows: []SchemaTableRow{{
+			Cells: []SchemaTableCell{{Display: "Dune"}},
+		}},
+		Pagination: NewSchemaTablePagination(vent.ParseListPage("2", 10).WithTotal(25)),
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, "11–20 of 25") {
+		t.Fatal("pagination status should show the current slice")
+	}
+	if !strings.Contains(html, `aria-label="Pagination"`) {
+		t.Fatal("pagination nav should be labeled")
+	}
+	if !strings.Contains(html, `aria-current="page"`) {
+		t.Fatal("current page button should set aria-current")
+	}
+	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
+		t.Fatal("next page should set $page then dispatch table-fetch")
+	}
+	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
+		t.Fatal("page 1 should clear $page then dispatch table-fetch")
+	}
+	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {
+		t.Fatal("loaded table should bind the clamped $page signal")
+	}
+	if !strings.Contains(html, `value="2"`) {
+		t.Fatal("hidden page input should hold the current page signal")
+	}
+	if strings.Contains(html, "@get(location.pathname") && strings.Count(html, "@get(location.pathname") != 1 {
+		t.Fatal("list page should have a single @get")
 	}
 }

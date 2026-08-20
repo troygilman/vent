@@ -125,6 +125,9 @@ func TestBuildProjectedRenderConfigDefaultSurface(t *testing.T) {
 	if rc.PackageDir != "article" {
 		t.Fatalf("PackageDir = %q, want article", rc.PackageDir)
 	}
+	if rc.PageSize != DefaultListPageSize {
+		t.Fatalf("PageSize = %d, want %d", rc.PageSize, DefaultListPageSize)
+	}
 	published := findSurfaceMember(t, rc.AdminSurface, "published")
 	if !published.HasDefaultValue || published.DefaultValueName != "DefaultPublished" {
 		t.Fatalf("published default = has %v name %q, want true/DefaultPublished", published.HasDefaultValue, published.DefaultValueName)
@@ -289,6 +292,23 @@ func TestBuildProjectedRenderConfigFilterableColumns(t *testing.T) {
 	id := findFilterableColumn(t, rc.FilterableColumns, "id")
 	if id.Type != "int" || id.PredicateName != "ID" || id.Label != "ID" {
 		t.Fatalf("id filter = %#v, want int/ID/ID", id)
+	}
+}
+
+func TestBuildProjectedRenderConfigPageSize(t *testing.T) {
+	node := testInputNode()
+	node.Annotations = gen.Annotations{
+		VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+			PageSize: 25,
+		},
+	}
+
+	rc, err := buildRenderConfig(node)
+	if err != nil {
+		t.Fatalf("buildRenderConfig() error = %v", err)
+	}
+	if rc.PageSize != 25 {
+		t.Fatalf("PageSize = %d, want 25", rc.PageSize)
 	}
 }
 

@@ -1412,6 +1412,38 @@ select.select[multiple] option:hover {
     text-underline-offset: 2px;
 }
 
+.schema-table {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.table-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+.table-pagination-status {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+.table-pagination-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+}
+.table-pagination-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    color: var(--color-text-subtle);
+    font-size: 0.8125rem;
+}
+
 /* Feedback */
 .alert {
     padding: 0.7rem 1rem;

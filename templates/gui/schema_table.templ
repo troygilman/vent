@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/troygilman/vent"
@@ -16,10 +17,84 @@ type SchemaTableProps struct {
 	Columns             []SchemaTableColumn
 	Rows                []SchemaTableRow
 	FilterableColumns   []SchemaTableFilterableColumn
+	Pagination          SchemaTablePagination
 	RenderContext       RenderContext
 	// Loading is true for the chrome-first HTML response before Datastar
 	// fetches rows. That paint must not say "No data".
 	Loading bool
+}
+
+type SchemaTablePagination struct {
+	Page       int
+	PageSize   int
+	Total      int
+	TotalPages int
+	From       int
+	To         int
+	HasPrev    bool
+	HasNext    bool
+	Signal     string
+	Pages      []SchemaTablePageItem
+}
+
+type SchemaTablePageItem struct {
+	Number   int
+	Current  bool
+	Ellipsis bool
+}
+
+const tableListPageWindowRadius = 2
+
+func NewSchemaTablePagination(page vent.ListPage) SchemaTablePagination {
+	items := page.Window(tableListPageWindowRadius)
+	pages := make([]SchemaTablePageItem, len(items))
+	for i, item := range items {
+		pages[i] = SchemaTablePageItem{
+			Number:   item.Page,
+			Current:  item.Current,
+			Ellipsis: item.Ellipsis,
+		}
+	}
+	return SchemaTablePagination{
+		Page:       page.Page,
+		PageSize:   page.PageSize,
+		Total:      page.Total,
+		TotalPages: page.TotalPages(),
+		From:       page.From(),
+		To:         page.To(),
+		HasPrev:    page.HasPrev(),
+		HasNext:    page.HasNext(),
+		Signal:     page.Signal(),
+		Pages:      pages,
+	}
+}
+
+func tablePaginationVisible(props SchemaTableProps) bool {
+	return !props.Loading && props.Pagination.Total > 0
+}
+
+func tableListQueryStringExpr() string {
+	return `{include: /^(filter\.|page$)/}`
+}
+
+func tableListFetchExpr() string {
+	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})`
+}
+
+func tableFetchDispatchExpr() string {
+	return `tableFetch.dispatch(el)`
+}
+
+func tableFilterChangeExpr() string {
+	return `$page = ''; tableFetch.dispatch(el)`
+}
+
+func tablePageClickExpr(n int) string {
+	page := ""
+	if n > 1 {
+		page = strconv.Itoa(n)
+	}
+	return fmt.Sprintf(`$page = %q; tableFetch.dispatch(el)`, page)
 }
 
 type SchemaTableColumn struct {
@@ -179,13 +254,17 @@ templ SchemaTablePage(props SchemaTableProps) {
 				class="table-filters"
 				data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
 				data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
-				data-query-string__history="{include: /^filter\./}"
-				data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-				data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+				data-query-string__history={ tableListQueryStringExpr() }
+				data-on:query-string={ tableFetchDispatchExpr() }
+				data-on:change={ tableFilterChangeExpr() }
+				data-on:table-fetch={ tableListFetchExpr() }
 				data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 				data-on:submit__prevent="void 0"
 				data-indicator="_indicator"
 			>
+				if !props.Loading {
+					<input type="hidden" name="page" data-bind="page" value={ props.Pagination.Signal }/>
+				}
 				<div class="page-with-widgets-main">
 					<div class="page-header">
 						<div class="page-title">{ props.PluralDisplayName }</div>
@@ -346,6 +425,58 @@ templ schemaTable(props SchemaTableProps) {
 				</tbody>
 			</table>
 		</div>
+		if tablePaginationVisible(props) {
+			@schemaTablePagination(props.Pagination)
+		}
+	</div>
+}
+
+templ schemaTablePagination(p SchemaTablePagination) {
+	<div class="table-pagination">
+		<div class="table-pagination-status">
+			{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }
+		</div>
+		<nav class="table-pagination-nav" aria-label="Pagination">
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				aria-label="Previous page"
+				disabled?={ !p.HasPrev }
+				if p.HasPrev {
+					data-on:click={ tablePageClickExpr(p.Page - 1) }
+				}
+			>
+				Prev
+			</button>
+			for _, item := range p.Pages {
+				if item.Ellipsis {
+					<span class="table-pagination-ellipsis" aria-hidden="true">…</span>
+				} else {
+					<button
+						type="button"
+						class={ "btn", "btn-sm", "btn-outline", templ.KV("is-active", item.Current) }
+						aria-label={ fmt.Sprintf("Page %d", item.Number) }
+						if item.Current {
+							aria-current="page"
+						}
+						data-on:click={ tablePageClickExpr(item.Number) }
+					>
+						{ fmt.Sprintf("%d", item.Number) }
+					</button>
+				}
+			}
+			<button
+				type="button"
+				class="btn btn-sm btn-outline"
+				aria-label="Next page"
+				disabled?={ !p.HasNext }
+				if p.HasNext {
+					data-on:click={ tablePageClickExpr(p.Page + 1) }
+				}
+			>
+				Next
+			</button>
+		</nav>
 	</div>
 }
 

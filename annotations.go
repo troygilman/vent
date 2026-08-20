@@ -66,6 +66,7 @@ type VentSchemaAnnotation struct {
 	FieldSets           []FieldSet
 	TableColumns        []string
 	FilterableColumns   []string
+	PageSize            int
 	Permissions         []Permission
 }
 
