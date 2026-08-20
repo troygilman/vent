@@ -27,7 +27,6 @@ func TestIndexVersionsAllStaticAssets(t *testing.T) {
 		"static/js/common.js",
 		"static/js/command-palette.js",
 		"static/css/style.css",
-		"static/fonts/inter-latin.woff2",
 		"static/img/favicon.ico",
 		"static/img/vent-logo.png",
 	} {
@@ -35,5 +34,13 @@ func TestIndexVersionsAllStaticAssets(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("Index HTML missing versioned asset %q", want)
 		}
+	}
+	// Font preload must match the unversioned url() in style.css or the browser
+	// downloads Inter twice.
+	if !strings.Contains(html, `href="/admin/static/fonts/inter-latin.woff2"`) {
+		t.Error("Index HTML missing font preload")
+	}
+	if strings.Contains(html, "static/fonts/inter-latin.woff2?v=") {
+		t.Error("font preload should not be cache-busted; CSS url() is unversioned")
 	}
 }
