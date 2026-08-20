@@ -54,11 +54,11 @@ func tablePaginationVisible(props SchemaTableProps) bool {
 	return !props.Loading && props.Pagination.Total > 0
 }
 
-// tableScrollContainerID changes whenever list rows change so Datastar morph
-// replaces the overflow element instead of reusing it (which keeps scrollTop).
-func tableScrollContainerID(props SchemaTableProps) string {
+// tableScrollResetScriptID changes with the visible rows so Datastar inserts a
+// new script node (and runs it) instead of reusing a script it already executed.
+func tableScrollResetScriptID(props SchemaTableProps) string {
 	parts := []string{
-		"schema-table-scroll",
+		"table-scroll-reset",
 		strconv.Itoa(props.Pagination.Page),
 		strconv.Itoa(props.Pagination.From),
 		strconv.Itoa(props.Pagination.To),
@@ -98,15 +98,15 @@ func tableListQueryStringExpr() string {
 }
 
 func tableListFetchExpr() string {
-	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll()); setTimeout(() => window.tableFetch.resetScroll(), 100)`
+	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})`
 }
 
 func tableFetchDispatchExpr() string {
-	return `window.tableFetch.dispatch(el)`
+	return `tableFetch.dispatch(el)`
 }
 
 func tableFilterChangeExpr() string {
-	return `$page = ''; window.tableFetch.dispatch(el)`
+	return `$page = ''; tableFetch.dispatch(el)`
 }
 
 func tablePageClickExpr(n int) string {
@@ -114,7 +114,7 @@ func tablePageClickExpr(n int) string {
 	if n > 1 {
 		page = strconv.Itoa(n)
 	}
-	return fmt.Sprintf(`$page = %q; window.tableFetch.dispatch(el)`, page)
+	return fmt.Sprintf(`$page = %q; tableFetch.dispatch(el)`, page)
 }
 
 type SchemaTableColumn struct {
@@ -406,7 +406,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 
 templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
-		<div id={ tableScrollContainerID(props) } class="table-container">
+		<div id="schema-table-scroll" class="table-container">
 			<table class="data-table">
 				<colgroup>
 					for i := range props.Columns {
@@ -444,6 +444,9 @@ templ schemaTable(props SchemaTableProps) {
 					}
 				</tbody>
 			</table>
+			<script id={ tableScrollResetScriptID(props) }>
+				document.getElementById("schema-table-scroll")?.scrollTo(0, 0);
+			</script>
 		</div>
 		if tablePaginationVisible(props) {
 			@schemaTablePagination(props.Pagination)

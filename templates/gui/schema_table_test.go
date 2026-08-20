@@ -48,7 +48,7 @@ func TestTableFilterActiveCount(t *testing.T) {
 	}
 }
 
-func TestTableScrollContainerIDChangesWithContent(t *testing.T) {
+func TestTableScrollResetScriptIDChangesWithContent(t *testing.T) {
 	page1 := SchemaTableProps{
 		Pagination: SchemaTablePagination{Page: 1, From: 1, To: 50},
 		Rows: []SchemaTableRow{
@@ -61,26 +61,25 @@ func TestTableScrollContainerIDChangesWithContent(t *testing.T) {
 			{Cells: []SchemaTableCell{{Display: "Silent Library 0049"}}},
 		},
 	}
-	id1 := tableScrollContainerID(page1)
-	id2 := tableScrollContainerID(page2)
+	id1 := tableScrollResetScriptID(page1)
+	id2 := tableScrollResetScriptID(page2)
 	if id1 == id2 {
-		t.Fatalf("page 1 and page 2 should not share a scroll container id: %s", id1)
+		t.Fatalf("page 1 and page 2 should not share a scroll reset script id: %s", id1)
 	}
-	if !strings.HasPrefix(id1, "schema-table-scroll-") || !strings.HasPrefix(id2, "schema-table-scroll-") {
+	if !strings.HasPrefix(id1, "table-scroll-reset-") || !strings.HasPrefix(id2, "table-scroll-reset-") {
 		t.Fatalf("ids = %q, %q", id1, id2)
 	}
 	filtered := page1
 	filtered.FilterableColumns = []SchemaTableFilterableColumn{
 		{Name: "title", Type: "string", Label: "Title", Value: "Library"},
 	}
-	idFilter := tableScrollContainerID(filtered)
-	if idFilter == id1 {
-		t.Fatal("active filters should change the scroll container id")
+	if tableScrollResetScriptID(filtered) == id1 {
+		t.Fatal("active filters should change the scroll reset script id")
 	}
 	loading := page1
 	loading.Loading = true
-	if tableScrollContainerID(loading) == id1 {
-		t.Fatal("loading chrome should use a different scroll container id")
+	if tableScrollResetScriptID(loading) == id1 {
+		t.Fatal("loading chrome should use a different scroll reset script id")
 	}
 }
 
@@ -437,16 +436,15 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer"`) {
 		t.Fatal("unfiltered tables should still render the widget drawer")
 	}
-	if !strings.Contains(html, `data-on:query-string="window.tableFetch.dispatch(el)"`) {
+	if !strings.Contains(html, `data-on:query-string="tableFetch.dispatch(el)"`) {
 		t.Fatal("query-string should dispatch table-fetch instead of fetching directly")
 	}
-	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; window.tableFetch.dispatch(el)"`) &&
-		!strings.Contains(html, `data-on:change="$page = ''; window.tableFetch.dispatch(el)"`) {
+	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; tableFetch.dispatch(el)"`) &&
+		!strings.Contains(html, `data-on:change="$page = ''; tableFetch.dispatch(el)"`) {
 		t.Fatal("filter change should reset $page then dispatch table-fetch")
 	}
-	if !strings.Contains(html, `setTimeout(() => window.tableFetch.resetScroll())`) &&
-		!strings.Contains(html, `setTimeout(() =&gt; window.tableFetch.resetScroll())`) {
-		t.Fatal("table-fetch should @get then reset table scroll")
+	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"`) {
+		t.Fatal("table-fetch should be the only list @get")
 	}
 	if !strings.Contains(html, `data-query-string__history="{include: /^(filter\.|page$)/}"`) {
 		t.Fatal("query string should include filter.* and page")
@@ -457,8 +455,15 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer-empty"`) || !strings.Contains(html, "No filters available") {
 		t.Fatal("Filters panel should say no filters are available")
 	}
-	if !strings.Contains(html, `id="schema-table-scroll-`) {
-		t.Fatal("table body should have a content-keyed scroll container so morphs start at the top")
+	if !strings.Contains(html, `id="schema-table-scroll"`) {
+		t.Fatal("table body should have a stable scroll container")
+	}
+	if !strings.Contains(html, `id="table-scroll-reset-`) {
+		t.Fatal("table should include a content-keyed script that resets scroll when patched")
+	}
+	if !strings.Contains(html, `getElementById("schema-table-scroll")?.scrollTo(0, 0)`) &&
+		!strings.Contains(html, `getElementById(&#34;schema-table-scroll&#34;)?.scrollTo(0, 0)`) {
+		t.Fatal("patched table HTML should reset the scroll container")
 	}
 	if strings.Contains(html, `data-init=`) {
 		t.Fatal("unfiltered tables should not use a separate data-init fetch")
@@ -493,10 +498,10 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 }
 
 func TestTablePageClickExpr(t *testing.T) {
-	if got := tablePageClickExpr(1); got != `$page = ""; window.tableFetch.dispatch(el)` {
+	if got := tablePageClickExpr(1); got != `$page = ""; tableFetch.dispatch(el)` {
 		t.Fatalf("page 1 click = %q", got)
 	}
-	if got := tablePageClickExpr(3); got != `$page = "3"; window.tableFetch.dispatch(el)` {
+	if got := tablePageClickExpr(3); got != `$page = "3"; tableFetch.dispatch(el)` {
 		t.Fatalf("page 3 click = %q", got)
 	}
 }
@@ -554,12 +559,12 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	if strings.Contains(html, "table-pagination-ellipsis") {
 		t.Fatal("pagination should not render page ellipsis")
 	}
-	if !strings.Contains(html, `$page = &#34;3&#34;; window.tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = "3"; window.tableFetch.dispatch(el)`) {
+	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
 		t.Fatal("next and last should set $page then dispatch table-fetch")
 	}
-	if !strings.Contains(html, `$page = &#34;&#34;; window.tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = ""; window.tableFetch.dispatch(el)`) {
+	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
 		t.Fatal("first and previous should clear $page then dispatch table-fetch")
 	}
 	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {

@@ -63,52 +63,6 @@ window.tableFetch = {
     dispatch(el) {
         const form =
             el.closest("#schema-table-filters") || el.closest("form") || el;
-        window.tableFetch.resetScroll();
         form.dispatchEvent(new Event("table-fetch"));
     },
-    resetScroll() {
-        const box = document.querySelector(".schema-table .table-container");
-        if (!box) {
-            return;
-        }
-        box.scrollTop = 0;
-        box.scrollLeft = 0;
-        const fresh = box.cloneNode(false);
-        while (box.firstChild) {
-            fresh.appendChild(box.firstChild);
-        }
-        box.replaceWith(fresh);
-        fresh.scrollTop = 0;
-        fresh.scrollLeft = 0;
-    },
 };
-
-(function () {
-    const queueTableScrollReset = () => {
-        const apply = () => window.tableFetch.resetScroll();
-        apply();
-        queueMicrotask(apply);
-        requestAnimationFrame(() => {
-            apply();
-            requestAnimationFrame(apply);
-        });
-    };
-
-    document.addEventListener("datastar-fetch", (evt) => {
-        const detail = evt.detail || {};
-        const el = detail.el;
-        if (!el || typeof el.closest !== "function") {
-            return;
-        }
-        if (!el.closest("#schema-table-filters")) {
-            return;
-        }
-        if (
-            detail.type !== "finished" &&
-            detail.type !== "datastar-patch-elements"
-        ) {
-            return;
-        }
-        queueTableScrollReset();
-    });
-})();
