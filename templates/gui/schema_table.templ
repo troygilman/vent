@@ -166,32 +166,6 @@ func tableColumnWidthPercent(columns []SchemaTableColumn, index int) string {
 	return fmt.Sprintf("%d%%", weights[index]*100/total)
 }
 
-func schemaTableIndicatorSignal(loading bool) string {
-	if !loading {
-		return "{}"
-	}
-	return `{"_indicator":true}`
-}
-
-func schemaTableFetchAttrs(loading bool) templ.Attributes {
-	attrs := templ.Attributes{
-		"data-indicator": "_indicator",
-	}
-	if loading {
-		attrs["data-signals"] = schemaTableIndicatorSignal(true)
-	}
-	return attrs
-}
-
-templ schemaTablePageHeader(props SchemaTableProps, schemaPath string) {
-	<div class="page-header">
-		<div class="page-title">{ props.PluralDisplayName }</div>
-		if props.RenderContext.CanCreate {
-			<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
-		}
-	</div>
-}
-
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ schemaPath := fmt.Sprintf("%s%s/", adminPath, props.RouteName) }}
@@ -204,7 +178,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 				<form
 					id="schema-table-filters"
 					class="table-filters"
-					{ schemaTableFetchAttrs(props.Loading)... }
 					data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
 					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
 					data-query-string__history="{include: /^filter\./}"
@@ -212,9 +185,15 @@ templ SchemaTablePage(props SchemaTableProps) {
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 					data-on:submit__prevent="void 0"
+					data-indicator="_indicator"
 				>
 					<div class="page-with-widgets-main">
-						@schemaTablePageHeader(props, schemaPath)
+						<div class="page-header">
+							<div class="page-title">{ props.PluralDisplayName }</div>
+							if props.RenderContext.CanCreate {
+								<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
+							}
+						</div>
 						if filtersActive {
 							<div class="table-filter-toolbar">
 								<div class="table-filter-chips">
@@ -318,17 +297,20 @@ templ SchemaTablePage(props SchemaTableProps) {
 						</div>
 					</aside>
 				</form>
-			} else if props.Loading {
+			} else {
 				<div
-					{ schemaTableFetchAttrs(true)... }
+					id="schema-table-page"
 					data-on:load="@get(location.pathname)"
+					data-indicator="_indicator"
 				>
-					@schemaTablePageHeader(props, schemaPath)
+					<div class="page-header">
+						<div class="page-title">{ props.PluralDisplayName }</div>
+						if props.RenderContext.CanCreate {
+							<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
+						}
+					</div>
 					@schemaTable(props)
 				</div>
-			} else {
-				@schemaTablePageHeader(props, schemaPath)
-				@schemaTable(props)
 			}
 			@Indicator()
 		}
@@ -338,7 +320,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
 		<div class="table-container">
-			<table class="data-table" aria-busy={ fmt.Sprintf("%t", props.Loading) }>
+			<table class="data-table">
 				<colgroup>
 					for i := range props.Columns {
 						<col width={ tableColumnWidthPercent(props.Columns, i) }/>

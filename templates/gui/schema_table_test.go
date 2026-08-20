@@ -154,15 +154,6 @@ func TestTableColumnWidthPercentSumsTo100(t *testing.T) {
 	}
 }
 
-func TestSchemaTableIndicatorSignal(t *testing.T) {
-	if got := schemaTableIndicatorSignal(true); got != `{"_indicator":true}` {
-		t.Fatalf("loading signal = %q", got)
-	}
-	if got := schemaTableIndicatorSignal(false); got != `{}` {
-		t.Fatalf("loaded signal = %q", got)
-	}
-}
-
 func TestSchemaTableAddButtonIsALink(t *testing.T) {
 	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
 	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
@@ -364,17 +355,8 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 	if strings.Contains(html, "No data") {
 		t.Fatal("chrome-first paint must not flash No data")
 	}
-	if strings.Contains(html, "table-loading") {
-		t.Fatal("list pages should use the existing overlay, not an in-table spinner")
-	}
-	if !strings.Contains(html, `aria-busy="true"`) {
-		t.Fatal("loading table should set aria-busy")
-	}
 	if !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("loading list fetch should drive the existing page overlay")
-	}
-	if !strings.Contains(html, `"_indicator":true`) && !strings.Contains(html, `&#34;_indicator&#34;:true`) {
-		t.Fatal("chrome-first paint should start the overlay indicator before Datastar boots")
 	}
 }
 
@@ -430,11 +412,5 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 	html := buf.String()
 	if !strings.Contains(html, "No data") {
 		t.Fatal("loaded empty table should say No data")
-	}
-	if strings.Contains(html, "table-loading") {
-		t.Fatal("loaded empty table should not show the loading placeholder")
-	}
-	if !strings.Contains(html, `aria-busy="false"`) {
-		t.Fatal("loaded table should set aria-busy false")
 	}
 }
