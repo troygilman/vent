@@ -235,6 +235,9 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, `class="widget-drawer is-open"`) {
 		t.Fatal("missing cookie should not render the drawer open")
 	}
+	if strings.Count(html, `data-indicator="_indicator"`) != 1 {
+		t.Fatal("list fetches should not drive the page overlay; logout keeps data-indicator")
+	}
 }
 
 func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
@@ -338,6 +341,9 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 		Columns: []SchemaTableColumn{
 			{Name: "email", Label: "Email", Type: "string"},
 		},
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "email", Label: "Email", Type: "string", Value: ""},
+		},
 		Loading: true,
 	}
 
@@ -354,6 +360,9 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 	}
 	if !strings.Contains(html, `aria-busy="true"`) {
 		t.Fatal("loading table should set aria-busy")
+	}
+	if strings.Count(html, `data-indicator="_indicator"`) != 1 {
+		t.Fatal("loading list fetch should not also drive the page overlay")
 	}
 }
 

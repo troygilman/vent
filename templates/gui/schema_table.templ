@@ -185,7 +185,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
 					data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 					data-on:submit__prevent="void 0"
-					data-indicator="_indicator"
 				>
 					<div class="page-with-widgets-main">
 						<div class="page-header">
@@ -208,7 +207,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 													class="table-filter-chip-remove"
 													aria-label={ "Remove " + filter.Label + " filter" }
 													data-on:click={ tableFilterClearClick(filter.Name) }
-													data-indicator="_indicator"
 												>
 													×
 												</button>
@@ -220,7 +218,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 									type="button"
 									class="btn btn-sm btn-outline"
 									data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
-									data-indicator="_indicator"
 								>
 									Clear
 								</button>
@@ -290,7 +287,6 @@ templ SchemaTablePage(props SchemaTableProps) {
 											type="button"
 											class="btn btn-sm btn-outline"
 											data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
-											data-indicator="_indicator"
 										>
 											Clear
 										</button>
