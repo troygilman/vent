@@ -124,10 +124,6 @@ func tableColumnKind(colType string) string {
 	}
 }
 
-func tableColumnClass(colType string) string {
-	return "data-col-" + tableColumnKind(colType)
-}
-
 func tableColumnWeight(colType string) int {
 	switch tableColumnKind(colType) {
 	case "bool":
@@ -320,8 +316,8 @@ templ schemaTable(props SchemaTableProps) {
 		<div class="table-container">
 			<table class="data-table">
 				<colgroup>
-					for i, column := range props.Columns {
-						<col class={ tableColumnClass(column.Type) } width={ tableColumnWidthPercent(props.Columns, i) }/>
+					for i := range props.Columns {
+						<col width={ tableColumnWidthPercent(props.Columns, i) }/>
 					}
 				</colgroup>
 				<thead>

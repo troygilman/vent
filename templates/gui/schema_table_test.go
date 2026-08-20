@@ -121,9 +121,6 @@ func TestTableColumnKind(t *testing.T) {
 		if got := tableColumnKind(colType); got != want {
 			t.Errorf("tableColumnKind(%q) = %q, want %q", colType, got, want)
 		}
-		if got := tableColumnClass(colType); got != "data-col-"+want {
-			t.Errorf("tableColumnClass(%q) = %q, want %q", colType, got, "data-col-"+want)
-		}
 	}
 }
 
@@ -313,21 +310,16 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 		t.Fatalf("render: %v", err)
 	}
 	html := buf.String()
-	for _, class := range []string{
-		`class="data-col-text"`,
-		`class="data-col-bool"`,
-		`class="data-col-num"`,
-		`class="data-col-time"`,
-	} {
-		if !strings.Contains(html, "<col "+class) {
-			t.Fatalf("colgroup missing %s in:\n%s", class, html)
-		}
-	}
 	if strings.Count(html, "<col ") != 5 {
 		t.Fatalf("want 5 col elements, html:\n%s", html)
 	}
-	if !strings.Contains(html, `width="`) {
-		t.Fatal("col elements should set content-independent percentage widths")
+	if strings.Contains(html, `class="data-col-`) {
+		t.Fatal("col widths should come from the width attribute, not type classes")
+	}
+	for _, width := range []string{`width="30%"`, `width="12%"`, `width="10%"`, `width="17%"`, `width="31%"`} {
+		if !strings.Contains(html, "<col "+width) {
+			t.Fatalf("colgroup missing %s in:\n%s", width, html)
+		}
 	}
 	if !strings.Contains(html, `title="admin@vent.com"`) {
 		t.Fatal("truncated cells should expose full value in title")
