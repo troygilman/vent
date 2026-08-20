@@ -75,17 +75,35 @@ window.tableFetch = {
     },
 };
 
-document.addEventListener("datastar-fetch", (evt) => {
-    const detail = evt.detail || {};
-    if (detail.type !== "finished") {
-        return;
-    }
-    const el = detail.el;
-    if (!el || typeof el.closest !== "function") {
-        return;
-    }
-    if (!el.closest("#schema-table-filters")) {
-        return;
-    }
-    window.tableFetch.resetScroll();
-});
+(function () {
+    const queueTableScrollReset = () => {
+        const apply = () => window.tableFetch.resetScroll();
+        apply();
+        queueMicrotask(apply);
+        requestAnimationFrame(() => {
+            apply();
+            requestAnimationFrame(apply);
+        });
+    };
+
+    document.addEventListener("datastar-fetch", (evt) => {
+        const detail = evt.detail || {};
+        const el = detail.el;
+        if (!el || typeof el.closest !== "function") {
+            return;
+        }
+        if (!el.closest("#schema-table-filters")) {
+            return;
+        }
+        // Morph reuses #schema-table-scroll, so the browser keeps scrollTop and
+        // overflow anchoring can restore it after layout. Reset after morph
+        // (patch-elements) and again when the fetch fully finishes.
+        if (
+            detail.type !== "finished" &&
+            detail.type !== "datastar-patch-elements"
+        ) {
+            return;
+        }
+        queueTableScrollReset();
+    });
+})();

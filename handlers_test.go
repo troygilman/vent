@@ -41,6 +41,30 @@ func TestStaticDirHandlerServesJS(t *testing.T) {
 	}
 }
 
+func TestTableScrollResetsAfterListFetch(t *testing.T) {
+	jsRec := httptest.NewRecorder()
+	StaticDirHandler().ServeHTTP(jsRec, httptest.NewRequest(http.MethodGet, "/static/js/common.js", nil))
+	if jsRec.Code != http.StatusOK {
+		t.Fatalf("common.js status = %d, want 200", jsRec.Code)
+	}
+	js := jsRec.Body.String()
+	if !strings.Contains(js, `getElementById("schema-table-scroll")`) {
+		t.Fatal("common.js should reset the schema table scroll container")
+	}
+	if !strings.Contains(js, `detail.type !== "datastar-patch-elements"`) {
+		t.Fatal("common.js should reset scroll after Datastar morphs list HTML")
+	}
+
+	cssRec := httptest.NewRecorder()
+	StaticDirHandler().ServeHTTP(cssRec, httptest.NewRequest(http.MethodGet, "/static/css/style.css", nil))
+	if cssRec.Code != http.StatusOK {
+		t.Fatalf("style.css status = %d, want 200", cssRec.Code)
+	}
+	if !strings.Contains(cssRec.Body.String(), "overflow-anchor: none") {
+		t.Fatal("table scrollport should disable overflow anchoring so morphs do not restore scroll")
+	}
+}
+
 func TestStaticDirHandlerCacheControl(t *testing.T) {
 	paths := []string{
 		"/static/js/common.js",
