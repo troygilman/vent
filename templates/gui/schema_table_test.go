@@ -3,6 +3,7 @@ package gui
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -123,6 +124,36 @@ func TestTableColumnKind(t *testing.T) {
 		if got := tableColumnClass(colType); got != "data-col-"+want {
 			t.Errorf("tableColumnClass(%q) = %q, want %q", colType, got, "data-col-"+want)
 		}
+	}
+}
+
+func TestTableColumnWidthPercentSumsTo100(t *testing.T) {
+	columns := []SchemaTableColumn{
+		{Type: "string"},
+		{Type: "bool"},
+		{Type: "bool"},
+		{Type: "bool"},
+		{Type: "time.Time"},
+	}
+	sum := 0
+	for i := range columns {
+		var pct int
+		got := tableColumnWidthPercent(columns, i)
+		if _, err := fmt.Sscanf(got, "%d%%", &pct); err != nil {
+			t.Fatalf("column %d width %q: %v", i, got, err)
+		}
+		if pct <= 0 {
+			t.Fatalf("column %d width %q should be positive", i, got)
+		}
+		sum += pct
+	}
+	if sum != 100 {
+		t.Fatalf("widths sum to %d, want 100", sum)
+	}
+	email := tableColumnWidthPercent(columns, 0)
+	boolCol := tableColumnWidthPercent(columns, 1)
+	if email <= boolCol {
+		t.Fatalf("text column width %s should exceed bool width %s", email, boolCol)
 	}
 }
 
@@ -294,6 +325,9 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 	}
 	if strings.Count(html, "<col ") != 5 {
 		t.Fatalf("want 5 col elements, html:\n%s", html)
+	}
+	if !strings.Contains(html, `width="`) {
+		t.Fatal("col elements should set content-independent percentage widths")
 	}
 	if !strings.Contains(html, `title="admin@vent.com"`) {
 		t.Fatal("truncated cells should expose full value in title")

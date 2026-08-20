@@ -78,11 +78,6 @@
     /* Shared by .sidebar-brand and .content-chrome so their bottom borders line up. */
     --chrome-height: 3.5rem;
     --content-max-width: 72rem;
-    /* Compact list columns: sized from type, not cell content, so lazy rows
-       cannot shift headers. Text columns share the leftover width. */
-    --table-col-bool: 9.25rem;
-    --table-col-num: 6.75rem;
-    --table-col-time: 11.5rem;
     --widget-rail-width: 2.75rem;
     --widget-icon-size: 2.15rem;
     --widget-rail-inset: calc((var(--widget-rail-width) - var(--widget-icon-size)) / 2);
@@ -1367,15 +1362,6 @@ select.select[multiple] option:hover {
     table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
-}
-.data-table col.data-col-bool {
-    width: var(--table-col-bool);
-}
-.data-table col.data-col-num {
-    width: var(--table-col-num);
-}
-.data-table col.data-col-time {
-    width: var(--table-col-time);
 }
 .data-table thead th {
     position: sticky;
