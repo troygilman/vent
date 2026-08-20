@@ -48,41 +48,6 @@ func TestTableFilterActiveCount(t *testing.T) {
 	}
 }
 
-func TestTableScrollResetScriptIDChangesWithContent(t *testing.T) {
-	page1 := SchemaTableProps{
-		Pagination: SchemaTablePagination{Page: 1, From: 1, To: 50},
-		Rows: []SchemaTableRow{
-			{Cells: []SchemaTableCell{{Display: "Silent Library 0000"}}},
-		},
-	}
-	page2 := SchemaTableProps{
-		Pagination: SchemaTablePagination{Page: 2, From: 51, To: 100},
-		Rows: []SchemaTableRow{
-			{Cells: []SchemaTableCell{{Display: "Silent Library 0049"}}},
-		},
-	}
-	id1 := tableScrollResetScriptID(page1)
-	id2 := tableScrollResetScriptID(page2)
-	if id1 == id2 {
-		t.Fatalf("page 1 and page 2 should not share a scroll reset script id: %s", id1)
-	}
-	if !strings.HasPrefix(id1, "table-scroll-reset-") || !strings.HasPrefix(id2, "table-scroll-reset-") {
-		t.Fatalf("ids = %q, %q", id1, id2)
-	}
-	filtered := page1
-	filtered.FilterableColumns = []SchemaTableFilterableColumn{
-		{Name: "title", Type: "string", Label: "Title", Value: "Library"},
-	}
-	if tableScrollResetScriptID(filtered) == id1 {
-		t.Fatal("active filters should change the scroll reset script id")
-	}
-	loading := page1
-	loading.Loading = true
-	if tableScrollResetScriptID(loading) == id1 {
-		t.Fatal("loading chrome should use a different scroll reset script id")
-	}
-}
-
 func TestTableFilterChipValue(t *testing.T) {
 	if got := tableFilterChipValue(SchemaTableFilterableColumn{
 		Type: "string", Value: "Dune",
@@ -458,12 +423,12 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `id="schema-table-scroll"`) {
 		t.Fatal("table body should have a stable scroll container")
 	}
-	if !strings.Contains(html, `id="table-scroll-reset-`) {
-		t.Fatal("table should include a content-keyed script that resets scroll when patched")
-	}
 	if !strings.Contains(html, `getElementById("schema-table-scroll")?.scrollTo(0, 0)`) &&
 		!strings.Contains(html, `getElementById(&#34;schema-table-scroll&#34;)?.scrollTo(0, 0)`) {
 		t.Fatal("patched table HTML should reset the scroll container")
+	}
+	if !strings.Contains(html, `document.currentScript.remove()`) {
+		t.Fatal("scroll reset script should remove itself so the next patch executes a new copy")
 	}
 	if strings.Contains(html, `data-init=`) {
 		t.Fatal("unfiltered tables should not use a separate data-init fetch")

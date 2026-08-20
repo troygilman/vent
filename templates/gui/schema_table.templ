@@ -54,45 +54,6 @@ func tablePaginationVisible(props SchemaTableProps) bool {
 	return !props.Loading && props.Pagination.Total > 0
 }
 
-// tableScrollResetScriptID changes with the visible rows so Datastar inserts a
-// new script node (and runs it) instead of reusing a script it already executed.
-func tableScrollResetScriptID(props SchemaTableProps) string {
-	parts := []string{
-		"table-scroll-reset",
-		strconv.Itoa(props.Pagination.Page),
-		strconv.Itoa(props.Pagination.From),
-		strconv.Itoa(props.Pagination.To),
-	}
-	if props.Loading {
-		parts = append(parts, "loading")
-	}
-	for _, column := range props.FilterableColumns {
-		if !tableFilterActive(column) {
-			continue
-		}
-		parts = append(parts, column.Name, tableScrollIDToken(tableFilterChipValue(column)))
-	}
-	if len(props.Rows) > 0 && len(props.Rows[0].Cells) > 0 {
-		parts = append(parts, tableScrollIDToken(props.Rows[0].Cells[0].Display))
-	}
-	return strings.Join(parts, "-")
-}
-
-func tableScrollIDToken(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
-			b.WriteRune(r)
-		} else if b.Len() > 0 {
-			b.WriteByte('-')
-		}
-		if b.Len() >= 24 {
-			break
-		}
-	}
-	return strings.Trim(b.String(), "-")
-}
-
 func tableListQueryStringExpr() string {
 	return `{include: /^(filter\.|page$)/}`
 }
@@ -444,8 +405,9 @@ templ schemaTable(props SchemaTableProps) {
 					}
 				</tbody>
 			</table>
-			<script id={ tableScrollResetScriptID(props) }>
+			<script>
 				document.getElementById("schema-table-scroll")?.scrollTo(0, 0);
+				document.currentScript.remove();
 			</script>
 		</div>
 		if tablePaginationVisible(props) {
