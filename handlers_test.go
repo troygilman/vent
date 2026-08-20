@@ -51,10 +51,10 @@ func TestTableScrollResetsAfterListFetch(t *testing.T) {
 	if !strings.Contains(js, `querySelector(".schema-table .table-container")`) {
 		t.Fatal("common.js should reset the schema table scroll container")
 	}
-	if !strings.Contains(js, "this.resetScroll()") {
-		t.Fatal("list fetches should reset table scroll before requesting new rows")
+	if !strings.Contains(js, "window.tableFetch.resetScroll()") {
+		t.Fatal("list fetches should reset table scroll via window.tableFetch")
 	}
-	if !strings.Contains(js, "cloneNode(true)") {
+	if !strings.Contains(js, "cloneNode(false)") {
 		t.Fatal("common.js should replace the scrollport if scrollTop cannot be cleared")
 	}
 	if !strings.Contains(js, `detail.type !== "datastar-patch-elements"`) {

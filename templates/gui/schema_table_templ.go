@@ -106,15 +106,15 @@ func tableListQueryStringExpr() string {
 }
 
 func tableListFetchExpr() string {
-	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})`
+	return `@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll())`
 }
 
 func tableFetchDispatchExpr() string {
-	return `tableFetch.dispatch(el)`
+	return `window.tableFetch.dispatch(el)`
 }
 
 func tableFilterChangeExpr() string {
-	return `$page = ''; tableFetch.dispatch(el)`
+	return `$page = ''; window.tableFetch.dispatch(el)`
 }
 
 func tablePageClickExpr(n int) string {
@@ -122,7 +122,7 @@ func tablePageClickExpr(n int) string {
 	if n > 1 {
 		page = strconv.Itoa(n)
 	}
-	return fmt.Sprintf(`$page = %q; tableFetch.dispatch(el)`, page)
+	return fmt.Sprintf(`$page = %q; window.tableFetch.dispatch(el)`, page)
 }
 
 type SchemaTableColumn struct {

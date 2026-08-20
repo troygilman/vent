@@ -437,15 +437,16 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer"`) {
 		t.Fatal("unfiltered tables should still render the widget drawer")
 	}
-	if !strings.Contains(html, `data-on:query-string="tableFetch.dispatch(el)"`) {
+	if !strings.Contains(html, `data-on:query-string="window.tableFetch.dispatch(el)"`) {
 		t.Fatal("query-string should dispatch table-fetch instead of fetching directly")
 	}
-	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; tableFetch.dispatch(el)"`) &&
-		!strings.Contains(html, `data-on:change="$page = ''; tableFetch.dispatch(el)"`) {
+	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; window.tableFetch.dispatch(el)"`) &&
+		!strings.Contains(html, `data-on:change="$page = ''; window.tableFetch.dispatch(el)"`) {
 		t.Fatal("filter change should reset $page then dispatch table-fetch")
 	}
-	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"`) {
-		t.Fatal("table-fetch should be the only list @get")
+	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() => window.tableFetch.resetScroll())"`) &&
+		!strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}}); setTimeout(() =&gt; window.tableFetch.resetScroll())"`) {
+		t.Fatal("table-fetch should @get then reset table scroll")
 	}
 	if !strings.Contains(html, `data-query-string__history="{include: /^(filter\.|page$)/}"`) {
 		t.Fatal("query string should include filter.* and page")
@@ -492,10 +493,10 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 }
 
 func TestTablePageClickExpr(t *testing.T) {
-	if got := tablePageClickExpr(1); got != `$page = ""; tableFetch.dispatch(el)` {
+	if got := tablePageClickExpr(1); got != `$page = ""; window.tableFetch.dispatch(el)` {
 		t.Fatalf("page 1 click = %q", got)
 	}
-	if got := tablePageClickExpr(3); got != `$page = "3"; tableFetch.dispatch(el)` {
+	if got := tablePageClickExpr(3); got != `$page = "3"; window.tableFetch.dispatch(el)` {
 		t.Fatalf("page 3 click = %q", got)
 	}
 }
@@ -553,12 +554,12 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	if strings.Contains(html, "table-pagination-ellipsis") {
 		t.Fatal("pagination should not render page ellipsis")
 	}
-	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
+	if !strings.Contains(html, `$page = &#34;3&#34;; window.tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = "3"; window.tableFetch.dispatch(el)`) {
 		t.Fatal("next and last should set $page then dispatch table-fetch")
 	}
-	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
+	if !strings.Contains(html, `$page = &#34;&#34;; window.tableFetch.dispatch(el)`) &&
+		!strings.Contains(html, `$page = ""; window.tableFetch.dispatch(el)`) {
 		t.Fatal("first and previous should clear $page then dispatch table-fetch")
 	}
 	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {

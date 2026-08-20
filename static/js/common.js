@@ -63,9 +63,7 @@ window.tableFetch = {
     dispatch(el) {
         const form =
             el.closest("#schema-table-filters") || el.closest("form") || el;
-        // Jump to the top before the request so morph/overflow-anchoring
-        // cannot keep the previous page's scroll offset.
-        this.resetScroll();
+        window.tableFetch.resetScroll();
         form.dispatchEvent(new Event("table-fetch"));
     },
     resetScroll() {
@@ -78,9 +76,11 @@ window.tableFetch = {
         if (box.scrollTop === 0 && box.scrollLeft === 0) {
             return;
         }
-        // Morph can reuse this node and ignore scrollTop assignment.
-        // A clone is a new overflow element and always starts at 0.
-        box.replaceWith(box.cloneNode(true));
+        const fresh = box.cloneNode(false);
+        while (box.firstChild) {
+            fresh.appendChild(box.firstChild);
+        }
+        box.replaceWith(fresh);
     },
 };
 
