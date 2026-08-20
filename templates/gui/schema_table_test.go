@@ -3,6 +3,7 @@ package gui
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -99,6 +100,57 @@ func TestTableWidgetsCookieExpr(t *testing.T) {
 	want := `{include: /^widgets\./, path: "/admin/"}`
 	if got != want {
 		t.Fatalf("widget cookie expr = %q, want %q", got, want)
+	}
+}
+
+func TestTableColumnKind(t *testing.T) {
+	cases := map[string]string{
+		"bool":      "bool",
+		"int":       "num",
+		"int64":     "num",
+		"uint":      "num",
+		"float64":   "num",
+		"time":      "time",
+		"time.Time": "time",
+		"string":    "text",
+		"edge":      "text",
+		"custom":    "text",
+		"":          "text",
+	}
+	for colType, want := range cases {
+		if got := tableColumnKind(colType); got != want {
+			t.Errorf("tableColumnKind(%q) = %q, want %q", colType, got, want)
+		}
+	}
+}
+
+func TestTableColumnWidthPercentSumsTo100(t *testing.T) {
+	columns := []SchemaTableColumn{
+		{Type: "string"},
+		{Type: "bool"},
+		{Type: "bool"},
+		{Type: "bool"},
+		{Type: "time.Time"},
+	}
+	sum := 0
+	for i := range columns {
+		var pct int
+		got := tableColumnWidthPercent(columns, i)
+		if _, err := fmt.Sscanf(got, "%d%%", &pct); err != nil {
+			t.Fatalf("column %d width %q: %v", i, got, err)
+		}
+		if pct <= 0 {
+			t.Fatalf("column %d width %q should be positive", i, got)
+		}
+		sum += pct
+	}
+	if sum != 100 {
+		t.Fatalf("widths sum to %d, want 100", sum)
+	}
+	email := tableColumnWidthPercent(columns, 0)
+	boolCol := tableColumnWidthPercent(columns, 1)
+	if email <= boolCol {
+		t.Fatalf("text column width %s should exceed bool width %s", email, boolCol)
 	}
 }
 
@@ -223,5 +275,53 @@ func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
 	}
 	if !strings.Contains(html, `class="widget-drawer-icon is-active"`) {
 		t.Fatal("open filter cookie should mark the Filters icon active")
+	}
+}
+
+func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+			{Name: "is_staff", Label: "IsStaff", Type: "bool"},
+			{Name: "pages", Label: "Pages", Type: "int"},
+			{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
+			{Name: "author", Label: "Author", Type: "edge"},
+		},
+		Rows: []SchemaTableRow{{
+			Cells: []SchemaTableCell{
+				{Display: "admin@vent.com", LinkURL: "/admin/users/1/"},
+				{Display: "true"},
+				{Display: "412"},
+				{Display: "2026-08-20T03:43"},
+				{Display: "Frank Herbert"},
+			},
+		}},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Count(html, "<col ") != 5 {
+		t.Fatalf("want 5 col elements, html:\n%s", html)
+	}
+	if strings.Contains(html, `class="data-col-`) {
+		t.Fatal("col widths should come from the width attribute, not type classes")
+	}
+	for _, width := range []string{`width="30%"`, `width="12%"`, `width="10%"`, `width="17%"`, `width="31%"`} {
+		if !strings.Contains(html, "<col "+width) {
+			t.Fatalf("colgroup missing %s in:\n%s", width, html)
+		}
+	}
+	if !strings.Contains(html, `title="admin@vent.com"`) {
+		t.Fatal("truncated cells should expose full value in title")
 	}
 }

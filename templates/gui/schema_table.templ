@@ -106,6 +106,63 @@ func tableWidgetsCookieExpr(adminPath string) string {
 	return fmt.Sprintf(`{include: /^widgets\./, path: %q}`, adminPath)
 }
 
+// tableColumnKind maps a list-column type to a stable layout kind used for
+// table-layout:fixed widths. Cell content must not change these kinds, or
+// lazy-loaded rows will shift the headers.
+func tableColumnKind(colType string) string {
+	switch colType {
+	case "bool":
+		return "bool"
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float", "float32", "float64":
+		return "num"
+	case "time", "time.Time":
+		return "time"
+	default:
+		return "text"
+	}
+}
+
+func tableColumnWeight(colType string) int {
+	switch tableColumnKind(colType) {
+	case "bool":
+		return 5
+	case "num":
+		return 4
+	case "time":
+		return 7
+	default:
+		return 12
+	}
+}
+
+// tableColumnWidthPercent is a content-independent width so lazy-loaded rows
+// cannot shift headers. The last column absorbs rounding remainder.
+func tableColumnWidthPercent(columns []SchemaTableColumn, index int) string {
+	if len(columns) == 0 || index < 0 || index >= len(columns) {
+		return ""
+	}
+	total := 0
+	weights := make([]int, len(columns))
+	for i, column := range columns {
+		w := tableColumnWeight(column.Type)
+		weights[i] = w
+		total += w
+	}
+	if total == 0 {
+		return ""
+	}
+	if index == len(columns)-1 {
+		used := 0
+		for i := 0; i < index; i++ {
+			used += weights[i] * 100 / total
+		}
+		return fmt.Sprintf("%d%%", 100-used)
+	}
+	return fmt.Sprintf("%d%%", weights[index]*100/total)
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ schemaPath := fmt.Sprintf("%s%s/", adminPath, props.RouteName) }}
@@ -258,10 +315,15 @@ templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
 		<div class="table-container">
 			<table class="data-table">
+				<colgroup>
+					for i := range props.Columns {
+						<col width={ tableColumnWidthPercent(props.Columns, i) }/>
+					}
+				</colgroup>
 				<thead>
 					<tr>
 						for _, column := range props.Columns {
-							<th>{ column.Label }</th>
+							<th title={ column.Label }>{ column.Label }</th>
 						}
 					</tr>
 				</thead>
@@ -275,13 +337,13 @@ templ schemaTable(props SchemaTableProps) {
 							<tr>
 								for _, cell := range row.Cells {
 									if cell.LinkURL != "" {
-										<td>
+										<td title={ cell.Display }>
 											<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
 												{ cell.Display }
 											</a>
 										</td>
 									} else {
-										<td>{ cell.Display }</td>
+										<td title={ cell.Display }>{ cell.Display }</td>
 									}
 								}
 							</tr>

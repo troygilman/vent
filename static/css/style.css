@@ -1359,6 +1359,7 @@ select.select[multiple] option:hover {
 /* Table */
 .data-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
 }
@@ -1374,16 +1375,25 @@ select.select[multiple] option:hover {
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg-secondary);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .data-table td {
     padding: 0.55rem 1rem;
     border-bottom: 1px solid var(--color-border-subtle);
     font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .data-table tbody tr:last-child td {
     border-bottom: none;
 }
 .data-table .link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--color-primary);
     font-weight: 500;
 }
