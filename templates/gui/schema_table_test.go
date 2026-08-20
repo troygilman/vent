@@ -154,6 +154,15 @@ func TestTableColumnWidthPercentSumsTo100(t *testing.T) {
 	}
 }
 
+func TestSchemaTableIndicatorSignal(t *testing.T) {
+	if got := schemaTableIndicatorSignal(true); got != `{"_indicator":true}` {
+		t.Fatalf("loading signal = %q", got)
+	}
+	if got := schemaTableIndicatorSignal(false); got != `{}` {
+		t.Fatalf("loaded signal = %q", got)
+	}
+}
+
 func TestSchemaTableAddButtonIsALink(t *testing.T) {
 	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
 	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
@@ -235,8 +244,8 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, `class="widget-drawer is-open"`) {
 		t.Fatal("missing cookie should not render the drawer open")
 	}
-	if strings.Count(html, `data-indicator="_indicator"`) != 1 {
-		t.Fatal("list fetches should not drive the page overlay; logout keeps data-indicator")
+	if !strings.Contains(html, `id="schema-table-filters"`) || !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("list fetches should drive the existing page overlay")
 	}
 }
 
@@ -355,14 +364,48 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 	if strings.Contains(html, "No data") {
 		t.Fatal("chrome-first paint must not flash No data")
 	}
-	if !strings.Contains(html, `class="table-empty table-loading"`) {
-		t.Fatal("loading table should render a loading placeholder")
+	if strings.Contains(html, "table-loading") {
+		t.Fatal("list pages should use the existing overlay, not an in-table spinner")
 	}
 	if !strings.Contains(html, `aria-busy="true"`) {
 		t.Fatal("loading table should set aria-busy")
 	}
-	if strings.Count(html, `data-indicator="_indicator"`) != 1 {
-		t.Fatal("loading list fetch should not also drive the page overlay")
+	if !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("loading list fetch should drive the existing page overlay")
+	}
+	if !strings.Contains(html, `"_indicator":true`) && !strings.Contains(html, `&#34;_indicator&#34;:true`) {
+		t.Fatal("chrome-first paint should start the overlay indicator before Datastar boots")
+	}
+}
+
+func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "notes",
+		SingularDisplayName: "Note",
+		PluralDisplayName:   "Notes",
+		Columns: []SchemaTableColumn{
+			{Name: "title", Label: "Title", Type: "string"},
+		},
+		Loading: true,
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "No data") {
+		t.Fatal("chrome-first paint must not flash No data")
+	}
+	if !strings.Contains(html, `data-on:load`) || !strings.Contains(html, "@get(location.pathname)") {
+		t.Fatal("tables without filters should lazy-load rows on first paint")
+	}
+	if !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("unfiltered list fetch should drive the existing page overlay")
 	}
 }
 
