@@ -48,6 +48,42 @@ func TestTableFilterActiveCount(t *testing.T) {
 	}
 }
 
+func TestTableScrollContainerIDChangesWithContent(t *testing.T) {
+	page1 := SchemaTableProps{
+		Pagination: SchemaTablePagination{Page: 1, From: 1, To: 50},
+		Rows: []SchemaTableRow{
+			{Cells: []SchemaTableCell{{Display: "Silent Library 0000"}}},
+		},
+	}
+	page2 := SchemaTableProps{
+		Pagination: SchemaTablePagination{Page: 2, From: 51, To: 100},
+		Rows: []SchemaTableRow{
+			{Cells: []SchemaTableCell{{Display: "Silent Library 0049"}}},
+		},
+	}
+	id1 := tableScrollContainerID(page1)
+	id2 := tableScrollContainerID(page2)
+	if id1 == id2 {
+		t.Fatalf("page 1 and page 2 should not share a scroll container id: %s", id1)
+	}
+	if !strings.HasPrefix(id1, "schema-table-scroll-") || !strings.HasPrefix(id2, "schema-table-scroll-") {
+		t.Fatalf("ids = %q, %q", id1, id2)
+	}
+	filtered := page1
+	filtered.FilterableColumns = []SchemaTableFilterableColumn{
+		{Name: "title", Type: "string", Label: "Title", Value: "Library"},
+	}
+	idFilter := tableScrollContainerID(filtered)
+	if idFilter == id1 {
+		t.Fatal("active filters should change the scroll container id")
+	}
+	loading := page1
+	loading.Loading = true
+	if tableScrollContainerID(loading) == id1 {
+		t.Fatal("loading chrome should use a different scroll container id")
+	}
+}
+
 func TestTableFilterChipValue(t *testing.T) {
 	if got := tableFilterChipValue(SchemaTableFilterableColumn{
 		Type: "string", Value: "Dune",
@@ -420,8 +456,8 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer-empty"`) || !strings.Contains(html, "No filters available") {
 		t.Fatal("Filters panel should say no filters are available")
 	}
-	if !strings.Contains(html, `id="schema-table-scroll"`) {
-		t.Fatal("table body should have a stable scroll container to reset on fetch")
+	if !strings.Contains(html, `id="schema-table-scroll-`) {
+		t.Fatal("table body should have a content-keyed scroll container so morphs start at the top")
 	}
 	if strings.Contains(html, `data-init=`) {
 		t.Fatal("unfiltered tables should not use a separate data-init fetch")

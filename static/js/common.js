@@ -66,7 +66,7 @@ window.tableFetch = {
         form.dispatchEvent(new Event("table-fetch"));
     },
     resetScroll() {
-        const box = document.getElementById("schema-table-scroll");
+        const box = document.querySelector(".schema-table .table-container");
         if (!box) {
             return;
         }
@@ -95,9 +95,8 @@ window.tableFetch = {
         if (!el.closest("#schema-table-filters")) {
             return;
         }
-        // Morph reuses #schema-table-scroll, so the browser keeps scrollTop and
-        // overflow anchoring can restore it after layout. Reset after morph
-        // (patch-elements) and again when the fetch fully finishes.
+        // Morph reuses a same-id scrollport and overflow anchoring can restore
+        // scrollTop after layout. Reset after morph and again when finished.
         if (
             detail.type !== "finished" &&
             detail.type !== "datastar-patch-elements"

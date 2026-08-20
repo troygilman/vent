@@ -48,7 +48,7 @@ func TestTableScrollResetsAfterListFetch(t *testing.T) {
 		t.Fatalf("common.js status = %d, want 200", jsRec.Code)
 	}
 	js := jsRec.Body.String()
-	if !strings.Contains(js, `getElementById("schema-table-scroll")`) {
+	if !strings.Contains(js, `querySelector(".schema-table .table-container")`) {
 		t.Fatal("common.js should reset the schema table scroll container")
 	}
 	if !strings.Contains(js, `detail.type !== "datastar-patch-elements"`) {
