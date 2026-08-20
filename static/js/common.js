@@ -63,6 +63,9 @@ window.tableFetch = {
     dispatch(el) {
         const form =
             el.closest("#schema-table-filters") || el.closest("form") || el;
+        // Jump to the top before the request so morph/overflow-anchoring
+        // cannot keep the previous page's scroll offset.
+        this.resetScroll();
         form.dispatchEvent(new Event("table-fetch"));
     },
     resetScroll() {
@@ -72,6 +75,12 @@ window.tableFetch = {
         }
         box.scrollTop = 0;
         box.scrollLeft = 0;
+        if (box.scrollTop === 0 && box.scrollLeft === 0) {
+            return;
+        }
+        // Morph can reuse this node and ignore scrollTop assignment.
+        // A clone is a new overflow element and always starts at 0.
+        box.replaceWith(box.cloneNode(true));
     },
 };
 
@@ -95,8 +104,6 @@ window.tableFetch = {
         if (!el.closest("#schema-table-filters")) {
             return;
         }
-        // Morph reuses a same-id scrollport and overflow anchoring can restore
-        // scrollTop after layout. Reset after morph and again when finished.
         if (
             detail.type !== "finished" &&
             detail.type !== "datastar-patch-elements"
