@@ -420,6 +420,9 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer-empty"`) || !strings.Contains(html, "No filters available") {
 		t.Fatal("Filters panel should say no filters are available")
 	}
+	if !strings.Contains(html, `id="schema-table-scroll"`) {
+		t.Fatal("table body should have a stable scroll container to reset on fetch")
+	}
 	if strings.Contains(html, `data-init=`) {
 		t.Fatal("unfiltered tables should not use a separate data-init fetch")
 	}

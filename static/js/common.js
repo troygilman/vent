@@ -65,4 +65,27 @@ window.tableFetch = {
             el.closest("#schema-table-filters") || el.closest("form") || el;
         form.dispatchEvent(new Event("table-fetch"));
     },
+    resetScroll() {
+        const box = document.getElementById("schema-table-scroll");
+        if (!box) {
+            return;
+        }
+        box.scrollTop = 0;
+        box.scrollLeft = 0;
+    },
 };
+
+document.addEventListener("datastar-fetch", (evt) => {
+    const detail = evt.detail || {};
+    if (detail.type !== "finished") {
+        return;
+    }
+    const el = detail.el;
+    if (!el || typeof el.closest !== "function") {
+        return;
+    }
+    if (!el.closest("#schema-table-filters")) {
+        return;
+    }
+    window.tableFetch.resetScroll();
+});

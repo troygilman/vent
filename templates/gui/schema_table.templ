@@ -367,7 +367,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 
 templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
-		<div class="table-container">
+		<div id="schema-table-scroll" class="table-container">
 			<table class="data-table">
 				<colgroup>
 					for i := range props.Columns {
