@@ -127,7 +127,7 @@ mux := http.NewServeMux()
 mux.Handle("/admin/", adminHandler)
 ```
 
-Create at least one staff/superuser so you can sign in. The example seeds `admin@vent.com` / `test_user`.
+Create at least one staff/superuser so you can sign in. The example seeds `admin@vent.com` / `test_user`, plus thousands of users, authors, books, and reviews for list/filter testing.
 
 Then open `http://localhost:8080/admin/`.
 
@@ -331,7 +331,7 @@ docker build -t vent-example .
 docker run --rm -p 8080:8080 vent-example
 ```
 
-Default login after first run: `admin@vent.com` / `test_user`.
+Default login after first run: `admin@vent.com` / `test_user`. The first start also seeds thousands of library rows (users, authors, books, reviews) so list views and filters have plenty of data. Re-running the server is a no-op once that bulk set is present; delete `tmp/test.db` to reseed.
 
 The example is a small library domain (`Author`, `Book`, `Review`) plus Vent auth:
 
