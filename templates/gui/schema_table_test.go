@@ -496,11 +496,17 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 		t.Fatalf("render: %v", err)
 	}
 	html := buf.String()
+	if !strings.Contains(html, "Page 2 of 3") {
+		t.Fatal("pagination should show the current page")
+	}
 	if !strings.Contains(html, "11–20 of 25") {
 		t.Fatal("pagination status should show the current slice")
 	}
 	if !strings.Contains(html, `aria-label="Pagination"`) {
 		t.Fatal("pagination nav should be labeled")
+	}
+	if !strings.Contains(html, `aria-label="First page"`) || !strings.Contains(html, `aria-label="Last page"`) {
+		t.Fatal("pagination should include first and last page controls")
 	}
 	if strings.Contains(html, `aria-current="page"`) {
 		t.Fatal("pagination should not render numbered page buttons")
@@ -510,11 +516,11 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	}
 	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
 		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
-		t.Fatal("next page should set $page then dispatch table-fetch")
+		t.Fatal("next and last should set $page then dispatch table-fetch")
 	}
 	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
 		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
-		t.Fatal("previous page should clear $page then dispatch table-fetch")
+		t.Fatal("first and previous should clear $page then dispatch table-fetch")
 	}
 	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {
 		t.Fatal("loaded table should bind the clamped $page signal")

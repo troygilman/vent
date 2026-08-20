@@ -25,26 +25,28 @@ type SchemaTableProps struct {
 }
 
 type SchemaTablePagination struct {
-	Page     int
-	PageSize int
-	Total    int
-	From     int
-	To       int
-	HasPrev  bool
-	HasNext  bool
-	Signal   string
+	Page       int
+	PageSize   int
+	Total      int
+	TotalPages int
+	From       int
+	To         int
+	HasPrev    bool
+	HasNext    bool
+	Signal     string
 }
 
 func NewSchemaTablePagination(page vent.ListPage) SchemaTablePagination {
 	return SchemaTablePagination{
-		Page:     page.Page,
-		PageSize: page.PageSize,
-		Total:    page.Total,
-		From:     page.From(),
-		To:       page.To(),
-		HasPrev:  page.HasPrev(),
-		HasNext:  page.HasNext(),
-		Signal:   page.Signal(),
+		Page:       page.Page,
+		PageSize:   page.PageSize,
+		Total:      page.Total,
+		TotalPages: page.TotalPages(),
+		From:       page.From(),
+		To:         page.To(),
+		HasPrev:    page.HasPrev(),
+		HasNext:    page.HasNext(),
+		Signal:     page.Signal(),
 	}
 }
 
@@ -412,33 +414,54 @@ templ schemaTable(props SchemaTableProps) {
 
 templ schemaTablePagination(p SchemaTablePagination) {
 	<nav class="table-pagination" aria-label="Pagination">
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="First page"
+			disabled?={ !p.HasPrev }
+			if p.HasPrev {
+				data-on:click={ tablePageClickExpr(1) }
+			}
+		>
+			First
+		</button>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Previous page"
+			disabled?={ !p.HasPrev }
+			if p.HasPrev {
+				data-on:click={ tablePageClickExpr(p.Page - 1) }
+			}
+		>
+			Prev
+		</button>
 		<div class="table-pagination-status">
-			{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }
+			<div class="table-pagination-page">Page { fmt.Sprintf("%d of %d", p.Page, p.TotalPages) }</div>
+			<div class="table-pagination-range">{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }</div>
 		</div>
-		<div class="table-pagination-actions">
-			<button
-				type="button"
-				class="btn btn-sm btn-outline"
-				aria-label="Previous page"
-				disabled?={ !p.HasPrev }
-				if p.HasPrev {
-					data-on:click={ tablePageClickExpr(p.Page - 1) }
-				}
-			>
-				Prev
-			</button>
-			<button
-				type="button"
-				class="btn btn-sm btn-outline"
-				aria-label="Next page"
-				disabled?={ !p.HasNext }
-				if p.HasNext {
-					data-on:click={ tablePageClickExpr(p.Page + 1) }
-				}
-			>
-				Next
-			</button>
-		</div>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Next page"
+			disabled?={ !p.HasNext }
+			if p.HasNext {
+				data-on:click={ tablePageClickExpr(p.Page + 1) }
+			}
+		>
+			Next
+		</button>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Last page"
+			disabled?={ !p.HasNext }
+			if p.HasNext {
+				data-on:click={ tablePageClickExpr(p.TotalPages) }
+			}
+		>
+			Last
+		</button>
 	</nav>
 }
 
