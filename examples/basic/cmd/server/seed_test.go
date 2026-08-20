@@ -96,3 +96,46 @@ func TestSeedDemoDataCreatesThousandsOfRows(t *testing.T) {
 		t.Errorf("second seed changed book count from %d to %d", bookCount, bookCountAfter)
 	}
 }
+
+func TestSeedDemoDataExpandsExistingShowcaseRows(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:seed_expand_test?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	credentialGenerator := auth.NewBCryptCredentialGenerator()
+
+	if err := seedAdminUser(ctx, client, credentialGenerator); err != nil {
+		t.Fatalf("seed admin user: %v", err)
+	}
+	if _, _, err := seedNamedShowcase(ctx, client, credentialGenerator); err != nil {
+		t.Fatalf("seed named showcase: %v", err)
+	}
+
+	beforeBooks, err := client.Book.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count books before bulk seed: %v", err)
+	}
+	if beforeBooks != 2 {
+		t.Fatalf("showcase books = %d, want 2", beforeBooks)
+	}
+
+	if err := seedDemoData(ctx, client, credentialGenerator); err != nil {
+		t.Fatalf("expand seed: %v", err)
+	}
+
+	afterBooks, err := client.Book.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count books after bulk seed: %v", err)
+	}
+	if afterBooks != beforeBooks+seedBulkBookCount {
+		t.Errorf("books after expand = %d, want %d", afterBooks, beforeBooks+seedBulkBookCount)
+	}
+
+	userCount, err := client.User.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count users after expand: %v", err)
+	}
+	if userCount != 1+4+seedBulkUserCount {
+		t.Errorf("users after expand = %d, want %d", userCount, 1+4+seedBulkUserCount)
+	}
+}
