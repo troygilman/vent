@@ -8,6 +8,9 @@ import (
 
 // Permission uses PermissionMixin defaults: DisableCreate, DisableDelete, and
 // ReadOnlyFields for "name" (permissions are managed by the migrator).
+// FilterableColumns is omitted so the list page has no filters (this schema
+// annotation replaces the mixin, which would otherwise filter on name). That
+// path is how we test chrome-first loading without a filter form.
 type Permission struct {
 	ent.Schema
 }
@@ -29,7 +32,6 @@ func (Permission) Annotations() []schema.Annotation {
 			DisableDelete:       true,
 			ReadOnlyFields:      []string{"name"},
 			TableColumns:        []string{"name", "groups"},
-			FilterableColumns:   []string{"name"},
 			FieldSets: []vent.FieldSet{{
 				Fields: []string{"name", "groups"},
 			}},
