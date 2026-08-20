@@ -105,6 +105,7 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				{Name: "active", Label: "Active", Type: "bool", Value: filter.Active.Normalize().String()},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -499,6 +500,7 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 				{Name: "pages", Label: "Pages", Type: "int", Value: filter.Pages},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -801,29 +803,12 @@ type PermissionUpdateInput struct {
 	Groups *[]string `json:"groups"`
 }
 
-// PermissionListFilter is the typed Datastar filter signal for listing Permission.
-type PermissionListFilter struct {
-	Name string `json:"name"`
-}
-
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter PermissionListFilter
 		rows := []gui.SchemaTableRow{}
 		if vent.IsDatastarRequest(r) {
 			query := h.schemas.Permission.EagerLoadQuery(h.client.Permission.Query())
-			var signals struct {
-				Filter PermissionListFilter `json:"filter"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid filter").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if filterVal := filter.Name; filterVal != "" {
-				query = query.Where(permission.NameContainsFold(filterVal))
-			}
 
 			entities, err := query.
 				Order(permission.ByID()).
@@ -865,11 +850,10 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string"},
 				{Name: "groups", Label: "Groups", Type: "edge"},
 			},
-			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
-			},
-			Rows:          rows,
-			RenderContext: renderCtx,
+			FilterableColumns: []gui.SchemaTableFilterableColumn{},
+			Rows:              rows,
+			Loading:           !vent.IsDatastarRequest(r),
+			RenderContext:     renderCtx,
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
@@ -1106,6 +1090,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -1485,6 +1470,7 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				{Name: "rating", Label: "Rating", Type: "int", Value: filter.Rating},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -1844,6 +1830,7 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 

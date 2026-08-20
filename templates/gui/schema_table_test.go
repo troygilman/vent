@@ -235,6 +235,12 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, `class="widget-drawer is-open"`) {
 		t.Fatal("missing cookie should not render the drawer open")
 	}
+	if !strings.Contains(html, `id="schema-table-filters"`) || !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("list fetches should drive the existing page overlay")
+	}
+	if strings.Contains(html, "No filters available") {
+		t.Fatal("schemas with filterable columns should not show the empty filters message")
+	}
 }
 
 func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
@@ -323,5 +329,106 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 	}
 	if !strings.Contains(html, `title="admin@vent.com"`) {
 		t.Fatal("truncated cells should expose full value in title")
+	}
+}
+
+func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+		},
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "email", Label: "Email", Type: "string", Value: ""},
+		},
+		Loading: true,
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "No data") {
+		t.Fatal("chrome-first paint must not flash No data")
+	}
+	if !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("loading list fetch should drive the existing page overlay")
+	}
+}
+
+func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "notes",
+		SingularDisplayName: "Note",
+		PluralDisplayName:   "Notes",
+		Columns: []SchemaTableColumn{
+			{Name: "title", Label: "Title", Type: "string"},
+		},
+		Loading: true,
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "No data") {
+		t.Fatal("chrome-first paint must not flash No data")
+	}
+	if strings.Contains(html, `id="schema-table-page"`) {
+		t.Fatal("unfiltered tables should use the same list form as filtered tables")
+	}
+	if !strings.Contains(html, `id="schema-table-filters"`) {
+		t.Fatal("unfiltered tables should still wrap the page in the list form")
+	}
+	if !strings.Contains(html, `class="widget-drawer"`) {
+		t.Fatal("unfiltered tables should still render the widget drawer")
+	}
+	if !strings.Contains(html, `data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"`) {
+		t.Fatal("unfiltered tables should lazy-load rows the same way as filtered tables")
+	}
+	if !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("unfiltered list fetch should drive the existing page overlay")
+	}
+	if !strings.Contains(html, `class="widget-drawer-empty"`) || !strings.Contains(html, "No filters available") {
+		t.Fatal("Filters panel should say no filters are available")
+	}
+	if strings.Contains(html, `data-init=`) {
+		t.Fatal("unfiltered tables should not use a separate data-init fetch")
+	}
+}
+
+func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, "No data") {
+		t.Fatal("loaded empty table should say No data")
 	}
 }
