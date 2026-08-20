@@ -174,146 +174,132 @@ templ SchemaTablePage(props SchemaTableProps) {
 	{{ widgets := tableWidgetsState(ctx) }}
 	@Index() {
 		@Layout(props.LayoutProps) {
-			if len(props.FilterableColumns) > 0 {
-				<form
-					id="schema-table-filters"
-					class="table-filters"
-					data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
-					data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
-					data-query-string__history="{include: /^filter\./}"
-					data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-					data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-					data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
-					data-on:submit__prevent="void 0"
-					data-indicator="_indicator"
-				>
-					<div class="page-with-widgets-main">
-						<div class="page-header">
-							<div class="page-title">{ props.PluralDisplayName }</div>
-							if props.RenderContext.CanCreate {
-								<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
-							}
-						</div>
-						if filtersActive {
-							<div class="table-filter-toolbar">
-								<div class="table-filter-chips">
-									for _, filter := range props.FilterableColumns {
-										if tableFilterActive(filter) {
-											<span class="table-filter-chip">
-												<span class="table-filter-chip-text">
-													{ filter.Label }: <b>{ tableFilterChipValue(filter) }</b>
-												</span>
-												<button
-													type="button"
-													class="table-filter-chip-remove"
-													aria-label={ "Remove " + filter.Label + " filter" }
-													data-on:click={ tableFilterClearClick(filter.Name) }
-												>
-													×
-												</button>
-											</span>
-										}
-									}
-								</div>
-								<button
-									type="button"
-									class="btn btn-sm btn-outline"
-									data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
-								>
-									Clear
-								</button>
-							</div>
-						}
-						@schemaTable(props)
-					</div>
-					<aside
-						class={ "widget-drawer", templ.KV("is-open", widgets.Open) }
-						data-class:is-open="$widgets._open"
-						aria-label="Widgets"
-					>
-						<div class="widget-drawer-rail" role="toolbar" aria-label="Widgets">
-							<div class="widget-drawer-rail-header">
-								<button
-									type="button"
-									class="widget-drawer-icon"
-									if widgets.Open {
-										aria-label="Collapse drawer"
-										aria-expanded="true"
-									} else {
-										aria-label="Expand drawer"
-										aria-expanded="false"
-									}
-									data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
-									data-attr:aria-expanded="$widgets._open"
-									data-on:click="widgetDrawer.toggleOpen($widgets)"
-								>
-									@DrawerToggleIcon()
-								</button>
-							</div>
-							<div class="widget-drawer-rail-widgets">
-								<button
-									type="button"
-									class={ "widget-drawer-icon", templ.KV("is-active", tableWidgetsFilterActive(widgets)) }
-									aria-label="Filters"
-									aria-controls="widget-filter-panel"
-									if tableWidgetsFilterActive(widgets) {
-										aria-expanded="true"
-									} else {
-										aria-expanded="false"
-									}
-									data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
-									data-class:is-active="$widgets._open && $widgets.active === 'filter'"
-									data-on:click="widgetDrawer.open($widgets, 'filter')"
-								>
-									@FilterIcon()
-									if filterCount > 0 {
-										<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
-									}
-								</button>
-							</div>
-						</div>
-						<div class="widget-drawer-panel">
-							<div id="widget-filter-panel" class="widget-drawer-widget">
-								<div class="widget-drawer-header">
-									<div class="widget-drawer-title">Filters</div>
-								</div>
-								<div class="widget-drawer-body">
-									for _, filter := range props.FilterableColumns {
-										@schemaTableFilterField(filter)
-									}
-								</div>
-								if filtersActive {
-									<div class="widget-drawer-footer">
-										<button
-											type="button"
-											class="btn btn-sm btn-outline"
-											data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
-										>
-											Clear
-										</button>
-									</div>
-								}
-							</div>
-						</div>
-					</aside>
-				</form>
-			} else {
-				<div
-					id="schema-table-page"
-					data-indicator="_indicator"
-					if props.Loading {
-						data-init="@get(location.pathname)"
-					}
-				>
+			<form
+				id="schema-table-filters"
+				class="table-filters"
+				data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
+				data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
+				data-query-string__history="{include: /^filter\./}"
+				data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+				data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+				data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
+				data-on:submit__prevent="void 0"
+				data-indicator="_indicator"
+			>
+				<div class="page-with-widgets-main">
 					<div class="page-header">
 						<div class="page-title">{ props.PluralDisplayName }</div>
 						if props.RenderContext.CanCreate {
 							<a class="btn btn-primary" href={ templ.SafeURL(schemaPath + "add/") }>Add { props.SingularDisplayName }</a>
 						}
 					</div>
+					if filtersActive {
+						<div class="table-filter-toolbar">
+							<div class="table-filter-chips">
+								for _, filter := range props.FilterableColumns {
+									if tableFilterActive(filter) {
+										<span class="table-filter-chip">
+											<span class="table-filter-chip-text">
+												{ filter.Label }: <b>{ tableFilterChipValue(filter) }</b>
+											</span>
+											<button
+												type="button"
+												class="table-filter-chip-remove"
+												aria-label={ "Remove " + filter.Label + " filter" }
+												data-on:click={ tableFilterClearClick(filter.Name) }
+											>
+												×
+											</button>
+										</span>
+									}
+								}
+							</div>
+							<button
+								type="button"
+								class="btn btn-sm btn-outline"
+								data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+							>
+								Clear
+							</button>
+						</div>
+					}
 					@schemaTable(props)
 				</div>
-			}
+				<aside
+					class={ "widget-drawer", templ.KV("is-open", widgets.Open) }
+					data-class:is-open="$widgets._open"
+					aria-label="Widgets"
+				>
+					<div class="widget-drawer-rail" role="toolbar" aria-label="Widgets">
+						<div class="widget-drawer-rail-header">
+							<button
+								type="button"
+								class="widget-drawer-icon"
+								if widgets.Open {
+									aria-label="Collapse drawer"
+									aria-expanded="true"
+								} else {
+									aria-label="Expand drawer"
+									aria-expanded="false"
+								}
+								data-attr:aria-label="$widgets._open ? 'Collapse drawer' : 'Expand drawer'"
+								data-attr:aria-expanded="$widgets._open"
+								data-on:click="widgetDrawer.toggleOpen($widgets)"
+							>
+								@DrawerToggleIcon()
+							</button>
+						</div>
+						<div class="widget-drawer-rail-widgets">
+							<button
+								type="button"
+								class={ "widget-drawer-icon", templ.KV("is-active", tableWidgetsFilterActive(widgets)) }
+								aria-label="Filters"
+								aria-controls="widget-filter-panel"
+								if tableWidgetsFilterActive(widgets) {
+									aria-expanded="true"
+								} else {
+									aria-expanded="false"
+								}
+								data-attr:aria-expanded="$widgets._open && $widgets.active === 'filter'"
+								data-class:is-active="$widgets._open && $widgets.active === 'filter'"
+								data-on:click="widgetDrawer.open($widgets, 'filter')"
+							>
+								@FilterIcon()
+								if filterCount > 0 {
+									<span class="widget-drawer-badge">{ fmt.Sprintf("%d", filterCount) }</span>
+								}
+							</button>
+						</div>
+					</div>
+					<div class="widget-drawer-panel">
+						<div id="widget-filter-panel" class="widget-drawer-widget">
+							<div class="widget-drawer-header">
+								<div class="widget-drawer-title">Filters</div>
+							</div>
+							<div class="widget-drawer-body">
+								if len(props.FilterableColumns) == 0 {
+									<p class="widget-drawer-empty">No filters available</p>
+								} else {
+									for _, filter := range props.FilterableColumns {
+										@schemaTableFilterField(filter)
+									}
+								}
+							</div>
+							if filtersActive {
+								<div class="widget-drawer-footer">
+									<button
+										type="button"
+										class="btn btn-sm btn-outline"
+										data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+									>
+										Clear
+									</button>
+								</div>
+							}
+						</div>
+					</div>
+				</aside>
+			</form>
 			@Indicator()
 		}
 	}

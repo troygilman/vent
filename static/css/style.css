@@ -1074,6 +1074,11 @@ a {
     overflow: auto;
     padding: var(--space-4);
 }
+.widget-drawer-empty {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-subtle);
+}
 .widget-drawer-footer {
     display: flex;
     gap: var(--space-2);

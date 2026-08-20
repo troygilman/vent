@@ -238,6 +238,9 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if !strings.Contains(html, `id="schema-table-filters"`) || !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("list fetches should drive the existing page overlay")
 	}
+	if strings.Contains(html, "No filters available") {
+		t.Fatal("schemas with filterable columns should not show the empty filters message")
+	}
 }
 
 func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
@@ -383,22 +386,26 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if strings.Contains(html, "No data") {
 		t.Fatal("chrome-first paint must not flash No data")
 	}
-	pageStart := strings.Index(html, `id="schema-table-page"`)
-	if pageStart < 0 {
-		t.Fatal("unfiltered table should wrap the page in #schema-table-page")
+	if strings.Contains(html, `id="schema-table-page"`) {
+		t.Fatal("unfiltered tables should use the same list form as filtered tables")
 	}
-	tagEnd := strings.Index(html[pageStart:], ">")
-	if tagEnd < 0 {
-		t.Fatal("schema-table-page tag is truncated")
+	if !strings.Contains(html, `id="schema-table-filters"`) {
+		t.Fatal("unfiltered tables should still wrap the page in the list form")
 	}
-	tag := html[pageStart : pageStart+tagEnd]
-	indicatorAt := strings.Index(tag, `data-indicator="_indicator"`)
-	initAt := strings.Index(tag, `data-init="@get(location.pathname)"`)
-	if indicatorAt < 0 || initAt < 0 {
-		t.Fatal("tables without filters should lazy-load rows on first paint")
+	if !strings.Contains(html, `class="widget-drawer"`) {
+		t.Fatal("unfiltered tables should still render the widget drawer")
 	}
-	if initAt < indicatorAt {
-		t.Fatal("data-indicator must precede data-init so the overlay signal exists before the fetch")
+	if !strings.Contains(html, `data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"`) {
+		t.Fatal("unfiltered tables should lazy-load rows the same way as filtered tables")
+	}
+	if !strings.Contains(html, `data-indicator="_indicator"`) {
+		t.Fatal("unfiltered list fetch should drive the existing page overlay")
+	}
+	if !strings.Contains(html, `class="widget-drawer-empty"`) || !strings.Contains(html, "No filters available") {
+		t.Fatal("Filters panel should say no filters are available")
+	}
+	if strings.Contains(html, `data-init=`) {
+		t.Fatal("unfiltered tables should not use a separate data-init fetch")
 	}
 }
 

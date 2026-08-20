@@ -9,8 +9,9 @@ import (
 // Permission uses PermissionMixin defaults: DisableCreate, DisableDelete, and
 // ReadOnlyFields for "name" (permissions are managed by the migrator).
 // FilterableColumns is omitted so the list page has no filters (this schema
-// annotation replaces the mixin, which would otherwise filter on name). That
-// path is how we test chrome-first loading without a filter form.
+// annotation replaces the mixin, which would otherwise filter on name). The
+// list still uses the same form and widget drawer; the Filters panel says
+// no filters are available.
 type Permission struct {
 	ent.Schema
 }
