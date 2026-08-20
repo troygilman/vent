@@ -106,6 +106,28 @@ func tableWidgetsCookieExpr(adminPath string) string {
 	return fmt.Sprintf(`{include: /^widgets\./, path: %q}`, adminPath)
 }
 
+// tableColumnKind maps a list-column type to a stable layout kind used for
+// table-layout:fixed widths. Cell content must not change these kinds, or
+// lazy-loaded rows will shift the headers.
+func tableColumnKind(colType string) string {
+	switch colType {
+	case "bool":
+		return "bool"
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float", "float32", "float64":
+		return "num"
+	case "time", "time.Time":
+		return "time"
+	default:
+		return "text"
+	}
+}
+
+func tableColumnClass(colType string) string {
+	return "data-col-" + tableColumnKind(colType)
+}
+
 templ SchemaTablePage(props SchemaTableProps) {
 	{{ adminPath := requestctx.MustAdminPath(ctx) }}
 	{{ schemaPath := fmt.Sprintf("%s%s/", adminPath, props.RouteName) }}
@@ -258,10 +280,15 @@ templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
 		<div class="table-container">
 			<table class="data-table">
+				<colgroup>
+					for _, column := range props.Columns {
+						<col class={ tableColumnClass(column.Type) }/>
+					}
+				</colgroup>
 				<thead>
 					<tr>
 						for _, column := range props.Columns {
-							<th>{ column.Label }</th>
+							<th title={ column.Label }>{ column.Label }</th>
 						}
 					</tr>
 				</thead>
@@ -275,13 +302,13 @@ templ schemaTable(props SchemaTableProps) {
 							<tr>
 								for _, cell := range row.Cells {
 									if cell.LinkURL != "" {
-										<td>
+										<td title={ cell.Display }>
 											<a class="link" href={ templ.SafeURL(cell.LinkURL) }>
 												{ cell.Display }
 											</a>
 										</td>
 									} else {
-										<td>{ cell.Display }</td>
+										<td title={ cell.Display }>{ cell.Display }</td>
 									}
 								}
 							</tr>

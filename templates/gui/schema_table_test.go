@@ -102,6 +102,30 @@ func TestTableWidgetsCookieExpr(t *testing.T) {
 	}
 }
 
+func TestTableColumnKind(t *testing.T) {
+	cases := map[string]string{
+		"bool":      "bool",
+		"int":       "num",
+		"int64":     "num",
+		"uint":      "num",
+		"float64":   "num",
+		"time":      "time",
+		"time.Time": "time",
+		"string":    "text",
+		"edge":      "text",
+		"custom":    "text",
+		"":          "text",
+	}
+	for colType, want := range cases {
+		if got := tableColumnKind(colType); got != want {
+			t.Errorf("tableColumnKind(%q) = %q, want %q", colType, got, want)
+		}
+		if got := tableColumnClass(colType); got != "data-col-"+want {
+			t.Errorf("tableColumnClass(%q) = %q, want %q", colType, got, "data-col-"+want)
+		}
+	}
+}
+
 func TestSchemaTableAddButtonIsALink(t *testing.T) {
 	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
 	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
@@ -223,5 +247,55 @@ func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
 	}
 	if !strings.Contains(html, `class="widget-drawer-icon is-active"`) {
 		t.Fatal("open filter cookie should mark the Filters icon active")
+	}
+}
+
+func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "users",
+		SingularDisplayName: "User",
+		PluralDisplayName:   "Users",
+		Columns: []SchemaTableColumn{
+			{Name: "email", Label: "Email", Type: "string"},
+			{Name: "is_staff", Label: "IsStaff", Type: "bool"},
+			{Name: "pages", Label: "Pages", Type: "int"},
+			{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
+			{Name: "author", Label: "Author", Type: "edge"},
+		},
+		Rows: []SchemaTableRow{{
+			Cells: []SchemaTableCell{
+				{Display: "admin@vent.com", LinkURL: "/admin/users/1/"},
+				{Display: "true"},
+				{Display: "412"},
+				{Display: "2026-08-20T03:43"},
+				{Display: "Frank Herbert"},
+			},
+		}},
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	for _, class := range []string{
+		`class="data-col-text"`,
+		`class="data-col-bool"`,
+		`class="data-col-num"`,
+		`class="data-col-time"`,
+	} {
+		if !strings.Contains(html, "<col "+class) {
+			t.Fatalf("colgroup missing %s in:\n%s", class, html)
+		}
+	}
+	if strings.Count(html, "<col ") != 5 {
+		t.Fatalf("want 5 col elements, html:\n%s", html)
+	}
+	if !strings.Contains(html, `title="admin@vent.com"`) {
+		t.Fatal("truncated cells should expose full value in title")
 	}
 }
