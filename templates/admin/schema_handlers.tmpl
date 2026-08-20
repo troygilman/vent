@@ -144,6 +144,9 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 				{{- end }}
 			},
 			Rows:          rows,
+			{{- if $rc.FilterableColumns }}
+			Loading:       !vent.IsDatastarRequest(r),
+			{{- end }}
 			RenderContext: renderCtx,
 		}
 

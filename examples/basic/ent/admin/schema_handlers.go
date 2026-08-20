@@ -105,6 +105,7 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				{Name: "active", Label: "Active", Type: "bool", Value: filter.Active.Normalize().String()},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -499,6 +500,7 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 				{Name: "pages", Label: "Pages", Type: "int", Value: filter.Pages},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -869,6 +871,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -1106,6 +1109,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 				{Name: "name", Label: "Name", Type: "string", Value: filter.Name},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -1485,6 +1489,7 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				{Name: "rating", Label: "Rating", Type: "int", Value: filter.Rating},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 
@@ -1844,6 +1849,7 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},
 			Rows:          rows,
+			Loading:       !vent.IsDatastarRequest(r),
 			RenderContext: renderCtx,
 		}
 

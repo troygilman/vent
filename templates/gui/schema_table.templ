@@ -17,6 +17,9 @@ type SchemaTableProps struct {
 	Rows                []SchemaTableRow
 	FilterableColumns   []SchemaTableFilterableColumn
 	RenderContext       RenderContext
+	// Loading is true for the chrome-first HTML response before Datastar
+	// fetches rows. That paint must not say "No data".
+	Loading bool
 }
 
 type SchemaTableColumn struct {
@@ -314,7 +317,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
 		<div class="table-container">
-			<table class="data-table">
+			<table class="data-table" aria-busy={ fmt.Sprintf("%t", props.Loading) }>
 				<colgroup>
 					for i := range props.Columns {
 						<col width={ tableColumnWidthPercent(props.Columns, i) }/>
@@ -328,7 +331,14 @@ templ schemaTable(props SchemaTableProps) {
 					</tr>
 				</thead>
 				<tbody>
-					if len(props.Rows) == 0 {
+					if props.Loading {
+						<tr>
+							<td class="table-empty table-loading" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>
+								<span class="loading loading-bars" aria-hidden="true"></span>
+								<span class="visually-hidden">Loading</span>
+							</td>
+						</tr>
+					} else if len(props.Rows) == 0 {
 						<tr>
 							<td class="table-empty" colspan={ fmt.Sprintf("%d", len(props.Columns)) }>No data</td>
 						</tr>
