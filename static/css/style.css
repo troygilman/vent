@@ -88,6 +88,7 @@
     --field-label-width: 11rem;
     --field-label-col: 9.5rem;
     --input-height: 2.4rem;
+    --btn-height: 2.45rem;
     --indicator-show-delay: 0.2s;
     --font-sans:
         "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -682,6 +683,7 @@ a {
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
+    min-height: calc(var(--btn-height) + var(--space-4) + 1px);
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border-subtle);
     flex-shrink: 0;
@@ -767,7 +769,7 @@ a {
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    height: 2.45rem;
+    height: var(--btn-height);
     padding: 0 1.1rem;
     font-size: 0.875rem;
     font-weight: 600;
@@ -870,8 +872,10 @@ a {
     border-radius: var(--radius);
 }
 .table-empty {
+    height: 100%;
     padding: var(--space-6);
     text-align: center;
+    vertical-align: middle;
     font-size: 0.875rem;
     color: var(--color-text-muted);
 }
@@ -1378,6 +1382,9 @@ select.select[multiple] option:hover {
     table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
+}
+.data-table:has(.table-empty) {
+    height: 100%;
 }
 .data-table thead th {
     position: sticky;
