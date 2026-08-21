@@ -12,11 +12,11 @@ func TestParseListPage(t *testing.T) {
 		wantPage int
 		wantSize int
 	}{
-		{"", 50, 1, 50},
-		{"0", 50, 1, 50},
-		{"-3", 50, 1, 50},
-		{"nope", 50, 1, 50},
-		{"2", 50, 2, 50},
+		{"", 100, 1, 100},
+		{"0", 100, 1, 100},
+		{"-3", 100, 1, 100},
+		{"nope", 100, 1, 100},
+		{"2", 100, 2, 100},
 		{"2", 0, 2, DefaultListPageSize},
 		{"2", -10, 2, DefaultListPageSize},
 	}

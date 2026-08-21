@@ -68,7 +68,7 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.Author.EagerLoadQuery(query).
@@ -472,7 +472,7 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.Book.EagerLoadQuery(query).
@@ -849,7 +849,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.Permission.EagerLoadQuery(query).
@@ -1099,7 +1099,7 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.PermissionGroup.EagerLoadQuery(query).
@@ -1490,7 +1490,7 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.Review.EagerLoadQuery(query).
@@ -1859,7 +1859,7 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 				vent.HandleError(w, r, normalizeError(err))
 				return
 			}
-			page := vent.ParseListPage(signals.Page, 50).WithTotal(total)
+			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
 			pagination = gui.NewSchemaTablePagination(page)
 
 			entities, err := h.schemas.User.EagerLoadQuery(query).

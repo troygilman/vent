@@ -3,7 +3,7 @@ package vent
 import "strconv"
 
 // DefaultListPageSize is the list page size when VentSchemaAnnotation.PageSize is unset.
-const DefaultListPageSize = 50
+const DefaultListPageSize = 100
 
 // ListPage is a 1-based offset page over a filtered list query.
 type ListPage struct {

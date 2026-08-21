@@ -202,7 +202,7 @@ func (Book) Annotations() []schema.Annotation {
 | `SingularDisplayName` / `PluralDisplayName` | Nav and page titles |
 | `TableColumns` | List-view columns (fields or edges) |
 | `FilterableColumns` | List-view filters for string, bool, and int fields |
-| `PageSize` | List-view page size (default 50) |
+| `PageSize` | List-view page size (default 100) |
 | `FieldSets` | Form field order (first set is used; multi-set UI is incomplete) |
 | `CustomFields` | Virtual surface members you implement via `FieldX()` |
 | `Permissions` | Extra permission rows (name + description) for the migrator |
