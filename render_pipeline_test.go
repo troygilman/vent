@@ -544,6 +544,58 @@ func assertFilterableColumnNames(t *testing.T, columns []FilterableColumnConfig,
 	}
 }
 
+func TestOptionSearchColumns(t *testing.T) {
+	got := optionSearchColumns(RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "Name"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "email", Type: "string", PredicateName: "Email"},
+			{Name: "active", Type: "bool", PredicateName: "Active"},
+		},
+	})
+	if !reflect.DeepEqual(got, []string{"Email", "Name"}) {
+		t.Fatalf("optionSearchColumns = %#v, want Email+Name", got)
+	}
+
+	got = optionSearchColumns(RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "title", Type: "string", PredicateName: "Title"},
+		},
+	})
+	if !reflect.DeepEqual(got, []string{"Title"}) {
+		t.Fatalf("optionSearchColumns title = %#v", got)
+	}
+}
+
+func TestOptionPreloadEdges(t *testing.T) {
+	authorLike := RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "active", Type: "bool", PredicateName: "Active"},
+		},
+		AdminSurface: []SurfaceMember{
+			{Name: "user", MemberKind: MemberEdge, EdgeUnique: true},
+			{Name: "books", MemberKind: MemberEdge, EdgeUnique: false},
+		},
+	}
+	if got := optionPreloadEdges(authorLike); !reflect.DeepEqual(got, []string{"User"}) {
+		t.Fatalf("optionPreloadEdges author = %#v, want [User]", got)
+	}
+
+	bookLike := RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "title", Type: "string", PredicateName: "Title"},
+		},
+		AdminSurface: []SurfaceMember{
+			{Name: "author", MemberKind: MemberEdge, EdgeUnique: true},
+		},
+	}
+	if got := optionPreloadEdges(bookLike); got != nil {
+		t.Fatalf("optionPreloadEdges book = %#v, want nil", got)
+	}
+}
+
 func findFilterableColumn(t *testing.T, columns []FilterableColumnConfig, name string) FilterableColumnConfig {
 	t.Helper()
 	for _, column := range columns {

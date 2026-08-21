@@ -7,6 +7,7 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -53,6 +54,87 @@ type {{ $node.Name }}ListFilter struct {
 	{{ $filter.PredicateName }} string
 	{{- end }}
 	{{- end }}
+}
+{{- end }}
+
+{{- if $rc.HasFormEdges }}
+func (h *AdminHandler) can{{ $node.Name }}Options(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_{{ resourceName $node.Name }}"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.{{ $node.Name }}.CanCreate(ctx)
+}
+
+type {{ $node.Name }}OptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) {{ lower $node.Name }}OptionLoader(edge string) ({{ $node.Name }}OptionLoader, bool) {
+	switch edge {
+	{{- range $member := $rc.AdminSurface }}
+	{{- if and (isMemberKindEdge $member) $member.InForm }}
+	case "{{ $member.Name }}":
+		loader, ok := h.schemas.{{ $node.Name }}.Field{{ $member.Label }}().({{ $node.Name }}OptionLoader)
+		return loader, ok
+	{{- end }}
+	{{- end }}
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) get{{ $node.Name }}OptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.{{ lower $node.Name }}OptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   {{ $node.Name }}OptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"{{ $rc.RouteName }}/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func {{ $node.Name }}OptionEdgeUnique(edge string) bool {
+	switch edge {
+	{{- range $member := $rc.AdminSurface }}
+	{{- if and (isMemberKindEdge $member) $member.InForm }}
+	case "{{ $member.Name }}":
+		return {{ $member.EdgeUnique }}
+	{{- end }}
+	{{- end }}
+	default:
+		return true
+	}
 }
 {{- end }}
 

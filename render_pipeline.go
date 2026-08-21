@@ -16,6 +16,9 @@ type RenderConfig struct {
 	FilterableColumns []FilterableColumnConfig
 	CreateInputFields []InputFieldSpec
 	UpdateInputFields []InputFieldSpec
+
+	// HasFormEdges is true when at least one admin-surface member is an edge.
+	HasFormEdges bool
 }
 
 // FilterableColumnConfig describes a list-view filter control and its Ent predicate.
@@ -84,6 +87,13 @@ type SurfaceMember struct {
 	// IsCustomField is true for virtual admin members (MemberCustom), including
 	// builtins like password and user-declared CustomFields entries.
 	IsCustomField bool
+
+	// OptionSearchColumns are ContainsFold predicates on the related schema
+	// (string FilterableColumns, plus Name when DefaultNameField is Name).
+	OptionSearchColumns []string
+	// OptionPreloadEdges are WithX() names applied to option queries so Name()
+	// labels work without reusing list EagerLoadQuery.
+	OptionPreloadEdges []string
 }
 
 // TableColumn describes one list-view column projected from a catalog member.
@@ -204,7 +214,67 @@ func buildRenderConfigs(nodes []*gen.Type) ([]NodeRenderConfig, error) {
 			})
 		}
 	}
+	attachEdgeOptionMeta(configs)
 	return configs, nil
+}
+
+func attachEdgeOptionMeta(configs []NodeRenderConfig) {
+	related := make(map[string]RenderConfig, len(configs))
+	for _, cfg := range configs {
+		related[cfg.Node.Name] = cfg.RC
+	}
+	for i := range configs {
+		hasFormEdges := false
+		for j, member := range configs[i].RC.AdminSurface {
+			if member.MemberKind != MemberEdge {
+				continue
+			}
+			hasFormEdges = true
+			rc, ok := related[member.EdgeTypeName]
+			if !ok {
+				continue
+			}
+			configs[i].RC.AdminSurface[j].OptionSearchColumns = optionSearchColumns(rc)
+			configs[i].RC.AdminSurface[j].OptionPreloadEdges = optionPreloadEdges(rc)
+		}
+		configs[i].RC.HasFormEdges = hasFormEdges
+	}
+}
+
+func optionSearchColumns(rc RenderConfig) []string {
+	cols := make([]string, 0, len(rc.FilterableColumns)+1)
+	seen := make(map[string]struct{}, len(rc.FilterableColumns)+1)
+	for _, filter := range rc.FilterableColumns {
+		if filter.Type != "string" {
+			continue
+		}
+		cols = append(cols, filter.PredicateName)
+		seen[filter.PredicateName] = struct{}{}
+	}
+	if rc.DefaultNameField == "Name" {
+		if _, ok := seen["Name"]; !ok {
+			cols = append(cols, "Name")
+		}
+	}
+	return cols
+}
+
+func optionPreloadEdges(rc RenderConfig) []string {
+	if rc.DefaultNameField != "ID" {
+		return nil
+	}
+	for _, filter := range rc.FilterableColumns {
+		if filter.Type == "string" {
+			return nil
+		}
+	}
+	var edges []string
+	for _, member := range rc.AdminSurface {
+		if member.MemberKind == MemberEdge && member.EdgeUnique {
+			edges = append(edges, pascalCase(member.Name))
+		}
+	}
+	return edges
 }
 
 func resolveSchemaMeta(node *gen.Type) SchemaMeta {
@@ -569,6 +639,13 @@ func projectRenderConfig(meta SchemaMeta, applied appliedLayout, filterable []Fi
 			continue
 		}
 		rc.UpdateInputFields = append(rc.UpdateInputFields, projectUpdateInputField(member.member))
+	}
+
+	for _, member := range rc.AdminSurface {
+		if member.MemberKind == MemberEdge && member.InForm {
+			rc.HasFormEdges = true
+			break
+		}
 	}
 
 	return rc

@@ -4,6 +4,7 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -40,6 +41,77 @@ type AuthorUpdateInput struct {
 // AuthorListFilter is the typed list query for listing Author.
 type AuthorListFilter struct {
 	Active vent.BoolFilter
+}
+
+func (h *AdminHandler) canAuthorOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_author"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Author.CanCreate(ctx)
+}
+
+type AuthorOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) authorOptionLoader(edge string) (AuthorOptionLoader, bool) {
+	switch edge {
+	case "user":
+		loader, ok := h.schemas.Author.FieldUser().(AuthorOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getAuthorOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.authorOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   AuthorOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"authors/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func AuthorOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "user":
+		return true
+	default:
+		return true
+	}
 }
 
 // getAuthorListHandler returns the handler for GET /admin/authors/
@@ -430,6 +502,77 @@ type BookListFilter struct {
 	Pages     string
 }
 
+func (h *AdminHandler) canBookOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_book"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Book.CanCreate(ctx)
+}
+
+type BookOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) bookOptionLoader(edge string) (BookOptionLoader, bool) {
+	switch edge {
+	case "author":
+		loader, ok := h.schemas.Book.FieldAuthor().(BookOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getBookOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.bookOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   BookOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"books/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func BookOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "author":
+		return true
+	default:
+		return true
+	}
+}
+
 // getBookListHandler returns the handler for GET /admin/books/
 func (h *AdminHandler) getBookListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -815,6 +958,77 @@ type PermissionUpdateInput struct {
 	Groups *[]string `json:"groups"`
 }
 
+func (h *AdminHandler) canPermissionOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_permission"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Permission.CanCreate(ctx)
+}
+
+type PermissionOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) permissionOptionLoader(edge string) (PermissionOptionLoader, bool) {
+	switch edge {
+	case "groups":
+		loader, ok := h.schemas.Permission.FieldGroups().(PermissionOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getPermissionOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.permissionOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   PermissionOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permissions/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func PermissionOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "groups":
+		return false
+	default:
+		return true
+	}
+}
+
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1049,6 +1263,77 @@ type PermissionGroupUpdateInput struct {
 // PermissionGroupListFilter is the typed list query for listing PermissionGroup.
 type PermissionGroupListFilter struct {
 	Name string
+}
+
+func (h *AdminHandler) canPermissionGroupOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_permission_group"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.PermissionGroup.CanCreate(ctx)
+}
+
+type PermissionGroupOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) permissiongroupOptionLoader(edge string) (PermissionGroupOptionLoader, bool) {
+	switch edge {
+	case "permissions":
+		loader, ok := h.schemas.PermissionGroup.FieldPermissions().(PermissionGroupOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getPermissionGroupOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.permissiongroupOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   PermissionGroupOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permission-groups/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func PermissionGroupOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "permissions":
+		return false
+	default:
+		return true
+	}
 }
 
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
@@ -1432,6 +1717,82 @@ type ReviewListFilter struct {
 	Rating string
 }
 
+func (h *AdminHandler) canReviewOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_review"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Review.CanCreate(ctx)
+}
+
+type ReviewOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) reviewOptionLoader(edge string) (ReviewOptionLoader, bool) {
+	switch edge {
+	case "user":
+		loader, ok := h.schemas.Review.FieldUser().(ReviewOptionLoader)
+		return loader, ok
+	case "book":
+		loader, ok := h.schemas.Review.FieldBook().(ReviewOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getReviewOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.reviewOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   ReviewOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"reviews/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func ReviewOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "user":
+		return true
+	case "book":
+		return true
+	default:
+		return true
+	}
+}
+
 // getReviewListHandler returns the handler for GET /admin/reviews/
 func (h *AdminHandler) getReviewListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1787,6 +2148,77 @@ type UserListFilter struct {
 	Email    string
 	IsStaff  vent.BoolFilter
 	IsActive vent.BoolFilter
+}
+
+func (h *AdminHandler) canUserOptions(ctx context.Context) (bool, error) {
+	if ok, err := defaultCan(ctx, "read_user"); err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.User.CanCreate(ctx)
+}
+
+type UserOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
+func (h *AdminHandler) userOptionLoader(edge string) (UserOptionLoader, bool) {
+	switch edge {
+	case "groups":
+		loader, ok := h.schemas.User.FieldGroups().(UserOptionLoader)
+		return loader, ok
+	default:
+		return nil, false
+	}
+}
+
+func (h *AdminHandler) getUserOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := r.PathValue("edge")
+		loader, ok := h.userOptionLoader(edge)
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+
+		var signals struct {
+			Entity map[string]json.RawMessage `json:"entity"`
+		}
+		_ = datastar.ReadSignals(r, &signals)
+
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+
+		list := gui.FkOptionList(gui.FkOptionListProps{
+			Name:     edge,
+			Unique:   UserOptionEdgeUnique(edge),
+			Options:  options,
+			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"users/options/"+edge+"/", edge),
+			Editable: true,
+		})
+		if vent.IsDatastarRequest(r) {
+			sse := datastar.NewSSE(w, r)
+			if err := sse.PatchElementTempl(list); err != nil {
+				vent.HandleError(w, r, err)
+			}
+			return
+		}
+		if err := list.Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+
+func UserOptionEdgeUnique(edge string) bool {
+	switch edge {
+	case "groups":
+		return false
+	default:
+		return true
+	}
 }
 
 // getUserListHandler returns the handler for GET /admin/users/
