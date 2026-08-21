@@ -867,7 +867,6 @@ a {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    overflow-anchor: none;
     border-radius: var(--radius);
 }
 .table-empty {
