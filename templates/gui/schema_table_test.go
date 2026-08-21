@@ -76,22 +76,48 @@ func TestTableFilterChipValue(t *testing.T) {
 	}
 }
 
-func TestTableFilterClearClick(t *testing.T) {
-	got := tableFilterClearClick("title")
-	want := `tableFilters.dispatch(el, {filterNames: ["title"]})`
-	if got != want {
-		t.Fatalf("clear click = %q, want %q", got, want)
+func TestTableListURL(t *testing.T) {
+	columns := []SchemaTableFilterableColumn{
+		{Name: "email", Type: "string", Value: "admin"},
+		{Name: "is_staff", Type: "bool", Value: vent.BoolFilterFalse.String()},
+		{Name: "is_active", Type: "bool", Value: ""},
+	}
+	got := tableListURL("/admin/users/", columns, 1)
+	if !strings.Contains(got, "/admin/users/?") {
+		t.Fatalf("page 1 url = %q, want path with query", got)
+	}
+	if strings.Contains(got, "page=") {
+		t.Fatalf("page 1 url = %q, must omit page", got)
+	}
+	if !strings.Contains(got, "filter.email=admin") || !strings.Contains(got, "filter.is_staff=false") {
+		t.Fatalf("page 1 url = %q, want active filters", got)
+	}
+	if strings.Contains(got, "filter.is_active") {
+		t.Fatalf("page 1 url = %q, must omit empty filters", got)
+	}
+
+	paged := tableListURL("/admin/users/", columns, 2)
+	if !strings.Contains(paged, "page=2") {
+		t.Fatalf("page 2 url = %q, want page=2", paged)
+	}
+
+	plain := tableListURL("/admin/users/", nil, 1)
+	if plain != "/admin/users/" {
+		t.Fatalf("empty url = %q, want path only", plain)
 	}
 }
 
-func TestTableFilterResetAllClick(t *testing.T) {
-	got := tableFilterResetAllClick([]SchemaTableFilterableColumn{
-		{Name: "email"},
-		{Name: "is_staff"},
-	})
-	want := `tableFilters.dispatch(el, {filterNames: ["email", "is_staff"]})`
-	if got != want {
-		t.Fatalf("reset all click = %q, want %q", got, want)
+func TestTableListURLWithoutFilter(t *testing.T) {
+	columns := []SchemaTableFilterableColumn{
+		{Name: "email", Type: "string", Value: "admin"},
+		{Name: "is_staff", Type: "bool", Value: vent.BoolFilterFalse.String()},
+	}
+	got := tableListURLWithoutFilter("/admin/users/", columns, "is_staff")
+	if !strings.Contains(got, "filter.email=admin") {
+		t.Fatalf("url = %q, want remaining filter", got)
+	}
+	if strings.Contains(got, "is_staff") || strings.Contains(got, "page=") {
+		t.Fatalf("url = %q, must drop is_staff and page", got)
 	}
 }
 
@@ -206,20 +232,29 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if !strings.Contains(html, "IsStaff: <b>No</b>") {
 		t.Fatal("active filter chips should delimit the label and value with \": \"")
 	}
-	if !strings.Contains(html, `data-on:table-filter-reset="tableFilters.onReset($filter, evt)"`) {
-		t.Fatal("filter form should listen for table-filter-reset")
+	if !strings.Contains(html, `href="/admin/users/?filter.email=admin"`) {
+		t.Fatal("removing IsStaff should keep the email filter in the list URL")
 	}
-	if strings.Contains(html, "table-filter-reset__document") {
-		t.Fatal("filter fields should not listen for table-filter-reset")
+	if !strings.Contains(html, `href="/admin/users/?filter.is_staff=false"`) {
+		t.Fatal("removing Email should keep the IsStaff filter in the list URL")
 	}
-	if !strings.Contains(html, `tableFilters.dispatch(el, {filterNames: [&#34;is_staff&#34;]})`) {
-		t.Fatal("chip remove should dispatch table-filter-reset with that filter name")
+	if !strings.Contains(html, `href="/admin/users/"`) {
+		t.Fatal("clear should link to the unfiltered list")
 	}
-	if !strings.Contains(html, `tableFilters.dispatch(el, {filterNames: [&#34;email&#34;, &#34;is_staff&#34;]})`) {
-		t.Fatal("clear should dispatch table-filter-reset with all filter names")
+	if strings.Contains(html, "tableFilters") || strings.Contains(html, "table-filter-reset") {
+		t.Fatal("filter resets should be GET links, not Datastar events")
 	}
-	if strings.Contains(html, "resetAll") {
-		t.Fatal("filter resets should not use a resetAll flag")
+	if strings.Contains(html, `data-bind="filter.`) || strings.Contains(html, `data-bind="page"`) {
+		t.Fatal("filter fields should not bind Datastar signals")
+	}
+	if !strings.Contains(html, `name="filter.email"`) || !strings.Contains(html, `value="admin"`) {
+		t.Fatal("filter fields should keep HTML names and values for GET submit")
+	}
+	if !strings.Contains(html, `method="get"`) || !strings.Contains(html, `action="/admin/users/"`) {
+		t.Fatal("filter form should be a GET to the list path")
+	}
+	if !strings.Contains(html, `data-on:change="el.requestSubmit()"`) {
+		t.Fatal("filter changes should submit the GET form")
 	}
 	if !strings.Contains(html, `data-cookie:vent-widgets="`) {
 		t.Fatal("filter form should persist widget drawer signals to a named cookie")
@@ -361,11 +396,14 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 	if !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("loading list fetch should drive the existing page overlay")
 	}
-	if strings.Contains(html, `aria-label="Pagination"`) {
-		t.Fatal("chrome-first paint must not render pagination")
+	if !strings.Contains(html, `data-init="@get(location.pathname + location.search)"`) {
+		t.Fatal("chrome-first paint should lazy-load rows from the current URL")
 	}
-	if strings.Contains(html, `name="page"`) {
-		t.Fatal("chrome-first paint must not bind $page before the query-string plugin hydrates")
+	if strings.Contains(html, `aria-label="Pagination"`) {
+		t.Fatal("chrome-first paint without totals must not render pagination")
+	}
+	if strings.Contains(html, `name="page"`) || strings.Contains(html, `data-bind="page"`) {
+		t.Fatal("list page should not bind a page signal")
 	}
 }
 
@@ -401,18 +439,17 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	if !strings.Contains(html, `class="widget-drawer"`) {
 		t.Fatal("unfiltered tables should still render the widget drawer")
 	}
-	if !strings.Contains(html, `data-on:query-string="tableFetch.dispatch(el)"`) {
-		t.Fatal("query-string should dispatch table-fetch instead of fetching directly")
+	if !strings.Contains(html, `data-init="@get(location.pathname + location.search)"`) {
+		t.Fatal("chrome-first paint should lazy-load rows from the current URL")
 	}
-	if !strings.Contains(html, `data-on:change="$page = &#39;&#39;; tableFetch.dispatch(el)"`) &&
-		!strings.Contains(html, `data-on:change="$page = ''; tableFetch.dispatch(el)"`) {
-		t.Fatal("filter change should reset $page then dispatch table-fetch")
+	if strings.Contains(html, "data-query-string") || strings.Contains(html, "tableFetch") {
+		t.Fatal("list form should not use query-string or tableFetch")
 	}
-	if !strings.Contains(html, `data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"`) {
-		t.Fatal("table-fetch should be the only list @get")
+	if strings.Contains(html, `filterSignals: {include: /^(filter\.|page$)/}`) {
+		t.Fatal("list fetch should not send filter or page signals")
 	}
-	if !strings.Contains(html, `data-query-string__history="{include: /^(filter\.|page$)/}"`) {
-		t.Fatal("query string should include filter.* and page")
+	if !strings.Contains(html, `data-on:change="el.requestSubmit()"`) {
+		t.Fatal("filter form should submit on change")
 	}
 	if !strings.Contains(html, `data-indicator="_indicator"`) {
 		t.Fatal("unfiltered list fetch should drive the existing page overlay")
@@ -429,9 +466,6 @@ func TestSchemaTableLoadingWithoutFiltersFetchesRows(t *testing.T) {
 	}
 	if !strings.Contains(html, `document.currentScript.remove()`) {
 		t.Fatal("scroll reset script should remove itself so the next patch executes a new copy")
-	}
-	if strings.Contains(html, `data-init=`) {
-		t.Fatal("unfiltered tables should not use a separate data-init fetch")
 	}
 }
 
@@ -462,24 +496,57 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 	}
 }
 
-func TestTablePageClickExpr(t *testing.T) {
-	if got := tablePageClickExpr(1); got != `$page = ""; tableFetch.dispatch(el)` {
-		t.Fatalf("page 1 click = %q", got)
-	}
-	if got := tablePageClickExpr(3); got != `$page = "3"; tableFetch.dispatch(el)` {
-		t.Fatalf("page 3 click = %q", got)
-	}
-}
-
 func TestTablePaginationVisible(t *testing.T) {
-	if tablePaginationVisible(SchemaTableProps{Loading: true, Pagination: SchemaTablePagination{Total: 100}}) {
-		t.Fatal("loading table should hide pagination")
+	if !tablePaginationVisible(SchemaTableProps{Loading: true, Pagination: SchemaTablePagination{Total: 100}}) {
+		t.Fatal("loading table with totals should show pagination")
 	}
 	if tablePaginationVisible(SchemaTableProps{Pagination: SchemaTablePagination{Total: 0}}) {
 		t.Fatal("empty table should hide pagination")
 	}
 	if !tablePaginationVisible(SchemaTableProps{Pagination: SchemaTablePagination{Total: 10}}) {
 		t.Fatal("loaded table with rows should show pagination")
+	}
+}
+
+func TestSchemaTableLoadingRendersPagination(t *testing.T) {
+	ctx := requestctx.WithAdminPath(context.Background(), "/admin/")
+	ctx = requestctx.WithCSRFToken(ctx, "test-csrf-token")
+	ctx = requestctx.WithTheme(ctx, "system")
+
+	props := SchemaTableProps{
+		RouteName:           "books",
+		SingularDisplayName: "Book",
+		PluralDisplayName:   "Books",
+		Columns: []SchemaTableColumn{
+			{Name: "title", Label: "Title", Type: "string"},
+		},
+		FilterableColumns: []SchemaTableFilterableColumn{
+			{Name: "title", Label: "Title", Type: "string", Value: "Dune"},
+		},
+		Pagination: NewSchemaTablePagination(vent.ParseListPage("2", 10).WithTotal(25)),
+		Loading:    true,
+	}
+
+	var buf bytes.Buffer
+	if err := SchemaTablePage(props).Render(ctx, &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "No data") {
+		t.Fatal("chrome-first paint must not flash No data")
+	}
+	if !strings.Contains(html, "Page 2 of 3") {
+		t.Fatal("chrome-first paint should show pagination status")
+	}
+	if !strings.Contains(html, `href="/admin/books/?filter.title=Dune&amp;page=3"`) &&
+		!strings.Contains(html, `href="/admin/books/?filter.title=Dune&page=3"`) {
+		t.Fatal("next page should keep filters in the GET URL")
+	}
+	if strings.Contains(html, `data-bind="page"`) || strings.Contains(html, `data-bind="filter.`) {
+		t.Fatal("chrome-first pagination should not bind signals")
+	}
+	if !strings.Contains(html, `data-init="@get(location.pathname + location.search)"`) {
+		t.Fatal("chrome-first paint should lazy-load rows")
 	}
 }
 
@@ -524,21 +591,19 @@ func TestSchemaTablePaginationRendersFooter(t *testing.T) {
 	if strings.Contains(html, "table-pagination-ellipsis") {
 		t.Fatal("pagination should not render page ellipsis")
 	}
-	if !strings.Contains(html, `$page = &#34;3&#34;; tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = "3"; tableFetch.dispatch(el)`) {
-		t.Fatal("next and last should set $page then dispatch table-fetch")
+	if !strings.Contains(html, `href="/admin/books/?page=3"`) {
+		t.Fatal("next and last should link to page 3")
 	}
-	if !strings.Contains(html, `$page = &#34;&#34;; tableFetch.dispatch(el)`) &&
-		!strings.Contains(html, `$page = ""; tableFetch.dispatch(el)`) {
-		t.Fatal("first and previous should clear $page then dispatch table-fetch")
+	if !strings.Contains(html, `href="/admin/books/"`) {
+		t.Fatal("first page should omit the page query")
 	}
-	if !strings.Contains(html, `name="page"`) || !strings.Contains(html, `data-bind="page"`) {
-		t.Fatal("loaded table should bind the clamped $page signal")
+	if strings.Contains(html, `name="page"`) || strings.Contains(html, `data-bind="page"`) {
+		t.Fatal("loaded table should not bind a page signal")
 	}
-	if !strings.Contains(html, `value="2"`) {
-		t.Fatal("hidden page input should hold the current page signal")
+	if strings.Contains(html, `data-init=`) {
+		t.Fatal("loaded table should not lazy-fetch rows again")
 	}
-	if strings.Contains(html, "@get(location.pathname") && strings.Count(html, "@get(location.pathname") != 1 {
-		t.Fatal("list page should have a single @get")
+	if strings.Contains(html, "$page") || strings.Contains(html, "tableFetch") {
+		t.Fatal("pagination should not use Datastar page signals")
 	}
 }

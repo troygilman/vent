@@ -44,13 +44,13 @@ type {{ $node.Name }}UpdateInput struct {
 }
 
 {{- if $rc.FilterableColumns }}
-// {{ $node.Name }}ListFilter is the typed Datastar filter signal for listing {{ $node.Name }}.
+// {{ $node.Name }}ListFilter is the typed list query for listing {{ $node.Name }}.
 type {{ $node.Name }}ListFilter struct {
 	{{- range $filter := $rc.FilterableColumns }}
 	{{- if eq $filter.Type "bool" }}
-	{{ $filter.PredicateName }} vent.BoolFilter `json:"{{ $filter.Name }}"`
+	{{ $filter.PredicateName }} vent.BoolFilter
 	{{- else }}
-	{{ $filter.PredicateName }} string `json:"{{ $filter.Name }}"`
+	{{ $filter.PredicateName }} string
 	{{- end }}
 	{{- end }}
 }
@@ -60,51 +60,47 @@ type {{ $node.Name }}ListFilter struct {
 func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		{{- if $rc.FilterableColumns }}
-		var filter {{ $node.Name }}ListFilter
-		{{- end }}
-		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
-		if vent.IsDatastarRequest(r) {
-			query := h.client.{{ $node.Name }}.Query()
-			var signals struct {
-				{{- if $rc.FilterableColumns }}
-				Filter {{ $node.Name }}ListFilter `json:"filter"`
-				{{- end }}
-				Page string `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			{{- if $rc.FilterableColumns }}
-			filter = signals.Filter
+		filter := {{ $node.Name }}ListFilter{
 			{{- range $filter := $rc.FilterableColumns }}
-			{{- if eq $filter.Type "string" }}
-			if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
-				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
-			}
-			{{- else if eq $filter.Type "bool" }}
-			if v, ok := filter.{{ $filter.PredicateName }}.Bool(); ok {
-				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(v))
-			}
-			{{- else if eq $filter.Type "int" }}
-			if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
-				if intVal, err := strconv.Atoi(filterVal); err == nil {
-					query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(intVal))
-				}
-			}
+			{{- if eq $filter.Type "bool" }}
+			{{ $filter.PredicateName }}: vent.BoolFilter(r.URL.Query().Get("filter.{{ $filter.Name }}")),
+			{{- else }}
+			{{ $filter.PredicateName }}: r.URL.Query().Get("filter.{{ $filter.Name }}"),
 			{{- end }}
 			{{- end }}
-			{{- end }}
+		}
+		{{- end }}
+		query := h.client.{{ $node.Name }}.Query()
+		{{- if $rc.FilterableColumns }}
+		{{- range $filter := $rc.FilterableColumns }}
+		{{- if eq $filter.Type "string" }}
+		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}ContainsFold(filterVal))
+		}
+		{{- else if eq $filter.Type "bool" }}
+		if v, ok := filter.{{ $filter.PredicateName }}.Bool(); ok {
+			query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(v))
+		}
+		{{- else if eq $filter.Type "int" }}
+		if filterVal := filter.{{ $filter.PredicateName }}; filterVal != "" {
+			if intVal, err := strconv.Atoi(filterVal); err == nil {
+				query = query.Where({{ lower $node.Name }}.{{ $filter.PredicateName }}EQ(intVal))
+			}
+		}
+		{{- end }}
+		{{- end }}
+		{{- end }}
 
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, {{ $rc.PageSize }}).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), {{ $rc.PageSize }}).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
 
+		rows := []gui.SchemaTableRow{}
+		if vent.IsDatastarRequest(r) {
 			entities, err := h.schemas.{{ $node.Name }}.EagerLoadQuery(query).
 				Order({{ lower $node.Name }}.ByID()).
 				Offset(page.Offset()).
