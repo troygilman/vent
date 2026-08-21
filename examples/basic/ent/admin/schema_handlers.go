@@ -64,9 +64,11 @@ func (h *AdminHandler) authorOptionLoader(edge string) (AuthorOptionLoader, bool
 	}
 }
 
-func (h *AdminHandler) getAuthorOptionsHandler() http.Handler {
+func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.authorOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
@@ -523,9 +525,11 @@ func (h *AdminHandler) bookOptionLoader(edge string) (BookOptionLoader, bool) {
 	}
 }
 
-func (h *AdminHandler) getBookOptionsHandler() http.Handler {
+func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.bookOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
@@ -979,9 +983,11 @@ func (h *AdminHandler) permissionOptionLoader(edge string) (PermissionOptionLoad
 	}
 }
 
-func (h *AdminHandler) getPermissionOptionsHandler() http.Handler {
+func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.permissionOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
@@ -1286,9 +1292,11 @@ func (h *AdminHandler) permissiongroupOptionLoader(edge string) (PermissionGroup
 	}
 }
 
-func (h *AdminHandler) getPermissionGroupOptionsHandler() http.Handler {
+func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.permissiongroupOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
@@ -1741,9 +1749,11 @@ func (h *AdminHandler) reviewOptionLoader(edge string) (ReviewOptionLoader, bool
 	}
 }
 
-func (h *AdminHandler) getReviewOptionsHandler() http.Handler {
+func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.reviewOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
@@ -2171,9 +2181,11 @@ func (h *AdminHandler) userOptionLoader(edge string) (UserOptionLoader, bool) {
 	}
 }
 
-func (h *AdminHandler) getUserOptionsHandler() http.Handler {
+func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.userOptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))

@@ -83,9 +83,11 @@ func (h *AdminHandler) {{ lower $node.Name }}OptionLoader(edge string) ({{ $node
 	}
 }
 
-func (h *AdminHandler) get{{ $node.Name }}OptionsHandler() http.Handler {
+func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := r.PathValue("edge")
+		if edge == "" {
+			edge = r.PathValue("edge")
+		}
 		loader, ok := h.{{ lower $node.Name }}OptionLoader(edge)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))

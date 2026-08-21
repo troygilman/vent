@@ -144,8 +144,14 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			{{ $rc := $item.RC }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
 				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
-				{{- if $rc.HasFormEdges }}
-				schema.GET("/options/{edge}/", h.get{{ $node.Name }}OptionsHandler(), h.authorize(h.can{{ $node.Name }}Options))
+				{{- if $rc.HasPasswordRoutes }}
+				{{- range $member := $rc.AdminSurface }}
+				{{- if and (isMemberKindEdge $member) $member.InForm }}
+				schema.GET("/options/{{ $member.Name }}/", h.get{{ $node.Name }}OptionsHandler("{{ $member.Name }}"), h.authorize(h.can{{ $node.Name }}Options))
+				{{- end }}
+				{{- end }}
+				{{- else if $rc.HasFormEdges }}
+				schema.GET("/options/{edge}/", h.get{{ $node.Name }}OptionsHandler(""), h.authorize(h.can{{ $node.Name }}Options))
 				{{- end }}
 				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
 				{{- if not $rc.DisableCreate }}
