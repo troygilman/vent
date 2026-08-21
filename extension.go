@@ -535,6 +535,10 @@ func validateVentSchemaAnnotation(node *gen.Type) []string {
 		}
 	}
 
+	if annotation.PageSize < 0 {
+		errs = append(errs, fmt.Sprintf("schema %q page size must be positive", node.Name))
+	}
+
 	seenFilters := make(map[string]struct{}, len(annotation.FilterableColumns))
 	for _, column := range annotation.FilterableColumns {
 		if _, dup := seenFilters[column]; dup {

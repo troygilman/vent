@@ -58,3 +58,11 @@ window.tableFilters = {
         evt.currentTarget.dispatchEvent(new Event("change"));
     },
 };
+
+window.tableFetch = {
+    dispatch(el) {
+        const form =
+            el.closest("#schema-table-filters") || el.closest("form") || el;
+        form.dispatchEvent(new Event("table-fetch"));
+    },
+};

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/troygilman/vent"
@@ -16,10 +17,49 @@ type SchemaTableProps struct {
 	Columns             []SchemaTableColumn
 	Rows                []SchemaTableRow
 	FilterableColumns   []SchemaTableFilterableColumn
+	Pagination          SchemaTablePagination
 	RenderContext       RenderContext
 	// Loading is true for the chrome-first HTML response before Datastar
 	// fetches rows. That paint must not say "No data".
 	Loading bool
+}
+
+type SchemaTablePagination struct {
+	Page       int
+	PageSize   int
+	Total      int
+	TotalPages int
+	From       int
+	To         int
+	HasPrev    bool
+	HasNext    bool
+	Signal     string
+}
+
+func NewSchemaTablePagination(page vent.ListPage) SchemaTablePagination {
+	return SchemaTablePagination{
+		Page:       page.Page,
+		PageSize:   page.PageSize,
+		Total:      page.Total,
+		TotalPages: page.TotalPages(),
+		From:       page.From(),
+		To:         page.To(),
+		HasPrev:    page.HasPrev(),
+		HasNext:    page.HasNext(),
+		Signal:     page.Signal(),
+	}
+}
+
+func tablePaginationVisible(props SchemaTableProps) bool {
+	return !props.Loading && props.Pagination.Total > 0
+}
+
+func tablePageClickExpr(n int) string {
+	page := ""
+	if n > 1 {
+		page = strconv.Itoa(n)
+	}
+	return fmt.Sprintf(`$page = %q; tableFetch.dispatch(el)`, page)
 }
 
 type SchemaTableColumn struct {
@@ -179,13 +219,17 @@ templ SchemaTablePage(props SchemaTableProps) {
 				class="table-filters"
 				data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
 				data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
-				data-query-string__history="{include: /^filter\./}"
-				data-on:query-string="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
-				data-on:change="@get(location.pathname, {filterSignals: {include: /^filter\./}})"
+				data-query-string__history="{include: /^(filter\.|page$)/}"
+				data-on:query-string="tableFetch.dispatch(el)"
+				data-on:change="$page = ''; tableFetch.dispatch(el)"
+				data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"
 				data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
 				data-on:submit__prevent="void 0"
 				data-indicator="_indicator"
 			>
+				if !props.Loading {
+					<input type="hidden" name="page" data-bind="page" value={ props.Pagination.Signal }/>
+				}
 				<div class="page-with-widgets-main">
 					<div class="page-header">
 						<div class="page-title">{ props.PluralDisplayName }</div>
@@ -307,7 +351,7 @@ templ SchemaTablePage(props SchemaTableProps) {
 
 templ schemaTable(props SchemaTableProps) {
 	<div class="schema-table">
-		<div class="table-container">
+		<div id="schema-table-scroll" class="table-container">
 			<table class="data-table">
 				<colgroup>
 					for i := range props.Columns {
@@ -345,8 +389,68 @@ templ schemaTable(props SchemaTableProps) {
 					}
 				</tbody>
 			</table>
+			<script>
+				document.getElementById("schema-table-scroll")?.scrollTo(0, 0);
+				document.currentScript.remove();
+			</script>
 		</div>
+		if tablePaginationVisible(props) {
+			@schemaTablePagination(props.Pagination)
+		}
 	</div>
+}
+
+templ schemaTablePagination(p SchemaTablePagination) {
+	<nav class="table-pagination" aria-label="Pagination">
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="First page"
+			disabled?={ !p.HasPrev }
+			if p.HasPrev {
+				data-on:click={ tablePageClickExpr(1) }
+			}
+		>
+			First
+		</button>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Previous page"
+			disabled?={ !p.HasPrev }
+			if p.HasPrev {
+				data-on:click={ tablePageClickExpr(p.Page - 1) }
+			}
+		>
+			Prev
+		</button>
+		<div class="table-pagination-status">
+			<div class="table-pagination-page">Page { fmt.Sprintf("%d of %d", p.Page, p.TotalPages) }</div>
+			<div class="table-pagination-range">{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }</div>
+		</div>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Next page"
+			disabled?={ !p.HasNext }
+			if p.HasNext {
+				data-on:click={ tablePageClickExpr(p.Page + 1) }
+			}
+		>
+			Next
+		</button>
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			aria-label="Last page"
+			disabled?={ !p.HasNext }
+			if p.HasNext {
+				data-on:click={ tablePageClickExpr(p.TotalPages) }
+			}
+		>
+			Last
+		</button>
+	</nav>
 }
 
 templ schemaTableFilterField(filter SchemaTableFilterableColumn) {

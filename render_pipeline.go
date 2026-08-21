@@ -48,6 +48,7 @@ type SchemaMeta struct {
 	DisableCreate     bool
 	DisableDelete     bool
 	ReadOnlyFields    []string
+	PageSize          int
 	// PackageDir is the Ent-generated schema package directory (e.g. "user").
 	PackageDir string
 }
@@ -241,6 +242,13 @@ func resolveSchemaMeta(node *gen.Type) SchemaMeta {
 			meta.PluralDisplayName = annotation.PluralDisplayName
 		}
 		meta.Permissions = append([]Permission(nil), annotation.Permissions...)
+		if annotation.PageSize > 0 {
+			meta.PageSize = annotation.PageSize
+		}
+	}
+
+	if meta.PageSize <= 0 {
+		meta.PageSize = DefaultListPageSize
 	}
 
 	return meta

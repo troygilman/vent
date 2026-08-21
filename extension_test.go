@@ -348,6 +348,46 @@ func TestFilterableColumnValidation(t *testing.T) {
 	}
 }
 
+func TestPageSizeValidation(t *testing.T) {
+	ok := &gen.Type{
+		Name: "Article",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				PageSize: 25,
+			},
+		},
+	}
+	if errs := validateVentSchemaAnnotation(ok); len(errs) > 0 {
+		t.Fatalf("validateVentSchemaAnnotation(page size 25) = %v", errs)
+	}
+
+	unset := &gen.Type{
+		Name: "Article",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{},
+		},
+	}
+	if errs := validateVentSchemaAnnotation(unset); len(errs) > 0 {
+		t.Fatalf("validateVentSchemaAnnotation(unset page size) = %v", errs)
+	}
+
+	neg := &gen.Type{
+		Name: "Article",
+		Annotations: gen.Annotations{
+			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
+				PageSize: -1,
+			},
+		},
+	}
+	errs := validateVentSchemaAnnotation(neg)
+	if len(errs) == 0 {
+		t.Fatal("validateVentSchemaAnnotation(negative page size) returned no errors")
+	}
+	if !strings.Contains(errs[0], `page size must be positive`) {
+		t.Fatalf("validateVentSchemaAnnotation(negative page size) = %v", errs)
+	}
+}
+
 func TestCustomFieldKindValidation(t *testing.T) {
 	validNode := &gen.Type{
 		Name: "Article",
