@@ -30,6 +30,9 @@ func TestStaticDirHandlerServesJS(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `name: "cookie"`) {
 		t.Fatal("datastar-plugins.js does not contain cookie persist plugin")
 	}
+	if strings.Contains(rec.Body.String(), `name: "query-string"`) {
+		t.Fatal("datastar-plugins.js should not contain the unused query-string plugin")
+	}
 	if !strings.Contains(rec.Body.String(), `key: "must"`) {
 		t.Fatal("cookie plugin should require a cookie name key")
 	}

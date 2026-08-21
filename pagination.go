@@ -19,7 +19,7 @@ type ListPageItem struct {
 	Ellipsis bool
 }
 
-// ParseListPage parses the Datastar $page signal.
+// ParseListPage parses the list page query parameter.
 // Empty, zero, negative, and non-numeric values become page 1.
 // Non-positive pageSize falls back to DefaultListPageSize.
 func ParseListPage(raw string, pageSize int) ListPage {
@@ -107,7 +107,7 @@ func (p ListPage) HasNext() bool {
 	return p.Page < p.TotalPages()
 }
 
-// Signal is the $page value to bind: empty for page 1 so the URL stays clean.
+// Signal is the page query value: empty for page 1 so the URL stays clean.
 func (p ListPage) Signal() string {
 	if p.Page <= 1 {
 		return ""

@@ -37,40 +37,32 @@ type AuthorUpdateInput struct {
 	Active *bool   `json:"active"`
 }
 
-// AuthorListFilter is the typed Datastar filter signal for listing Author.
+// AuthorListFilter is the typed list query for listing Author.
 type AuthorListFilter struct {
-	Active vent.BoolFilter `json:"active"`
+	Active vent.BoolFilter
 }
 
 // getAuthorListHandler returns the handler for GET /admin/authors/
 func (h *AdminHandler) getAuthorListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter AuthorListFilter
+		filter := AuthorListFilter{
+			Active: vent.BoolFilter(r.URL.Query().Get("filter.active")),
+		}
+		query := h.client.Author.Query()
+		if v, ok := filter.Active.Bool(); ok {
+			query = query.Where(author.ActiveEQ(v))
+		}
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.Author.Query()
-			var signals struct {
-				Filter AuthorListFilter `json:"filter"`
-				Page   string           `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if v, ok := filter.Active.Bool(); ok {
-				query = query.Where(author.ActiveEQ(v))
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.Author.EagerLoadQuery(query).
 				Order(author.ByID()).
 				Offset(page.Offset()).
@@ -431,50 +423,44 @@ type BookUpdateInput struct {
 	Notes       *string               `json:"notes"`
 }
 
-// BookListFilter is the typed Datastar filter signal for listing Book.
+// BookListFilter is the typed list query for listing Book.
 type BookListFilter struct {
-	Title     string          `json:"title"`
-	Published vent.BoolFilter `json:"published"`
-	Pages     string          `json:"pages"`
+	Title     string
+	Published vent.BoolFilter
+	Pages     string
 }
 
 // getBookListHandler returns the handler for GET /admin/books/
 func (h *AdminHandler) getBookListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter BookListFilter
+		filter := BookListFilter{
+			Title:     r.URL.Query().Get("filter.title"),
+			Published: vent.BoolFilter(r.URL.Query().Get("filter.published")),
+			Pages:     r.URL.Query().Get("filter.pages"),
+		}
+		query := h.client.Book.Query()
+		if filterVal := filter.Title; filterVal != "" {
+			query = query.Where(book.TitleContainsFold(filterVal))
+		}
+		if v, ok := filter.Published.Bool(); ok {
+			query = query.Where(book.PublishedEQ(v))
+		}
+		if filterVal := filter.Pages; filterVal != "" {
+			if intVal, err := strconv.Atoi(filterVal); err == nil {
+				query = query.Where(book.PagesEQ(intVal))
+			}
+		}
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.Book.Query()
-			var signals struct {
-				Filter BookListFilter `json:"filter"`
-				Page   string         `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if filterVal := filter.Title; filterVal != "" {
-				query = query.Where(book.TitleContainsFold(filterVal))
-			}
-			if v, ok := filter.Published.Bool(); ok {
-				query = query.Where(book.PublishedEQ(v))
-			}
-			if filterVal := filter.Pages; filterVal != "" {
-				if intVal, err := strconv.Atoi(filterVal); err == nil {
-					query = query.Where(book.PagesEQ(intVal))
-				}
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.Book.EagerLoadQuery(query).
 				Order(book.ByID()).
 				Offset(page.Offset()).
@@ -832,26 +818,18 @@ type PermissionUpdateInput struct {
 // getPermissionListHandler returns the handler for GET /admin/permissions/
 func (h *AdminHandler) getPermissionListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := h.client.Permission.Query()
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.Permission.Query()
-			var signals struct {
-				Page string `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.Permission.EagerLoadQuery(query).
 				Order(permission.ByID()).
 				Offset(page.Offset()).
@@ -1068,40 +1046,32 @@ type PermissionGroupUpdateInput struct {
 	Permissions *[]string `json:"permissions"`
 }
 
-// PermissionGroupListFilter is the typed Datastar filter signal for listing PermissionGroup.
+// PermissionGroupListFilter is the typed list query for listing PermissionGroup.
 type PermissionGroupListFilter struct {
-	Name string `json:"name"`
+	Name string
 }
 
 // getPermissionGroupListHandler returns the handler for GET /admin/permissiongroups/
 func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter PermissionGroupListFilter
+		filter := PermissionGroupListFilter{
+			Name: r.URL.Query().Get("filter.name"),
+		}
+		query := h.client.PermissionGroup.Query()
+		if filterVal := filter.Name; filterVal != "" {
+			query = query.Where(permissiongroup.NameContainsFold(filterVal))
+		}
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.PermissionGroup.Query()
-			var signals struct {
-				Filter PermissionGroupListFilter `json:"filter"`
-				Page   string                    `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if filterVal := filter.Name; filterVal != "" {
-				query = query.Where(permissiongroup.NameContainsFold(filterVal))
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.PermissionGroup.EagerLoadQuery(query).
 				Order(permissiongroup.ByID()).
 				Offset(page.Offset()).
@@ -1457,42 +1427,34 @@ type ReviewUpdateInput struct {
 	Book   *string               `json:"book"`
 }
 
-// ReviewListFilter is the typed Datastar filter signal for listing Review.
+// ReviewListFilter is the typed list query for listing Review.
 type ReviewListFilter struct {
-	Rating string `json:"rating"`
+	Rating string
 }
 
 // getReviewListHandler returns the handler for GET /admin/reviews/
 func (h *AdminHandler) getReviewListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter ReviewListFilter
+		filter := ReviewListFilter{
+			Rating: r.URL.Query().Get("filter.rating"),
+		}
+		query := h.client.Review.Query()
+		if filterVal := filter.Rating; filterVal != "" {
+			if intVal, err := strconv.Atoi(filterVal); err == nil {
+				query = query.Where(review.RatingEQ(intVal))
+			}
+		}
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.Review.Query()
-			var signals struct {
-				Filter ReviewListFilter `json:"filter"`
-				Page   string           `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if filterVal := filter.Rating; filterVal != "" {
-				if intVal, err := strconv.Atoi(filterVal); err == nil {
-					query = query.Where(review.RatingEQ(intVal))
-				}
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.Review.EagerLoadQuery(query).
 				Order(review.ByID()).
 				Offset(page.Offset()).
@@ -1820,48 +1782,42 @@ type UserUpdateInput struct {
 	LastLogin   *string   `json:"last_login"`
 }
 
-// UserListFilter is the typed Datastar filter signal for listing User.
+// UserListFilter is the typed list query for listing User.
 type UserListFilter struct {
-	Email    string          `json:"email"`
-	IsStaff  vent.BoolFilter `json:"is_staff"`
-	IsActive vent.BoolFilter `json:"is_active"`
+	Email    string
+	IsStaff  vent.BoolFilter
+	IsActive vent.BoolFilter
 }
 
 // getUserListHandler returns the handler for GET /admin/users/
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var filter UserListFilter
+		filter := UserListFilter{
+			Email:    r.URL.Query().Get("filter.email"),
+			IsStaff:  vent.BoolFilter(r.URL.Query().Get("filter.is_staff")),
+			IsActive: vent.BoolFilter(r.URL.Query().Get("filter.is_active")),
+		}
+		query := h.client.User.Query()
+		if filterVal := filter.Email; filterVal != "" {
+			query = query.Where(user.EmailContainsFold(filterVal))
+		}
+		if v, ok := filter.IsStaff.Bool(); ok {
+			query = query.Where(user.IsStaffEQ(v))
+		}
+		if v, ok := filter.IsActive.Bool(); ok {
+			query = query.Where(user.IsActiveEQ(v))
+		}
+
+		total, err := query.Clone().Count(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		page := vent.ParseListPage(r.URL.Query().Get("page"), 100).WithTotal(total)
+		pagination := gui.NewSchemaTablePagination(page)
+
 		rows := []gui.SchemaTableRow{}
-		pagination := gui.SchemaTablePagination{}
 		if vent.IsDatastarRequest(r) {
-			query := h.client.User.Query()
-			var signals struct {
-				Filter UserListFilter `json:"filter"`
-				Page   string         `json:"page"`
-			}
-			if err := datastar.ReadSignals(r, &signals); err != nil {
-				vent.HandleError(w, r, vent.BadRequest("invalid list request").WithCause(err))
-				return
-			}
-			filter = signals.Filter
-			if filterVal := filter.Email; filterVal != "" {
-				query = query.Where(user.EmailContainsFold(filterVal))
-			}
-			if v, ok := filter.IsStaff.Bool(); ok {
-				query = query.Where(user.IsStaffEQ(v))
-			}
-			if v, ok := filter.IsActive.Bool(); ok {
-				query = query.Where(user.IsActiveEQ(v))
-			}
-
-			total, err := query.Clone().Count(r.Context())
-			if err != nil {
-				vent.HandleError(w, r, normalizeError(err))
-				return
-			}
-			page := vent.ParseListPage(signals.Page, 100).WithTotal(total)
-			pagination = gui.NewSchemaTablePagination(page)
-
 			entities, err := h.schemas.User.EagerLoadQuery(query).
 				Order(user.ByID()).
 				Offset(page.Offset()).

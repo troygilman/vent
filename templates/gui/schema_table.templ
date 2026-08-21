@@ -2,8 +2,8 @@ package gui
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/troygilman/vent"
 	"github.com/troygilman/vent/requestctx"
@@ -51,15 +51,35 @@ func NewSchemaTablePagination(page vent.ListPage) SchemaTablePagination {
 }
 
 func tablePaginationVisible(props SchemaTableProps) bool {
-	return !props.Loading && props.Pagination.Total > 0
+	return props.Pagination.Total > 0
 }
 
-func tablePageClickExpr(n int) string {
-	page := ""
-	if n > 1 {
-		page = strconv.Itoa(n)
+func tableListURL(path string, columns []SchemaTableFilterableColumn, page int) string {
+	q := url.Values{}
+	for _, column := range columns {
+		if tableFilterActive(column) {
+			q.Set("filter."+column.Name, column.Value)
+		}
 	}
-	return fmt.Sprintf(`$page = %q; tableFetch.dispatch(el)`, page)
+	if page > 1 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	encoded := q.Encode()
+	if encoded == "" {
+		return path
+	}
+	return path + "?" + encoded
+}
+
+func tableListURLWithoutFilter(path string, columns []SchemaTableFilterableColumn, name string) string {
+	out := make([]SchemaTableFilterableColumn, len(columns))
+	copy(out, columns)
+	for i := range out {
+		if out[i].Name == name {
+			out[i].Value = ""
+		}
+	}
+	return tableListURL(path, out, 1)
 }
 
 type SchemaTableColumn struct {
@@ -123,26 +143,6 @@ func tableFilterChipValue(column SchemaTableFilterableColumn) string {
 		return "No"
 	}
 	return column.Value
-}
-
-func tableFilterResetClick(names []string) string {
-	quoted := make([]string, len(names))
-	for i, name := range names {
-		quoted[i] = fmt.Sprintf("%q", name)
-	}
-	return fmt.Sprintf("tableFilters.dispatch(el, {filterNames: [%s]})", strings.Join(quoted, ", "))
-}
-
-func tableFilterClearClick(name string) string {
-	return tableFilterResetClick([]string{name})
-}
-
-func tableFilterResetAllClick(columns []SchemaTableFilterableColumn) string {
-	names := make([]string, len(columns))
-	for i, column := range columns {
-		names[i] = column.Name
-	}
-	return tableFilterResetClick(names)
 }
 
 func tableWidgetsCookieExpr(adminPath string) string {
@@ -217,19 +217,16 @@ templ SchemaTablePage(props SchemaTableProps) {
 			<form
 				id="schema-table-filters"
 				class="table-filters"
+				method="get"
+				action={ templ.SafeURL(schemaPath) }
 				data-signals__ifmissing={ templ.JSONString(widgetDrawerSignals{Widgets: widgets}) }
 				data-cookie:vent-widgets={ tableWidgetsCookieExpr(adminPath) }
-				data-query-string__history="{include: /^(filter\.|page$)/}"
-				data-on:query-string="tableFetch.dispatch(el)"
-				data-on:change="$page = ''; tableFetch.dispatch(el)"
-				data-on:table-fetch="@get(location.pathname, {filterSignals: {include: /^(filter\.|page$)/}})"
-				data-on:table-filter-reset="tableFilters.onReset($filter, evt)"
-				data-on:submit__prevent="void 0"
+				data-on:change="el.requestSubmit()"
 				data-indicator="_indicator"
-			>
-				if !props.Loading {
-					<input type="hidden" name="page" data-bind="page" value={ props.Pagination.Signal }/>
+				if props.Loading {
+					data-init="@get(location.pathname + location.search)"
 				}
+			>
 				<div class="page-with-widgets-main">
 					<div class="page-header">
 						<div class="page-title">{ props.PluralDisplayName }</div>
@@ -246,25 +243,23 @@ templ SchemaTablePage(props SchemaTableProps) {
 											<span class="table-filter-chip-text">
 												{ filter.Label }: <b>{ tableFilterChipValue(filter) }</b>
 											</span>
-											<button
-												type="button"
+											<a
 												class="table-filter-chip-remove"
+												href={ templ.SafeURL(tableListURLWithoutFilter(schemaPath, props.FilterableColumns, filter.Name)) }
 												aria-label={ "Remove " + filter.Label + " filter" }
-												data-on:click={ tableFilterClearClick(filter.Name) }
 											>
 												×
-											</button>
+											</a>
 										</span>
 									}
 								}
 							</div>
-							<button
-								type="button"
+							<a
 								class="btn btn-sm btn-outline"
-								data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+								href={ templ.SafeURL(schemaPath) }
 							>
 								Clear
-							</button>
+							</a>
 						</div>
 					}
 					@schemaTable(props)
@@ -331,13 +326,12 @@ templ SchemaTablePage(props SchemaTableProps) {
 							</div>
 							if filtersActive {
 								<div class="widget-drawer-footer">
-									<button
-										type="button"
+									<a
 										class="btn btn-sm btn-outline"
-										data-on:click={ tableFilterResetAllClick(props.FilterableColumns) }
+										href={ templ.SafeURL(schemaPath) }
 									>
 										Clear
-									</button>
+									</a>
 								</div>
 							}
 						</div>
@@ -395,61 +389,69 @@ templ schemaTable(props SchemaTableProps) {
 			</script>
 		</div>
 		if tablePaginationVisible(props) {
-			@schemaTablePagination(props.Pagination)
+			@schemaTablePagination(fmt.Sprintf("%s%s/", requestctx.MustAdminPath(ctx), props.RouteName), props.FilterableColumns, props.Pagination)
 		}
 	</div>
 }
 
-templ schemaTablePagination(p SchemaTablePagination) {
+templ schemaTablePagination(listPath string, filters []SchemaTableFilterableColumn, p SchemaTablePagination) {
 	<nav class="table-pagination" aria-label="Pagination">
-		<button
-			type="button"
-			class="btn btn-sm btn-outline"
-			aria-label="First page"
-			disabled?={ !p.HasPrev }
-			if p.HasPrev {
-				data-on:click={ tablePageClickExpr(1) }
-			}
-		>
-			First
-		</button>
-		<button
-			type="button"
-			class="btn btn-sm btn-outline"
-			aria-label="Previous page"
-			disabled?={ !p.HasPrev }
-			if p.HasPrev {
-				data-on:click={ tablePageClickExpr(p.Page - 1) }
-			}
-		>
-			Prev
-		</button>
+		if p.HasPrev {
+			<a
+				class="btn btn-sm btn-outline"
+				href={ templ.SafeURL(tableListURL(listPath, filters, 1)) }
+				aria-label="First page"
+			>
+				First
+			</a>
+		} else {
+			<button type="button" class="btn btn-sm btn-outline" aria-label="First page" disabled>
+				First
+			</button>
+		}
+		if p.HasPrev {
+			<a
+				class="btn btn-sm btn-outline"
+				href={ templ.SafeURL(tableListURL(listPath, filters, p.Page-1)) }
+				aria-label="Previous page"
+			>
+				Prev
+			</a>
+		} else {
+			<button type="button" class="btn btn-sm btn-outline" aria-label="Previous page" disabled>
+				Prev
+			</button>
+		}
 		<div class="table-pagination-status">
 			<div class="table-pagination-page">Page { fmt.Sprintf("%d of %d", p.Page, p.TotalPages) }</div>
 			<div class="table-pagination-range">{ fmt.Sprintf("%d–%d of %d", p.From, p.To, p.Total) }</div>
 		</div>
-		<button
-			type="button"
-			class="btn btn-sm btn-outline"
-			aria-label="Next page"
-			disabled?={ !p.HasNext }
-			if p.HasNext {
-				data-on:click={ tablePageClickExpr(p.Page + 1) }
-			}
-		>
-			Next
-		</button>
-		<button
-			type="button"
-			class="btn btn-sm btn-outline"
-			aria-label="Last page"
-			disabled?={ !p.HasNext }
-			if p.HasNext {
-				data-on:click={ tablePageClickExpr(p.TotalPages) }
-			}
-		>
-			Last
-		</button>
+		if p.HasNext {
+			<a
+				class="btn btn-sm btn-outline"
+				href={ templ.SafeURL(tableListURL(listPath, filters, p.Page+1)) }
+				aria-label="Next page"
+			>
+				Next
+			</a>
+		} else {
+			<button type="button" class="btn btn-sm btn-outline" aria-label="Next page" disabled>
+				Next
+			</button>
+		}
+		if p.HasNext {
+			<a
+				class="btn btn-sm btn-outline"
+				href={ templ.SafeURL(tableListURL(listPath, filters, p.TotalPages)) }
+				aria-label="Last page"
+			>
+				Last
+			</a>
+		} else {
+			<button type="button" class="btn btn-sm btn-outline" aria-label="Last page" disabled>
+				Last
+			</button>
+		}
 	</nav>
 }
 
@@ -461,7 +463,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 				<input
 					type="text"
 					name={ "filter." + filter.Name }
-					data-bind__event.change={ "filter." + filter.Name }
 					value={ filter.Value }
 					placeholder={ "Filter by " + filter.Label }
 				/>
@@ -471,7 +472,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 			<select
 				class="select"
 				name={ "filter." + filter.Name }
-				data-bind={ "filter." + filter.Name }
 			>
 				<option value={ vent.BoolFilterAll.String() } selected?={ boolValue == vent.BoolFilterAll }>All</option>
 				<option value={ vent.BoolFilterTrue.String() } selected?={ boolValue == vent.BoolFilterTrue }>Yes</option>
@@ -483,7 +483,6 @@ templ schemaTableFilterField(filter SchemaTableFilterableColumn) {
 					type="text"
 					inputmode="numeric"
 					name={ "filter." + filter.Name }
-					data-bind__event.change={ "filter." + filter.Name }
 					value={ filter.Value }
 					placeholder={ "Filter by " + filter.Label }
 				/>
