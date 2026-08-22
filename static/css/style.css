@@ -1504,8 +1504,8 @@ select.select[multiple] option:hover {
     );
     color: var(--color-primary);
 }
-.fk-option:hover,
-.fk-option.is-active {
+.fk-option.is-active,
+.fk-combobox:not(.is-keyboard-nav) .fk-option:hover {
     background: var(--color-primary);
     color: var(--color-primary-content);
 }

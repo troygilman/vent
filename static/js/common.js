@@ -48,6 +48,26 @@ window.fkCombobox = {
             el.append(chip);
         }
     },
+    activate(root, el) {
+        root.querySelectorAll(".fk-option.is-active").forEach((opt) => {
+            if (opt !== el) {
+                opt.classList.remove("is-active");
+            }
+        });
+        el?.classList.add("is-active");
+    },
+    pointer(evt) {
+        const opt = evt.target.closest(".fk-option");
+        if (!opt) {
+            return;
+        }
+        const root = opt.closest(".fk-combobox");
+        if (!root) {
+            return;
+        }
+        root.classList.remove("is-keyboard-nav");
+        this.activate(root, opt);
+    },
     keydown(evt, name) {
         const root = evt.currentTarget.closest(".fk-combobox");
         if (!root) {
@@ -71,15 +91,21 @@ window.fkCombobox = {
         } else if (evt.key === "ArrowUp") {
             i = i < 0 ? options.length - 1 : Math.max(i - 1, 0);
         } else if (evt.key === "Enter") {
+            root.classList.add("is-keyboard-nav");
             if (i >= 0) {
                 options[i].click();
             }
             return;
         }
-        options.forEach((el, j) => el.classList.toggle("is-active", j === i));
+        root.classList.add("is-keyboard-nav");
+        this.activate(root, options[i]);
         options[i]?.scrollIntoView({ block: "nearest" });
     },
 };
+
+document.addEventListener("mousemove", (evt) => {
+    window.fkCombobox.pointer(evt);
+});
 
 window.widgetDrawer = {
     toggleOpen(state) {
