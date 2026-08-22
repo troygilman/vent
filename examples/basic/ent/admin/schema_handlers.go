@@ -66,16 +66,17 @@ func (h *AdminHandler) authorOptionLoader(edge string) (AuthorOptionLoader, bool
 
 func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.authorOptionLoader(edge)
+		loader, ok := h.authorOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -86,18 +87,18 @@ func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   AuthorOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   AuthorOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"authors/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"authors/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
@@ -533,16 +534,17 @@ func (h *AdminHandler) bookOptionLoader(edge string) (BookOptionLoader, bool) {
 
 func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.bookOptionLoader(edge)
+		loader, ok := h.bookOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -553,18 +555,18 @@ func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   BookOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   BookOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"books/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"books/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
@@ -997,16 +999,17 @@ func (h *AdminHandler) permissionOptionLoader(edge string) (PermissionOptionLoad
 
 func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.permissionOptionLoader(edge)
+		loader, ok := h.permissionOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -1017,18 +1020,18 @@ func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   PermissionOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   PermissionOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permissions/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permissions/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
@@ -1312,16 +1315,17 @@ func (h *AdminHandler) permissiongroupOptionLoader(edge string) (PermissionGroup
 
 func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.permissiongroupOptionLoader(edge)
+		loader, ok := h.permissiongroupOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -1332,18 +1336,18 @@ func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handle
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   PermissionGroupOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   PermissionGroupOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permission-groups/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permission-groups/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
@@ -1775,16 +1779,17 @@ func (h *AdminHandler) reviewOptionLoader(edge string) (ReviewOptionLoader, bool
 
 func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.reviewOptionLoader(edge)
+		loader, ok := h.reviewOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -1795,18 +1800,18 @@ func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   ReviewOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   ReviewOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"reviews/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"reviews/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
@@ -2213,16 +2218,17 @@ func (h *AdminHandler) userOptionLoader(edge string) (UserOptionLoader, bool) {
 
 func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.userOptionLoader(edge)
+		loader, ok := h.userOptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -2233,18 +2239,18 @@ func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   UserOptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   UserOptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"users/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"users/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {

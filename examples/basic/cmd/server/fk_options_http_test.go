@@ -140,6 +140,32 @@ func TestReviewUserOptionsSearchDoesNotUseBookEdge(t *testing.T) {
 	}
 }
 
+func TestReviewOptionsEdgesDoNotStickAcrossRequests(t *testing.T) {
+	h, cookie := newAuthedAdminHandler(t)
+	get := func(path string) string {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.AddCookie(cookie)
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d body=%s", path, rec.Code, rec.Body.String())
+		}
+		return rec.Body.String()
+	}
+	book := get("/admin/reviews/options/book/?q=Needle")
+	if !strings.Contains(book, `id="entity-book-options"`) || !strings.Contains(book, "Needle Title") {
+		t.Fatalf("book search = %s", book)
+	}
+	user := get("/admin/reviews/options/user/?q=author@vent.com")
+	if strings.Contains(user, `id="entity-book-options"`) {
+		t.Fatalf("user search reused book edge: %s", user)
+	}
+	if !strings.Contains(user, `id="entity-user-options"`) {
+		t.Fatalf("user search = %s", user)
+	}
+}
+
 func TestBookAuthorOptionsSearchViaUserEmail(t *testing.T) {
 	h, cookie := newAuthedAdminHandler(t)
 	rec := httptest.NewRecorder()

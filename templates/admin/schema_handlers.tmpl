@@ -85,16 +85,17 @@ func (h *AdminHandler) {{ lower $node.Name }}OptionLoader(edge string) ({{ $node
 
 func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		resolved := edge
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.RequestURI)
 		}
-		if edge == "" {
-			edge = vent.OptionEdgeFromPath(r.URL.Path)
+		if resolved == "" {
+			resolved = vent.OptionEdgeFromPath(r.URL.Path)
 		}
-		if edge == "" {
-			edge = r.PathValue("edge")
+		if resolved == "" {
+			resolved = r.PathValue("edge")
 		}
-		loader, ok := h.{{ lower $node.Name }}OptionLoader(edge)
+		loader, ok := h.{{ lower $node.Name }}OptionLoader(resolved)
 		if !ok {
 			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
 			return
@@ -105,18 +106,18 @@ func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handl
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[edge]))
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     edge,
-			Unique:   {{ $node.Name }}OptionEdgeUnique(edge),
+			Name:     resolved,
+			Unique:   {{ $node.Name }}OptionEdgeUnique(resolved),
 			Options:  options,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"{{ $rc.RouteName }}/options/"+edge+"/", edge),
+			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"{{ $rc.RouteName }}/options/"+resolved+"/", resolved),
 			Editable: true,
 		})
 		if vent.IsDatastarRequest(r) {
