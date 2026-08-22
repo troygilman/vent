@@ -1,14 +1,15 @@
 package gui
 
-import (
-	"fmt"
-	"strconv"
-)
-
 type SelectOption struct {
 	Value    int
 	Label    string
 	Selected bool
+}
+
+// FKOptions is a search-hit dropdown plus committed chips (not injected into hits).
+type FKOptions struct {
+	Options []SelectOption
+	Chips   []SelectOption
 }
 
 type SchemaEntityTextFieldProps struct {
@@ -61,19 +62,63 @@ type SchemaEntityTimeFieldProps struct {
 }
 
 type SchemaEntityForeignKeyUniqueFieldProps struct {
-	Name     string
-	Label    string
-	Editable bool
-	Desc     string
-	Options  []SelectOption
+	Name       string
+	Label      string
+	Editable   bool
+	Desc       string
+	Options    []SelectOption
+	Chips      []SelectOption
+	OptionsURL string
 }
 
 type SchemaEntityForeignKeyFieldProps struct {
-	Name     string
-	Label    string
-	Editable bool
-	Desc     string
-	Options  []SelectOption
+	Name       string
+	Label      string
+	Editable   bool
+	Desc       string
+	Options    []SelectOption
+	Chips      []SelectOption
+	OptionsURL string
+}
+
+type FkOptionListProps struct {
+	Name    string
+	Unique  bool
+	Options []SelectOption
+	Query   string
+}
+
+templ FkOptionList(props FkOptionListProps) {
+	<div id={ fkOptionsElementID(props.Name) } class="fk-combobox-results">
+		<div class="fk-option-list" role="listbox">
+			if len(props.Options) == 0 {
+				<div class="fk-option-empty">
+					if props.Query == "" {
+						No options
+					} else {
+						No matches for “{ props.Query }”
+					}
+				</div>
+			} else {
+				for _, opt := range props.Options {
+					<button
+						type="button"
+						class={ "fk-option", templ.KV("selected", opt.Selected) }
+						role="option"
+						tabindex="-1"
+						data-on:mousedown__prevent="true"
+						if props.Unique {
+							data-on:click={ fkSelectUnique(props.Name, opt.Value, opt.Label) }
+						} else {
+							data-on:click={ fkAddMany(props.Name, opt.Value, opt.Label) }
+						}
+					>
+						{ opt.Label }
+					</button>
+				}
+			}
+		</div>
+	</div>
 }
 
 templ SchemaEntityTextField(props SchemaEntityTextFieldProps) {
@@ -212,27 +257,49 @@ templ SchemaEntityTimeField(props SchemaEntityTimeFieldProps) {
 }
 
 templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldProps) {
-	<div class="field-group">
-		<label class="field">
+	{{ fetch := fkFetchIfOpen(props.OptionsURL, props.Name) }}
+	{{ selectedID := fkSelectedID(props.Chips) }}
+	{{ selectedLabel := fkSelectedLabel(props.Chips) }}
+	<div class="field-group" data-signals={ templ.JSONString(fkUniqueSignals(props.Name, selectedID, selectedLabel)) }>
+		<div class="field">
 			<span class="field-label">{ props.Label }</span>
-			<select
-				class="select"
-				if props.Editable {
-					data-bind={ entitySignal(props.Name) }
-				}
-				disabled?={ !props.Editable }
-			>
-				<option value="">-- Select --</option>
-				for _, opt := range props.Options {
-					<option
-						value={ strconv.Itoa(opt.Value) }
-						selected?={ opt.Selected }
-					>
-						{ opt.Label }
-					</option>
-				}
-			</select>
-		</label>
+			<div class="fk-combobox" data-class:is-open={ fkIsOpenExpr(props.Name) }>
+				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
+					<span class="fk-chip" data-show={ fkHasLabelExpr(props.Name) }>
+						<span data-text={ fkLabelTextExpr(props.Name) }>{ selectedLabel }</span>
+						if props.Editable {
+							<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkClearUnique(props.Name) } aria-label="Clear">×</button>
+						}
+					</span>
+					if props.Editable {
+						<input
+							type="text"
+							class="fk-combobox-input"
+							placeholder="Search..."
+							role="combobox"
+							aria-autocomplete="list"
+							aria-controls={ fkOptionsElementID(props.Name) }
+							autocomplete="off"
+							spellcheck="false"
+							data-bind={ fkSearchSignal(props.Name) }
+							data-on:focus={ fkOpen(props.Name) }
+							data-on:focus__debounce.200ms={ fetch }
+							data-on:input={ fkOnInput(props.Name) }
+							data-on:input__debounce.200ms={ fetch }
+							data-on:keydown={ fkKeydown(props.Name) }
+							data-on:blur={ fkBlur(props.Name) }
+						/>
+					} else if selectedLabel == "" {
+						<span class="fk-combobox-static"></span>
+					}
+					@FkOptionList(FkOptionListProps{
+						Name:    props.Name,
+						Unique:  true,
+						Options: props.Options,
+					})
+				</div>
+			</div>
+		</div>
 		if props.Desc != "" {
 			<p class="field-desc">{ props.Desc }</p>
 		}
@@ -240,52 +307,47 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 }
 
 templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
-	<div class="field-group">
-		<label class="field">
+	{{ fetch := fkFetchIfOpen(props.OptionsURL, props.Name) }}
+	<div class="field-group" data-signals={ templ.JSONString(fkManySignals(props.Name, props.Chips)) }>
+		<div class="field">
 			<span class="field-label">{ props.Label }</span>
-			<div class="fk-select-group">
-				if props.Editable {
-					<select class="select multi-select" data-bind={ "entity." + props.Name } multiple size="4">
-						for _, opt := range props.Options {
-							<option
-								data-on:mousedown="evt.preventDefault()"
-								data-on:click__prevent="el.selected = true; el.dispatchEvent(new Event('change', { bubbles: true }))"
-								value={ strconv.Itoa(opt.Value) }
-								selected?={ opt.Selected }
-								data-show={ fmt.Sprintf("!$entity.%s.includes('%d')", props.Name, opt.Value) }
-								style="display: none"
-							>
-								{ opt.Label }
-							</option>
+			<div class="fk-combobox fk-combobox-many" data-class:is-open={ fkIsOpenExpr(props.Name) }>
+				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
+					<div
+						class="fk-chips"
+						if props.Editable {
+							data-editable="true"
+							data-on:click={ fkRemoveManyClick(props.Name) }
 						}
-					</select>
-					<select class="select multi-select" data-bind={ "entity." + props.Name } multiple size="4">
-						for _, opt := range props.Options {
-							<option
-								data-on:mousedown="evt.preventDefault()"
-								data-on:click__prevent="el.selected = false; el.dispatchEvent(new Event('change', { bubbles: true }))"
-								value={ strconv.Itoa(opt.Value) }
-								selected?={ opt.Selected }
-								data-show={ fmt.Sprintf("$entity.%s.includes('%d')", props.Name, opt.Value) }
-								style="display: none"
-							>
-								{ opt.Label }
-							</option>
-						}
-					</select>
-				} else {
-					<select class="select multi-select" multiple size="4" disabled>
-						for _, opt := range props.Options {
-							if opt.Selected {
-								<option value={ strconv.Itoa(opt.Value) } selected>
-									{ opt.Label }
-								</option>
-							}
-						}
-					</select>
-				}
+						data-effect={ fkRenderChipsEffect(props.Name) }
+					></div>
+					if props.Editable {
+						<input
+							type="text"
+							class="fk-combobox-input"
+							placeholder="Search..."
+							role="combobox"
+							aria-autocomplete="list"
+							aria-controls={ fkOptionsElementID(props.Name) }
+							autocomplete="off"
+							spellcheck="false"
+							data-bind={ fkSearchSignal(props.Name) }
+							data-on:focus={ fkOpen(props.Name) }
+							data-on:focus__debounce.200ms={ fetch }
+							data-on:input={ fkOnInput(props.Name) }
+							data-on:input__debounce.200ms={ fetch }
+							data-on:keydown={ fkKeydown(props.Name) }
+							data-on:blur={ fkBlur(props.Name) }
+						/>
+					}
+					@FkOptionList(FkOptionListProps{
+						Name:    props.Name,
+						Unique:  false,
+						Options: props.Options,
+					})
+				</div>
 			</div>
-		</label>
+		</div>
 		if props.Desc != "" {
 			<p class="field-desc">{ props.Desc }</p>
 		}

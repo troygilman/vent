@@ -60,8 +60,8 @@ func validatePatternSegments(pattern string) error {
 		}
 		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			name := strings.TrimSuffix(strings.TrimPrefix(part, "{"), "}")
-			if name != "id" {
-				return fmt.Errorf("route: unsupported path parameter %q: only {id} is allowed", part)
+			if name != "id" && name != "edge" {
+				return fmt.Errorf("route: unsupported path parameter %q: only {id} and {edge} are allowed", part)
 			}
 			continue
 		}

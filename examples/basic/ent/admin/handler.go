@@ -193,6 +193,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 
 			authed.Group("authors", func(schema *route.Router) {
 				schema.GET("/", h.getAuthorListHandler(), h.authorizePermission("read_author"))
+				schema.GET("/options/{edge}/", h.getAuthorOptionsHandler(""), h.authorize(h.canAuthorOptions))
 				schema.GET("/{id}/", h.getAuthorHandler(), h.authorizePermission("read_author"))
 				schema.POST("/", h.postAuthorHandler(), h.authorize(h.schemas.Author.CanCreate))
 				schema.GET("/add/{$}", h.getAuthorAddHandler(), h.authorize(h.schemas.Author.CanCreate))
@@ -202,6 +203,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 
 			authed.Group("books", func(schema *route.Router) {
 				schema.GET("/", h.getBookListHandler(), h.authorizePermission("read_book"))
+				schema.GET("/options/{edge}/", h.getBookOptionsHandler(""), h.authorize(h.canBookOptions))
 				schema.GET("/{id}/", h.getBookHandler(), h.authorizePermission("read_book"))
 				schema.POST("/", h.postBookHandler(), h.authorize(h.schemas.Book.CanCreate))
 				schema.GET("/add/{$}", h.getBookAddHandler(), h.authorize(h.schemas.Book.CanCreate))
@@ -211,12 +213,14 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 
 			authed.Group("permissions", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionListHandler(), h.authorizePermission("read_permission"))
+				schema.GET("/options/{edge}/", h.getPermissionOptionsHandler(""), h.authorize(h.canPermissionOptions))
 				schema.GET("/{id}/", h.getPermissionHandler(), h.authorizePermission("read_permission"))
 				schema.PATCH("/{id}/", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
 			})
 
 			authed.Group("permission-groups", func(schema *route.Router) {
 				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
+				schema.GET("/options/{edge}/", h.getPermissionGroupOptionsHandler(""), h.authorize(h.canPermissionGroupOptions))
 				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
 				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
 				schema.GET("/add/{$}", h.getPermissionGroupAddHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
@@ -226,6 +230,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 
 			authed.Group("reviews", func(schema *route.Router) {
 				schema.GET("/", h.getReviewListHandler(), h.authorizePermission("read_review"))
+				schema.GET("/options/{edge}/", h.getReviewOptionsHandler(""), h.authorize(h.canReviewOptions))
 				schema.GET("/{id}/", h.getReviewHandler(), h.authorizePermission("read_review"))
 				schema.POST("/", h.postReviewHandler(), h.authorize(h.schemas.Review.CanCreate))
 				schema.GET("/add/{$}", h.getReviewAddHandler(), h.authorize(h.schemas.Review.CanCreate))
@@ -234,6 +239,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 
 			authed.Group("users", func(schema *route.Router) {
 				schema.GET("/", h.getUserListHandler(), h.authorizePermission("read_user"))
+				schema.GET("/options/groups/", h.getUserOptionsHandler("groups"), h.authorize(h.canUserOptions))
 				schema.GET("/{id}/", h.getUserHandler(), h.authorizePermission("read_user"))
 				schema.POST("/", h.postUserHandler(), h.authorize(h.schemas.User.CanCreate))
 				schema.GET("/add/{$}", h.getUserAddHandler(), h.authorize(h.schemas.User.CanCreate))

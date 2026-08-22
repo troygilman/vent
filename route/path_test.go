@@ -46,6 +46,7 @@ func TestNormalizePattern(t *testing.T) {
 		{"/", "/"},
 		{"/login", "/login/"},
 		{"/{id}", "/{id}/"},
+		{"/options/{edge}", "/options/{edge}/"},
 		{"/add/{$}", "/add/{$}"},
 		{"/{id}/password", "/{id}/password/"},
 	}
@@ -64,6 +65,16 @@ func TestNormalizePattern(t *testing.T) {
 func TestNormalizePatternRejectsUnknownParam(t *testing.T) {
 	if _, err := NormalizePattern("/{slug}/"); err == nil {
 		t.Fatal("expected error for unknown parameter")
+	}
+}
+
+func TestNormalizePatternAllowsEdgeParam(t *testing.T) {
+	got, err := NormalizePattern("/options/{edge}/")
+	if err != nil {
+		t.Fatalf("NormalizePattern(/options/{edge}/) error: %v", err)
+	}
+	if got != "/options/{edge}/" {
+		t.Fatalf("NormalizePattern = %q, want /options/{edge}/", got)
 	}
 }
 
