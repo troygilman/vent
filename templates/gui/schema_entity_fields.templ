@@ -301,7 +301,8 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 							autocomplete="off"
 							spellcheck="false"
 							data-bind={ fkSearchSignal(props.Name) }
-							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:focus={ fkOpen(props.Name) }
+							data-on:focus__debounce.200ms={ fetch }
 							data-on:input={ fkOnInput(props.Name) }
 							data-on:input__debounce.200ms={ fetch }
 							data-on:keydown={ fkKeydown(props.Name) }
@@ -347,7 +348,8 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 							autocomplete="off"
 							spellcheck="false"
 							data-bind={ fkSearchSignal(props.Name) }
-							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:focus={ fkOpen(props.Name) }
+							data-on:focus__debounce.200ms={ fetch }
 							data-on:input={ fkOnInput(props.Name) }
 							data-on:input__debounce.200ms={ fetch }
 							data-on:keydown={ fkKeydown(props.Name) }
