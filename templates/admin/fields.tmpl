@@ -9,7 +9,6 @@ package admin
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	ent "{{ $.Config.Package }}"
@@ -23,7 +22,6 @@ import (
 
 // Keep imports referenced even when no field uses them.
 var (
-	_ = sort.Strings
 	_ = strings.Builder{}
 	{{- range $item := $adminNodes }}
 	_ = {{ $item.RC.PackageDir }}.Label
@@ -168,15 +166,17 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) 
 		{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
 		return "", nil
 		{{- else if isMemberKindEdge $member }}
-		options, err := f.load{{ pascal $member.Name }}Options(ctx)
+		loaded, err := f.LoadOptions(ctx, "", nil)
 		if err != nil {
 			return "", err
 		}
 		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-			Name:     "{{ $member.Name }}",
-			Label:    "{{ $member.Label }}",
-			Editable: gui.MustRenderContext(ctx).CanUpdate,
-			Options:  options,
+			Name:       "{{ $member.Name }}",
+			Label:      "{{ $member.Label }}",
+			Editable:   gui.MustRenderContext(ctx).CanUpdate,
+			Options:    loaded.Options,
+			Chips:      loaded.Chips,
+			OptionsURL: requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/options/{{ $member.Name }}/",
 		})
 		{{- else }}
 		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
@@ -218,15 +218,28 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 		ActionURL:   actionURL,
 	})
 	{{- else if isMemberKindEdge $member }}
-	options, err := f.load{{ pascal $member.Name }}OptionsWithSelection(ctx, e)
+	{{- if $member.EdgeUnique }}
+	var selectedIDs []int
+	if e.Edges.{{ pascal $member.Name }} != nil {
+		selectedIDs = []int{e.Edges.{{ pascal $member.Name }}.ID}
+	}
+	{{- else }}
+	selectedIDs := make([]int, 0, len(e.Edges.{{ pascal $member.Name }}))
+	for _, related := range e.Edges.{{ pascal $member.Name }} {
+		selectedIDs = append(selectedIDs, related.ID)
+	}
+	{{- end }}
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
 	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-		Name:     "{{ $member.Name }}",
-		Label:    "{{ $member.Label }}",
-		Editable: {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
-		Options:  options,
+		Name:       "{{ $member.Name }}",
+		Label:      "{{ $member.Label }}",
+		Editable:   {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
+		OptionsURL: requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/options/{{ $member.Name }}/",
 	})
 	{{- else }}
 		{{- if and $rc.IsAuthUserSchema (eq $member.Name "is_active") }}
@@ -380,44 +393,85 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 	{{- end }}
 }
 
-{{- if isMemberKindEdge $member }}
-func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}Options(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).{{ $member.EdgeTypeName }}().EagerLoadQuery(f.client.{{ $member.EdgeTypeName }}.Query()).All(ctx)
+{{ if isMemberKindEdge $member }}
+func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
+	search = vent.OptionSearch(search)
+	query := f.client.{{ $member.EdgeTypeName }}.Query().Order({{ lower $member.EdgeTypeName }}.ByID())
+	{{- if $member.OptionSearchColumns }}
+	if search != "" {
+		query = query.Where({{ lower $member.EdgeTypeName }}.Or(
+			{{- range $col := $member.OptionSearchColumns }}
+			{{ lower $member.EdgeTypeName }}.{{ $col }}ContainsFold(search),
+			{{- end }}
+		))
+	}
+	{{- else if $member.OptionSearchEdges }}
+	if search != "" {
+		query = query.Where({{ lower $member.EdgeTypeName }}.Or(
+			{{- range $edge := $member.OptionSearchEdges }}
+			{{ lower $member.EdgeTypeName }}.Has{{ $edge.HasPredicate }}With(
+				{{- if eq (len $edge.Columns) 1 }}
+				{{ $edge.PackageDir }}.{{ index $edge.Columns 0 }}ContainsFold(search),
+				{{- else }}
+				{{ $edge.PackageDir }}.Or(
+					{{- range $col := $edge.Columns }}
+					{{ $edge.PackageDir }}.{{ $col }}ContainsFold(search),
+					{{- end }}
+				),
+				{{- end }}
+			),
+			{{- end }}
+		))
+	}
+	{{- end }}
+	{{- range $edge := $member.OptionPreloadEdges }}
+	query = query.With{{ $edge }}()
+	{{- end }}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
+	}
+
+	var selected []*ent.{{ $member.EdgeTypeName }}
+	if len(selectedIDs) > 0 {
+		selectedQuery := f.client.{{ $member.EdgeTypeName }}.Query().
+			Where({{ lower $member.EdgeTypeName }}.IDIn(selectedIDs...)).
+			Order({{ lower $member.EdgeTypeName }}.ByID())
+		{{- range $edge := $member.OptionPreloadEdges }}
+		selectedQuery = selectedQuery.With{{ $edge }}()
+		{{- end }}
+		selected, err = selectedQuery.All(ctx)
+		if err != nil {
+			return gui.FKOptions{}, err
+		}
+	}
+
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.{{ $member.EdgeTypeName }}) int { return entity.ID })
+	}
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(entity),
+			Selected: isSelected,
 		}
 	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f {{ $node.Name }}{{ $member.SlotName }}) load{{ pascal $member.Name }}OptionsWithSelection(ctx context.Context, e *ent.{{ $node.Name }}) ([]gui.SelectOption, error) {
-	options, err := f.load{{ pascal $member.Name }}Options(ctx)
-	if err != nil {
-		return nil, err
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(entity),
+			Selected: true,
+		}
 	}
-	{{- if $member.EdgeUnique }}
-	for i := range options {
-		options[i].Selected = e.Edges.{{ pascal $member.Name }} != nil && e.Edges.{{ pascal $member.Name }}.ID == options[i].Value
-	}
-	{{- else }}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.{{ pascal $member.Name }} {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
-	}
-	{{- end }}
-	return options, nil
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 {{- end }}
 {{ end }}
