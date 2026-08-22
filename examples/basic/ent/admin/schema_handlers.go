@@ -94,13 +94,10 @@ func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   AuthorOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"authors/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  AuthorOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)
@@ -563,13 +560,10 @@ func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   BookOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"books/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  BookOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)
@@ -1029,13 +1023,10 @@ func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   PermissionOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permissions/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  PermissionOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)
@@ -1346,13 +1337,10 @@ func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handle
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   PermissionGroupOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permission-groups/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  PermissionGroupOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)
@@ -1811,13 +1799,10 @@ func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   ReviewOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"reviews/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  ReviewOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)
@@ -2251,13 +2236,10 @@ func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   UserOptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"users/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  UserOptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)

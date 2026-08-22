@@ -15,6 +15,28 @@ func TestFkManySignalsInitEmpty(t *testing.T) {
 	if len(ids) != 0 {
 		t.Fatalf("ids = %#v, want empty slice", ids)
 	}
+	chipsRoot, _ := got["fkchips"].(map[string]any)
+	chips, _ := chipsRoot["groups"].([]fkChipJSON)
+	if chips == nil {
+		t.Fatal("fkchips must init [] not nil")
+	}
+	if len(chips) != 0 {
+		t.Fatalf("fkchips = %#v, want empty", chips)
+	}
+}
+
+func TestFkManySignalsHydratesChips(t *testing.T) {
+	got := fkManySignals("groups", []SelectOption{{Value: 7, Label: "Staff", Selected: true}})
+	entity, _ := got["entity"].(map[string]any)
+	ids, _ := entity["groups"].([]string)
+	if len(ids) != 1 || ids[0] != "7" {
+		t.Fatalf("ids = %#v", ids)
+	}
+	chipsRoot, _ := got["fkchips"].(map[string]any)
+	chips, _ := chipsRoot["groups"].([]fkChipJSON)
+	if len(chips) != 1 || chips[0].ID != "7" || chips[0].Label != "Staff" {
+		t.Fatalf("fkchips = %#v", chips)
+	}
 }
 
 func TestFkOptionsFetchIncludesEntitySignal(t *testing.T) {
@@ -30,6 +52,33 @@ func TestFkOptionsFetchIncludesEntitySignal(t *testing.T) {
 	}
 	if strings.Contains(got, `!== ($fklabel`) {
 		t.Fatalf("fetch must not drop q when search equals the selected label: %q", got)
+	}
+}
+
+func TestFkFetchIfOpenGatesGet(t *testing.T) {
+	got := fkFetchIfOpen("/admin/reviews/options/book/", "book")
+	if !strings.HasPrefix(got, "$fkopen.book && @get(") {
+		t.Fatalf("fetch-if-open = %q", got)
+	}
+}
+
+func TestFkSelectUniqueDoesNotFetch(t *testing.T) {
+	got := fkSelectUnique("book", 9, "Needle Title")
+	if strings.Contains(got, "@get") {
+		t.Fatalf("pick must not @get: %q", got)
+	}
+	if !strings.Contains(got, "$entity.book = '9'") || !strings.Contains(got, "$fklabel.book") {
+		t.Fatalf("pick = %q", got)
+	}
+}
+
+func TestFkAddManyUpdatesChips(t *testing.T) {
+	got := fkAddMany("groups", 3, "Staff")
+	if strings.Contains(got, "@get") {
+		t.Fatalf("M2M pick must not @get: %q", got)
+	}
+	if !strings.Contains(got, "$fkchips.groups") {
+		t.Fatalf("M2M pick = %q", got)
 	}
 }
 

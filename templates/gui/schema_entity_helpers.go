@@ -58,16 +58,39 @@ func FkOptionsFetch(optionsURL, name string) string {
 	)
 }
 
+func fkFetchIfOpen(optionsURL, name string) string {
+	return fmt.Sprintf("$fkopen.%s && %s", name, FkOptionsFetch(optionsURL, name))
+}
+
 func fkSelectUnique(name string, id int, label string) string {
 	quoted := strconv.Quote(label)
 	return fmt.Sprintf(
-		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = \"\"; $fkopen.%s = false",
-		name, id, name, quoted, name, name,
+		"$fkopen.%s = false; $entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = \"\"",
+		name, name, id, name, quoted, name,
 	)
 }
 
 func fkClearUnique(name string) string {
-	return fmt.Sprintf("$entity.%s = \"\"; $fklabel.%s = \"\"; $fksearch.%s = \"\"; $fkopen.%s = false", name, name, name, name)
+	return fmt.Sprintf("$fkopen.%s = false; $entity.%s = \"\"; $fklabel.%s = \"\"; $fksearch.%s = \"\"", name, name, name, name)
+}
+
+func fkHasLabelExpr(name string) string {
+	return fmt.Sprintf("$fklabel.%s !== ''", name)
+}
+
+func fkLabelTextExpr(name string) string {
+	return "$fklabel." + name
+}
+
+func fkRenderChipsEffect(name string) string {
+	return fmt.Sprintf("fkCombobox.renderChips(el, $fkchips.%s)", name)
+}
+
+func fkRemoveManyClick(name string) string {
+	return fmt.Sprintf(
+		"evt.target.closest('.fk-clear') && ($entity.%s = $entity.%s.filter((id) => id !== evt.target.closest('.fk-clear').dataset.id), $fkchips.%s = $fkchips.%s.filter((c) => String(c.id) !== evt.target.closest('.fk-clear').dataset.id))",
+		name, name, name, name,
+	)
 }
 
 func fkOpen(name string) string {
@@ -101,18 +124,27 @@ func fkIsOpenExpr(name string) string {
 	return "$" + fkOpenSignal(name)
 }
 
-func fkAddMany(name string, id int) string {
+func fkAddMany(name string, id int, label string) string {
+	quoted := strconv.Quote(label)
 	return fmt.Sprintf(
-		"!$entity.%s.includes('%d') && ($entity.%s = [...$entity.%s, '%d'])",
-		name, id, name, name, id,
+		"!$entity.%s.includes('%d') && ($entity.%s = [...$entity.%s, '%d'], $fkchips.%s = [...$fkchips.%s, {id:'%d', label:%s}])",
+		name, id, name, name, id, name, name, id, quoted,
 	)
 }
 
-func fkRemoveMany(name string, id int) string {
-	return fmt.Sprintf(
-		"$entity.%s = $entity.%s.filter((id) => id !== '%d')",
-		name, name, id,
-	)
+type fkChipJSON struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+func fkSelectedChips(options []SelectOption) []fkChipJSON {
+	chips := make([]fkChipJSON, 0, len(options))
+	for _, opt := range options {
+		if opt.Selected {
+			chips = append(chips, fkChipJSON{ID: strconv.Itoa(opt.Value), Label: opt.Label})
+		}
+	}
+	return chips
 }
 
 func fkUniqueSignals(name, selectedID, selectedLabel string) map[string]any {
@@ -132,18 +164,16 @@ func fkUniqueSignals(name, selectedID, selectedLabel string) map[string]any {
 	}
 }
 
-func fkManySignals(name string, selectedIDs []string) map[string]any {
-	if selectedIDs == nil {
-		selectedIDs = []string{}
-	}
+func fkManySignals(name string, chips []SelectOption) map[string]any {
+	selectedIDs := fkSelectedIDs(chips)
 	return map[string]any{
 		"entity": map[string]any{
 			name: selectedIDs,
 		},
-		"fksearch": map[string]any{
-			name: "",
+		"fkchips": map[string]any{
+			name: fkSelectedChips(chips),
 		},
-		"fklabel": map[string]any{
+		"fksearch": map[string]any{
 			name: "",
 		},
 		"fkopen": map[string]any{

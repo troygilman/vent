@@ -29,6 +29,25 @@ window.fkCombobox = {
             input.focus();
         }
     },
+    renderChips(el, chips) {
+        el.replaceChildren();
+        for (const c of chips || []) {
+            const chip = document.createElement("span");
+            chip.className = "fk-chip";
+            chip.append(document.createTextNode(c.label ?? ""));
+            if (el.dataset.editable === "true") {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "fk-clear";
+                btn.setAttribute("aria-label", "Remove");
+                btn.dataset.id = String(c.id);
+                btn.textContent = "×";
+                btn.addEventListener("mousedown", (e) => e.preventDefault());
+                chip.append(btn);
+            }
+            el.append(chip);
+        }
+    },
     keydown(evt, name) {
         const root = evt.currentTarget.closest(".fk-combobox");
         if (!root) {

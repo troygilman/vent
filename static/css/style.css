@@ -1429,12 +1429,7 @@ select.select[multiple] option:hover {
     color: var(--color-text);
 }
 .fk-combobox-results {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
-    min-width: 0;
-    flex: 0 1 auto;
+    display: contents;
 }
 .fk-chip {
     display: inline-flex;

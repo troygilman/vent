@@ -113,13 +113,10 @@ func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handl
 		}
 
 		list := gui.FkOptionList(gui.FkOptionListProps{
-			Name:     resolved,
-			Unique:   {{ $node.Name }}OptionEdgeUnique(resolved),
-			Options:  loaded.Options,
-			Chips:    loaded.Chips,
-			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
-			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"{{ $rc.RouteName }}/options/"+resolved+"/", resolved),
-			Editable: true,
+			Name:    resolved,
+			Unique:  {{ $node.Name }}OptionEdgeUnique(resolved),
+			Options: loaded.Options,
+			Query:   vent.OptionSearch(r.URL.Query().Get("q")),
 		})
 		if vent.IsDatastarRequest(r) {
 			sse := datastar.NewSSE(w, r)

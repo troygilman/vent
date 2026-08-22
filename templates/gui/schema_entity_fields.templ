@@ -82,39 +82,14 @@ type SchemaEntityForeignKeyFieldProps struct {
 }
 
 type FkOptionListProps struct {
-	Name     string
-	Unique   bool
-	Options  []SelectOption
-	Chips    []SelectOption
-	Query    string
-	Fetch    string
-	Editable bool
+	Name    string
+	Unique  bool
+	Options []SelectOption
+	Query   string
 }
 
 templ FkOptionList(props FkOptionListProps) {
 	<div id={ fkOptionsElementID(props.Name) } class="fk-combobox-results">
-		if props.Unique {
-			{{ selectedLabel := fkSelectedLabel(props.Chips) }}
-			if selectedLabel != "" {
-				<span class="fk-chip">
-					{ selectedLabel }
-					if props.Editable {
-						<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkClearUnique(props.Name) + "; " + props.Fetch } aria-label="Clear">×</button>
-					}
-				</span>
-			}
-		} else {
-			<div class="fk-chips">
-				for _, opt := range props.Chips {
-					<span class="fk-chip">
-						{ opt.Label }
-						if props.Editable {
-							<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch } aria-label="Remove">×</button>
-						}
-					</span>
-				}
-			</div>
-		}
 		<div class="fk-option-list" role="listbox">
 			if len(props.Options) == 0 {
 				<div class="fk-option-empty">
@@ -133,9 +108,9 @@ templ FkOptionList(props FkOptionListProps) {
 						tabindex="-1"
 						data-on:mousedown__prevent="true"
 						if props.Unique {
-							data-on:click={ fkSelectUnique(props.Name, opt.Value, opt.Label) + "; " + props.Fetch }
+							data-on:click={ fkSelectUnique(props.Name, opt.Value, opt.Label) }
 						} else {
-							data-on:click={ fkAddMany(props.Name, opt.Value) + "; " + props.Fetch }
+							data-on:click={ fkAddMany(props.Name, opt.Value, opt.Label) }
 						}
 					>
 						{ opt.Label }
@@ -282,7 +257,7 @@ templ SchemaEntityTimeField(props SchemaEntityTimeFieldProps) {
 }
 
 templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldProps) {
-	{{ fetch := FkOptionsFetch(props.OptionsURL, props.Name) }}
+	{{ fetch := fkFetchIfOpen(props.OptionsURL, props.Name) }}
 	{{ selectedID := fkSelectedID(props.Chips) }}
 	{{ selectedLabel := fkSelectedLabel(props.Chips) }}
 	<div class="field-group" data-signals={ templ.JSONString(fkUniqueSignals(props.Name, selectedID, selectedLabel)) }>
@@ -290,14 +265,12 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 			<span class="field-label">{ props.Label }</span>
 			<div class="fk-combobox" data-class:is-open={ fkIsOpenExpr(props.Name) }>
 				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
-					@FkOptionList(FkOptionListProps{
-						Name:     props.Name,
-						Unique:   true,
-						Options:  props.Options,
-						Chips:    props.Chips,
-						Fetch:    fetch,
-						Editable: props.Editable,
-					})
+					<span class="fk-chip" data-show={ fkHasLabelExpr(props.Name) }>
+						<span data-text={ fkLabelTextExpr(props.Name) }>{ selectedLabel }</span>
+						if props.Editable {
+							<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkClearUnique(props.Name) } aria-label="Clear">×</button>
+						}
+					</span>
 					if props.Editable {
 						<input
 							type="text"
@@ -316,11 +289,14 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 							data-on:keydown={ fkKeydown(props.Name) }
 							data-on:blur={ fkBlur(props.Name) }
 						/>
-					} else {
-						if selectedLabel != "" {
-							<span class="fk-combobox-static">{ selectedLabel }</span>
-						}
+					} else if selectedLabel == "" {
+						<span class="fk-combobox-static"></span>
 					}
+					@FkOptionList(FkOptionListProps{
+						Name:    props.Name,
+						Unique:  true,
+						Options: props.Options,
+					})
 				</div>
 			</div>
 		</div>
@@ -331,21 +307,20 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 }
 
 templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
-	{{ fetch := FkOptionsFetch(props.OptionsURL, props.Name) }}
-	{{ selectedIDs := fkSelectedIDs(props.Chips) }}
-	<div class="field-group" data-signals={ templ.JSONString(fkManySignals(props.Name, selectedIDs)) }>
+	{{ fetch := fkFetchIfOpen(props.OptionsURL, props.Name) }}
+	<div class="field-group" data-signals={ templ.JSONString(fkManySignals(props.Name, props.Chips)) }>
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
 			<div class="fk-combobox fk-combobox-many" data-class:is-open={ fkIsOpenExpr(props.Name) }>
 				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
-					@FkOptionList(FkOptionListProps{
-						Name:     props.Name,
-						Unique:   false,
-						Options:  props.Options,
-						Chips:    props.Chips,
-						Fetch:    fetch,
-						Editable: props.Editable,
-					})
+					<div
+						class="fk-chips"
+						if props.Editable {
+							data-editable="true"
+							data-on:click={ fkRemoveManyClick(props.Name) }
+						}
+						data-effect={ fkRenderChipsEffect(props.Name) }
+					></div>
 					if props.Editable {
 						<input
 							type="text"
@@ -365,6 +340,11 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 							data-on:blur={ fkBlur(props.Name) }
 						/>
 					}
+					@FkOptionList(FkOptionListProps{
+						Name:    props.Name,
+						Unique:  false,
+						Options: props.Options,
+					})
 				</div>
 			</div>
 		</div>

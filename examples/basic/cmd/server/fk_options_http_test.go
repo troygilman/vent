@@ -71,11 +71,23 @@ func TestReviewAddFormCapsBookOptions(t *testing.T) {
 	if strings.Contains(bookBlock, `type="search"`) {
 		t.Fatal("FK widget should be a single combobox input, not type=search plus an always-open list")
 	}
-	if !strings.Contains(bookBlock, `role="combobox"`) {
+	if !strings.Contains(body, `role="combobox"`) {
 		t.Fatal("expected combobox role on the FK input")
 	}
-	if strings.Contains(bookBlock, `data-on:mousedown__prevent `) || strings.Contains(bookBlock, `data-on:mousedown__prevent>`) {
+	if strings.Contains(body, `data-on:mousedown__prevent `) || strings.Contains(body, `data-on:mousedown__prevent>`) {
 		t.Fatal("Datastar data-on requires a value; mousedown__prevent must not be a boolean attribute")
+	}
+	if strings.Contains(body, "fkSelectUnique") {
+		// expressions are inlined; pick must not append @get
+	}
+	if strings.Contains(body, `$entity.book`) && strings.Contains(body, `@get("/admin/reviews/options/book/")`) {
+		pick := body[strings.Index(body, `$entity.book`):]
+		if i := strings.Index(pick, `role="option"`); i > 0 && i < 200 {
+			chunk := pick[:i]
+			if strings.Contains(chunk, "@get") {
+				t.Fatalf("pick click must not @get: %s", chunk)
+			}
+		}
 	}
 }
 
@@ -120,8 +132,8 @@ func TestReviewBookOptionsSearchDoesNotInjectSelected(t *testing.T) {
 	if strings.Contains(body, `role="option"`) && strings.Contains(body[strings.Index(body, `role="option"`):], "Book 001") {
 		t.Fatal("selected Book 001 must not be injected into Needle search hits")
 	}
-	if !strings.Contains(body, `class="fk-chip"`) || !strings.Contains(body, "Book 001") {
-		t.Fatalf("selected book should remain a chip: %s", body)
+	if strings.Contains(body, `class="fk-chip"`) {
+		t.Fatal("options GET must not paint chips; chips are client-side")
 	}
 }
 
