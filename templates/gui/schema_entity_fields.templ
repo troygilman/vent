@@ -84,24 +84,14 @@ type FkOptionListProps struct {
 
 templ FkOptionList(props FkOptionListProps) {
 	<div id={ fkOptionsElementID(props.Name) } class="fk-combobox-results">
-		if props.Unique {
-			{{ selectedLabel := fkSelectedLabel(props.Options) }}
-			if selectedLabel != "" {
-				<div class="fk-selected">
-					<span class="fk-selected-label">{ selectedLabel }</span>
-					if props.Editable {
-						<button type="button" class="fk-clear" data-on:click={ fkClearUnique(props.Name) + "; " + props.Fetch } aria-label="Clear">×</button>
-					}
-				</div>
-			}
-		} else {
+		if !props.Unique {
 			<div class="fk-chips">
 				for _, opt := range props.Options {
 					if opt.Selected {
 						<span class="fk-chip">
 							{ opt.Label }
 							if props.Editable {
-								<button type="button" class="fk-clear" data-on:click={ fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch } aria-label="Remove">×</button>
+								<button type="button" class="fk-clear" data-on:mousedown__prevent data-on:click={ fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch } aria-label="Remove">×</button>
 							}
 						</span>
 					}
@@ -123,6 +113,8 @@ templ FkOptionList(props FkOptionListProps) {
 						type="button"
 						class={ "fk-option", templ.KV("selected", opt.Selected) }
 						role="option"
+						tabindex="-1"
+						data-on:mousedown__prevent
 						if props.Unique {
 							data-on:click={ fkSelectUnique(props.Name, opt.Value, opt.Label) + "; " + props.Fetch }
 						} else {
@@ -279,25 +271,45 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 	<div class="field-group" data-signals={ templ.JSONString(fkUniqueSignals(props.Name, selectedID, selectedLabel)) }>
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
-			<div class="fk-combobox">
-				if props.Editable {
-					<input
-						type="search"
-						class="fk-combobox-input"
-						placeholder="Search..."
-						autocomplete="off"
-						spellcheck="false"
-						data-bind={ fkSearchSignal(props.Name) }
-						data-on:input__debounce.200ms={ fetch }
-					/>
-				}
-				@FkOptionList(FkOptionListProps{
-					Name:     props.Name,
-					Unique:   true,
-					Options:  props.Options,
-					Fetch:    fetch,
-					Editable: props.Editable,
-				})
+			<div class="fk-combobox" data-class:is-open={ fkIsOpenExpr(props.Name) }>
+				<div class="fk-combobox-face">
+					@FkOptionList(FkOptionListProps{
+						Name:     props.Name,
+						Unique:   true,
+						Options:  props.Options,
+						Fetch:    fetch,
+						Editable: props.Editable,
+					})
+					if props.Editable {
+						<input
+							type="text"
+							class="fk-combobox-input"
+							placeholder="Search..."
+							role="combobox"
+							aria-autocomplete="list"
+							aria-controls={ fkOptionsElementID(props.Name) }
+							autocomplete="off"
+							spellcheck="false"
+							data-bind={ fkSearchSignal(props.Name) }
+							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:input__debounce.200ms={ fetch }
+							data-on:keydown={ fkKeydown(props.Name) }
+							data-on:blur={ fkBlur(props.Name) }
+						/>
+						<button
+							type="button"
+							class="fk-clear"
+							data-show={ fkHasValueExpr(props.Name) }
+							data-on:mousedown__prevent
+							data-on:click={ fkClearUnique(props.Name) + "; " + fetch }
+							aria-label="Clear"
+						>×</button>
+					} else {
+						if selectedLabel != "" {
+							<span class="fk-combobox-static">{ selectedLabel }</span>
+						}
+					}
+				</div>
 			</div>
 		</div>
 		if props.Desc != "" {
@@ -312,25 +324,33 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 	<div class="field-group" data-signals={ templ.JSONString(fkManySignals(props.Name, selectedIDs)) }>
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
-			<div class="fk-combobox fk-combobox-many">
-				if props.Editable {
-					<input
-						type="search"
-						class="fk-combobox-input"
-						placeholder="Search..."
-						autocomplete="off"
-						spellcheck="false"
-						data-bind={ fkSearchSignal(props.Name) }
-						data-on:input__debounce.200ms={ fetch }
-					/>
-				}
-				@FkOptionList(FkOptionListProps{
-					Name:     props.Name,
-					Unique:   false,
-					Options:  props.Options,
-					Fetch:    fetch,
-					Editable: props.Editable,
-				})
+			<div class="fk-combobox fk-combobox-many" data-class:is-open={ fkIsOpenExpr(props.Name) }>
+				<div class="fk-combobox-face">
+					@FkOptionList(FkOptionListProps{
+						Name:     props.Name,
+						Unique:   false,
+						Options:  props.Options,
+						Fetch:    fetch,
+						Editable: props.Editable,
+					})
+					if props.Editable {
+						<input
+							type="text"
+							class="fk-combobox-input"
+							placeholder="Search..."
+							role="combobox"
+							aria-autocomplete="list"
+							aria-controls={ fkOptionsElementID(props.Name) }
+							autocomplete="off"
+							spellcheck="false"
+							data-bind={ fkSearchSignal(props.Name) }
+							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:input__debounce.200ms={ fetch }
+							data-on:keydown={ fkKeydown(props.Name) }
+							data-on:blur={ fkBlur(props.Name) }
+						/>
+					}
+				</div>
 			</div>
 		</div>
 		if props.Desc != "" {

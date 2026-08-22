@@ -67,6 +67,15 @@ func TestReviewAddFormCapsBookOptions(t *testing.T) {
 	if strings.Contains(body, "Needle Title") {
 		t.Fatal("book 150 should not appear in the first 100 options")
 	}
+	if strings.Contains(bookBlock, `type="search"`) {
+		t.Fatal("FK widget should be a single combobox input, not type=search plus an always-open list")
+	}
+	if !strings.Contains(bookBlock, `role="combobox"`) {
+		t.Fatal("expected combobox role on the FK input")
+	}
+	if strings.Contains(bookBlock, `class="fk-selected"`) {
+		t.Fatal("selected unique label should appear in the input, not a separate selected row")
+	}
 }
 
 func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {

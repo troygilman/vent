@@ -17,6 +17,10 @@ func fkSearchSignal(name string) string {
 	return "fksearch." + name
 }
 
+func fkOpenSignal(name string) string {
+	return "fkopen." + name
+}
+
 func fkSelectedID(options []SelectOption) string {
 	for _, opt := range options {
 		if opt.Selected {
@@ -47,19 +51,57 @@ func fkSelectedLabel(options []SelectOption) string {
 
 func FkOptionsFetch(optionsURL, name string) string {
 	return fmt.Sprintf(
-		`@get(%q + '?q=' + encodeURIComponent($fksearch.%s || ''), {filterSignals: {include: /^entity\.%s$/}})`,
+		`@get(%q + '?q=' + encodeURIComponent(($fksearch.%s && $fksearch.%s !== ($fklabel.%s || '')) ? $fksearch.%s : ''), {filterSignals: {include: /^entity\.%s$/}})`,
 		optionsURL,
+		name,
+		name,
+		name,
 		name,
 		name,
 	)
 }
 
 func fkSelectUnique(name string, id int, label string) string {
-	return fmt.Sprintf("$entity.%s = '%d'; $fklabel.%s = %s", name, id, name, strconv.Quote(label))
+	quoted := strconv.Quote(label)
+	return fmt.Sprintf(
+		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = %s; $fkopen.%s = false",
+		name, id, name, quoted, name, quoted, name,
+	)
 }
 
 func fkClearUnique(name string) string {
-	return fmt.Sprintf("$entity.%s = ''; $fklabel.%s = ''", name, name)
+	return fmt.Sprintf("$entity.%s = ''; $fklabel.%s = ''; $fksearch.%s = ''; $fkopen.%s = false", name, name, name, name)
+}
+
+func fkOpen(name string) string {
+	return fmt.Sprintf("$fkopen.%s = true", name)
+}
+
+func fkClose(name string) string {
+	return fmt.Sprintf("$fkopen.%s = false; $fksearch.%s = $fklabel.%s || ''", name, name, name)
+}
+
+func fkBlur(name string) string {
+	return fmt.Sprintf(
+		"(!evt.relatedTarget || !evt.currentTarget.closest('.fk-combobox').contains(evt.relatedTarget)) && (%s)",
+		fkClose(name),
+	)
+}
+
+func fkEscape(name string) string {
+	return fmt.Sprintf("evt.key === 'Escape' && (%s)", fkClose(name))
+}
+
+func fkKeydown(name string) string {
+	return fmt.Sprintf("fkCombobox.keydown(evt, %q); %s", name, fkEscape(name))
+}
+
+func fkHasValueExpr(name string) string {
+	return "$" + entitySignal(name) + " !== ''"
+}
+
+func fkIsOpenExpr(name string) string {
+	return "$" + fkOpenSignal(name)
 }
 
 func fkAddMany(name string, id int) string {
@@ -82,10 +124,13 @@ func fkUniqueSignals(name, selectedID, selectedLabel string) map[string]any {
 			name: selectedID,
 		},
 		"fksearch": map[string]any{
-			name: "",
+			name: selectedLabel,
 		},
 		"fklabel": map[string]any{
 			name: selectedLabel,
+		},
+		"fkopen": map[string]any{
+			name: false,
 		},
 	}
 }
@@ -100,6 +145,12 @@ func fkManySignals(name string, selectedIDs []string) map[string]any {
 		},
 		"fksearch": map[string]any{
 			name: "",
+		},
+		"fklabel": map[string]any{
+			name: "",
+		},
+		"fkopen": map[string]any{
+			name: false,
 		},
 	}
 }
