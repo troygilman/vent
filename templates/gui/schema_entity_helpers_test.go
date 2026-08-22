@@ -25,7 +25,7 @@ func TestFkOptionsFetchIncludesEntitySignal(t *testing.T) {
 	if !strings.Contains(got, `/admin/reviews/options/book/`) {
 		t.Fatalf("fetch %q missing url", got)
 	}
-	if !strings.Contains(got, `encodeURIComponent($fksearch.book || '')`) {
+	if !strings.Contains(got, `encodeURIComponent($fksearch.book || "")`) {
 		t.Fatalf("fetch %q should always send the search query", got)
 	}
 	if strings.Contains(got, `!== ($fklabel`) {
@@ -42,5 +42,12 @@ func TestFkUniqueSignalsKeepSearchEmpty(t *testing.T) {
 	label, _ := got["fklabel"].(map[string]any)
 	if label["book"] != "Needle Title" {
 		t.Fatalf("fklabel = %#v, want Needle Title", label["book"])
+	}
+}
+
+func TestFkBlurDoesNotEmbedSemicolons(t *testing.T) {
+	got := fkBlur("book")
+	if strings.Contains(got, ";") {
+		t.Fatalf("Datastar && groups cannot contain semicolons: %q", got)
 	}
 }

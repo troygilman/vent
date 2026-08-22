@@ -51,7 +51,7 @@ func fkSelectedLabel(options []SelectOption) string {
 
 func FkOptionsFetch(optionsURL, name string) string {
 	return fmt.Sprintf(
-		`@get(%q + '?q=' + encodeURIComponent($fksearch.%s || ''), {filterSignals: {include: /^entity\.%s$/}})`,
+		`@get(%q + '?q=' + encodeURIComponent($fksearch.%s || ""), {filterSignals: {include: /^entity\.%s$/}})`,
 		optionsURL,
 		name,
 		name,
@@ -61,13 +61,13 @@ func FkOptionsFetch(optionsURL, name string) string {
 func fkSelectUnique(name string, id int, label string) string {
 	quoted := strconv.Quote(label)
 	return fmt.Sprintf(
-		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = ''; $fkopen.%s = false",
+		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = \"\"; $fkopen.%s = false",
 		name, id, name, quoted, name, name,
 	)
 }
 
 func fkClearUnique(name string) string {
-	return fmt.Sprintf("$entity.%s = ''; $fklabel.%s = ''; $fksearch.%s = ''; $fkopen.%s = false", name, name, name, name)
+	return fmt.Sprintf("$entity.%s = \"\"; $fklabel.%s = \"\"; $fksearch.%s = \"\"; $fkopen.%s = false", name, name, name, name)
 }
 
 func fkOpen(name string) string {
@@ -75,7 +75,7 @@ func fkOpen(name string) string {
 }
 
 func fkClose(name string) string {
-	return fmt.Sprintf("$fkopen.%s = false; $fksearch.%s = ''", name, name)
+	return fmt.Sprintf("$fkopen.%s = false, $fksearch.%s = \"\"", name, name)
 }
 
 func fkBlur(name string) string {
