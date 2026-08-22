@@ -51,7 +51,7 @@ func (h *AdminHandler) canAuthorOptions(ctx context.Context) (bool, error) {
 }
 
 type AuthorOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) authorOptionLoader(edge string) (AuthorOptionLoader, bool) {
@@ -87,7 +87,7 @@ func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -96,7 +96,8 @@ func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   AuthorOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"authors/options/"+resolved+"/", resolved),
 			Editable: true,
@@ -519,7 +520,7 @@ func (h *AdminHandler) canBookOptions(ctx context.Context) (bool, error) {
 }
 
 type BookOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) bookOptionLoader(edge string) (BookOptionLoader, bool) {
@@ -555,7 +556,7 @@ func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -564,7 +565,8 @@ func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   BookOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"books/options/"+resolved+"/", resolved),
 			Editable: true,
@@ -984,7 +986,7 @@ func (h *AdminHandler) canPermissionOptions(ctx context.Context) (bool, error) {
 }
 
 type PermissionOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) permissionOptionLoader(edge string) (PermissionOptionLoader, bool) {
@@ -1020,7 +1022,7 @@ func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -1029,7 +1031,8 @@ func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   PermissionOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permissions/options/"+resolved+"/", resolved),
 			Editable: true,
@@ -1300,7 +1303,7 @@ func (h *AdminHandler) canPermissionGroupOptions(ctx context.Context) (bool, err
 }
 
 type PermissionGroupOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) permissiongroupOptionLoader(edge string) (PermissionGroupOptionLoader, bool) {
@@ -1336,7 +1339,7 @@ func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handle
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -1345,7 +1348,8 @@ func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handle
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   PermissionGroupOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"permission-groups/options/"+resolved+"/", resolved),
 			Editable: true,
@@ -1761,7 +1765,7 @@ func (h *AdminHandler) canReviewOptions(ctx context.Context) (bool, error) {
 }
 
 type ReviewOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) reviewOptionLoader(edge string) (ReviewOptionLoader, bool) {
@@ -1800,7 +1804,7 @@ func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -1809,7 +1813,8 @@ func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   ReviewOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"reviews/options/"+resolved+"/", resolved),
 			Editable: true,
@@ -2203,7 +2208,7 @@ func (h *AdminHandler) canUserOptions(ctx context.Context) (bool, error) {
 }
 
 type UserOptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) userOptionLoader(edge string) (UserOptionLoader, bool) {
@@ -2239,7 +2244,7 @@ func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -2248,7 +2253,8 @@ func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   UserOptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"users/options/"+resolved+"/", resolved),
 			Editable: true,

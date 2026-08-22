@@ -98,7 +98,7 @@ func (f AuthorUserField) ListCell(ctx context.Context, e *ent.Author) string {
 }
 
 func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +106,8 @@ func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "user",
 		Label:      "User",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "authors/options/user/",
 	})
 }
@@ -116,7 +117,7 @@ func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string,
 	if e.Edges.User != nil {
 		selectedIDs = []int{e.Edges.User.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -124,7 +125,8 @@ func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string,
 		Name:       "user",
 		Label:      "User",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "authors/options/user/",
 	})
 }
@@ -155,7 +157,7 @@ func (f AuthorUserField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdat
 	return nil
 }
 
-func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.User.Query().Order(user.ByID())
 	if search != "" {
@@ -165,7 +167,7 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.User
@@ -175,11 +177,14 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 			Order(user.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -193,7 +198,15 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).User().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 type AuthorActiveField struct {
@@ -391,7 +404,7 @@ func (f BookAuthorField) ListCell(ctx context.Context, e *ent.Book) string {
 }
 
 func (f BookAuthorField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -399,7 +412,8 @@ func (f BookAuthorField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "author",
 		Label:      "Author",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "books/options/author/",
 	})
 }
@@ -409,7 +423,7 @@ func (f BookAuthorField) UpdateHTML(ctx context.Context, e *ent.Book) (string, e
 	if e.Edges.Author != nil {
 		selectedIDs = []int{e.Edges.Author.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -417,7 +431,8 @@ func (f BookAuthorField) UpdateHTML(ctx context.Context, e *ent.Book) (string, e
 		Name:       "author",
 		Label:      "Author",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "books/options/author/",
 	})
 }
@@ -448,7 +463,7 @@ func (f BookAuthorField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateO
 	return nil
 }
 
-func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.Author.Query().Order(author.ByID())
 	if search != "" {
@@ -461,7 +476,7 @@ func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selecte
 	query = query.WithUser()
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.Author
@@ -472,11 +487,14 @@ func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selecte
 		selectedQuery = selectedQuery.WithUser()
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.Author) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Author) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -490,7 +508,15 @@ func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selecte
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Author().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 type BookPagesField struct {
@@ -797,7 +823,7 @@ func (f PermissionGroupsField) ListCell(ctx context.Context, e *ent.Permission) 
 }
 
 func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -805,7 +831,8 @@ func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "groups",
 		Label:      "Groups",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "permissions/options/groups/",
 	})
 }
@@ -815,7 +842,7 @@ func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission
 	for _, related := range e.Edges.Groups {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -823,7 +850,8 @@ func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission
 		Name:       "groups",
 		Label:      "Groups",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "permissions/options/groups/",
 	})
 }
@@ -853,7 +881,7 @@ func (f PermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.Permi
 	return nil
 }
 
-func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.PermissionGroup.Query().Order(permissiongroup.ByID())
 	if search != "" {
@@ -863,7 +891,7 @@ func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, s
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.PermissionGroup
@@ -873,11 +901,14 @@ func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, s
 			Order(permissiongroup.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -891,7 +922,15 @@ func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, s
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).PermissionGroup().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 // PermissionGroupField is the typed admin field contract for PermissionGroup.
@@ -1010,7 +1049,7 @@ func (f PermissionGroupPermissionsField) ListCell(ctx context.Context, e *ent.Pe
 }
 
 func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1018,7 +1057,8 @@ func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string
 		Name:       "permissions",
 		Label:      "Permissions",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "permission-groups/options/permissions/",
 	})
 }
@@ -1028,7 +1068,7 @@ func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.
 	for _, related := range e.Edges.Permissions {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1036,7 +1076,8 @@ func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.
 		Name:       "permissions",
 		Label:      "Permissions",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "permission-groups/options/permissions/",
 	})
 }
@@ -1066,7 +1107,7 @@ func (f PermissionGroupPermissionsField) ApplyUpdate(_ context.Context, builder 
 	return nil
 }
 
-func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.Permission.Query().Order(permission.ByID())
 	if search != "" {
@@ -1076,7 +1117,7 @@ func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.Permission
@@ -1086,11 +1127,14 @@ func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search
 			Order(permission.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.Permission) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Permission) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -1104,7 +1148,15 @@ func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Permission().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 // ReviewField is the typed admin field contract for Review.
@@ -1192,7 +1244,7 @@ func (f ReviewUserField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1200,7 +1252,8 @@ func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "user",
 		Label:      "User",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "reviews/options/user/",
 	})
 }
@@ -1210,7 +1263,7 @@ func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 	if e.Edges.User != nil {
 		selectedIDs = []int{e.Edges.User.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1218,7 +1271,8 @@ func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 		Name:       "user",
 		Label:      "User",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "reviews/options/user/",
 	})
 }
@@ -1249,7 +1303,7 @@ func (f ReviewUserField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 
-func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.User.Query().Order(user.ByID())
 	if search != "" {
@@ -1259,7 +1313,7 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.User
@@ -1269,11 +1323,14 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 			Order(user.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -1287,7 +1344,15 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).User().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 type ReviewRatingField struct {
@@ -1404,7 +1469,7 @@ func (f ReviewBookField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewBookField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1412,7 +1477,8 @@ func (f ReviewBookField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "book",
 		Label:      "Book",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "reviews/options/book/",
 	})
 }
@@ -1422,7 +1488,7 @@ func (f ReviewBookField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 	if e.Edges.Book != nil {
 		selectedIDs = []int{e.Edges.Book.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1430,7 +1496,8 @@ func (f ReviewBookField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 		Name:       "book",
 		Label:      "Book",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "reviews/options/book/",
 	})
 }
@@ -1461,7 +1528,7 @@ func (f ReviewBookField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 
-func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.Book.Query().Order(book.ByID())
 	if search != "" {
@@ -1471,7 +1538,7 @@ func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selecte
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.Book
@@ -1481,11 +1548,14 @@ func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selecte
 			Order(book.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.Book) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Book) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -1499,7 +1569,15 @@ func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selecte
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Book().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 // UserField is the typed admin field contract for User.
@@ -1883,7 +1961,7 @@ func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
 }
 
 func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
+	loaded, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1891,7 +1969,8 @@ func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
 		Name:       "groups",
 		Label:      "Groups",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "users/options/groups/",
 	})
 }
@@ -1901,7 +1980,7 @@ func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, e
 	for _, related := range e.Edges.Groups {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1909,7 +1988,8 @@ func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, e
 		Name:       "groups",
 		Label:      "Groups",
 		Editable:   gui.MustRenderContext(ctx).CanUpdate,
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "users/options/groups/",
 	})
 }
@@ -1939,7 +2019,7 @@ func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateO
 	return nil
 }
 
-func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.PermissionGroup.Query().Order(permissiongroup.ByID())
 	if search != "" {
@@ -1949,7 +2029,7 @@ func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selecte
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.PermissionGroup
@@ -1959,11 +2039,14 @@ func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selecte
 			Order(permissiongroup.ByID())
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -1977,7 +2060,15 @@ func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selecte
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).PermissionGroup().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 
 type UserLastLoginField struct {

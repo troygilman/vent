@@ -97,7 +97,7 @@ func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {
 	}
 }
 
-func TestReviewBookOptionsSearchWithSelectedStillReturnsHits(t *testing.T) {
+func TestReviewBookOptionsSearchDoesNotInjectSelected(t *testing.T) {
 	h, cookie := newAuthedAdminHandler(t)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(
@@ -112,10 +112,16 @@ func TestReviewBookOptionsSearchWithSelectedStillReturnsHits(t *testing.T) {
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "Needle Title") {
-		t.Fatalf("selected book must not suppress search hits: %s", body)
+		t.Fatalf("search missed Needle Title: %s", body)
 	}
-	if !strings.Contains(body, "Book 001") {
-		t.Fatalf("selected book should remain in the union: %s", body)
+	if strings.Count(body, `role="option"`) != 1 {
+		t.Fatalf("search options = %d, want hits only", strings.Count(body, `role="option"`))
+	}
+	if strings.Contains(body, `role="option"`) && strings.Contains(body[strings.Index(body, `role="option"`):], "Book 001") {
+		t.Fatal("selected Book 001 must not be injected into Needle search hits")
+	}
+	if !strings.Contains(body, `class="fk-chip"`) || !strings.Contains(body, "Book 001") {
+		t.Fatalf("selected book should remain a chip: %s", body)
 	}
 }
 

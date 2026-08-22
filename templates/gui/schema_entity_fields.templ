@@ -6,6 +6,12 @@ type SelectOption struct {
 	Selected bool
 }
 
+// FKOptions is a search-hit dropdown plus committed chips (not injected into hits).
+type FKOptions struct {
+	Options []SelectOption
+	Chips   []SelectOption
+}
+
 type SchemaEntityTextFieldProps struct {
 	Name        string
 	Label       string
@@ -61,6 +67,7 @@ type SchemaEntityForeignKeyUniqueFieldProps struct {
 	Editable   bool
 	Desc       string
 	Options    []SelectOption
+	Chips      []SelectOption
 	OptionsURL string
 }
 
@@ -70,6 +77,7 @@ type SchemaEntityForeignKeyFieldProps struct {
 	Editable   bool
 	Desc       string
 	Options    []SelectOption
+	Chips      []SelectOption
 	OptionsURL string
 }
 
@@ -77,6 +85,7 @@ type FkOptionListProps struct {
 	Name     string
 	Unique   bool
 	Options  []SelectOption
+	Chips    []SelectOption
 	Query    string
 	Fetch    string
 	Editable bool
@@ -85,7 +94,7 @@ type FkOptionListProps struct {
 templ FkOptionList(props FkOptionListProps) {
 	<div id={ fkOptionsElementID(props.Name) } class="fk-combobox-results">
 		if props.Unique {
-			{{ selectedLabel := fkSelectedLabel(props.Options) }}
+			{{ selectedLabel := fkSelectedLabel(props.Chips) }}
 			if selectedLabel != "" {
 				<span class="fk-chip">
 					{ selectedLabel }
@@ -96,15 +105,13 @@ templ FkOptionList(props FkOptionListProps) {
 			}
 		} else {
 			<div class="fk-chips">
-				for _, opt := range props.Options {
-					if opt.Selected {
-						<span class="fk-chip">
-							{ opt.Label }
-							if props.Editable {
-								<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch } aria-label="Remove">×</button>
-							}
-						</span>
-					}
+				for _, opt := range props.Chips {
+					<span class="fk-chip">
+						{ opt.Label }
+						if props.Editable {
+							<button type="button" class="fk-clear" data-on:mousedown__prevent="true" data-on:click={ fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch } aria-label="Remove">×</button>
+						}
+					</span>
 				}
 			</div>
 		}
@@ -276,8 +283,8 @@ templ SchemaEntityTimeField(props SchemaEntityTimeFieldProps) {
 
 templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldProps) {
 	{{ fetch := FkOptionsFetch(props.OptionsURL, props.Name) }}
-	{{ selectedID := fkSelectedID(props.Options) }}
-	{{ selectedLabel := fkSelectedLabel(props.Options) }}
+	{{ selectedID := fkSelectedID(props.Chips) }}
+	{{ selectedLabel := fkSelectedLabel(props.Chips) }}
 	<div class="field-group" data-signals={ templ.JSONString(fkUniqueSignals(props.Name, selectedID, selectedLabel)) }>
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
@@ -287,6 +294,7 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 						Name:     props.Name,
 						Unique:   true,
 						Options:  props.Options,
+						Chips:    props.Chips,
 						Fetch:    fetch,
 						Editable: props.Editable,
 					})
@@ -324,7 +332,7 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 
 templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 	{{ fetch := FkOptionsFetch(props.OptionsURL, props.Name) }}
-	{{ selectedIDs := fkSelectedIDs(props.Options) }}
+	{{ selectedIDs := fkSelectedIDs(props.Chips) }}
 	<div class="field-group" data-signals={ templ.JSONString(fkManySignals(props.Name, selectedIDs)) }>
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
@@ -334,6 +342,7 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 						Name:     props.Name,
 						Unique:   false,
 						Options:  props.Options,
+						Chips:    props.Chips,
 						Fetch:    fetch,
 						Editable: props.Editable,
 					})

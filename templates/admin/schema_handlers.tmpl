@@ -66,7 +66,7 @@ func (h *AdminHandler) can{{ $node.Name }}Options(ctx context.Context) (bool, er
 }
 
 type {{ $node.Name }}OptionLoader interface {
-	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error)
 }
 
 func (h *AdminHandler) {{ lower $node.Name }}OptionLoader(edge string) ({{ $node.Name }}OptionLoader, bool) {
@@ -106,7 +106,7 @@ func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handl
 		}
 		_ = datastar.ReadSignals(r, &signals)
 
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
+		loaded, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), vent.ParseOptionIDs(signals.Entity[resolved]))
 		if err != nil {
 			vent.HandleError(w, r, normalizeError(err))
 			return
@@ -115,7 +115,8 @@ func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handl
 		list := gui.FkOptionList(gui.FkOptionListProps{
 			Name:     resolved,
 			Unique:   {{ $node.Name }}OptionEdgeUnique(resolved),
-			Options:  options,
+			Options:  loaded.Options,
+			Chips:    loaded.Chips,
 			Query:    vent.OptionSearch(r.URL.Query().Get("q")),
 			Fetch:    gui.FkOptionsFetch(requestctx.MustAdminPath(r.Context())+"{{ $rc.RouteName }}/options/"+resolved+"/", resolved),
 			Editable: true,

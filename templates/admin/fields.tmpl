@@ -166,7 +166,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) 
 		{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
 		return "", nil
 		{{- else if isMemberKindEdge $member }}
-		options, err := f.LoadOptions(ctx, "", nil)
+		loaded, err := f.LoadOptions(ctx, "", nil)
 		if err != nil {
 			return "", err
 		}
@@ -174,7 +174,8 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) 
 			Name:       "{{ $member.Name }}",
 			Label:      "{{ $member.Label }}",
 			Editable:   gui.MustRenderContext(ctx).CanUpdate,
-			Options:    options,
+			Options:    loaded.Options,
+			Chips:      loaded.Chips,
 			OptionsURL: requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/options/{{ $member.Name }}/",
 		})
 		{{- else }}
@@ -228,7 +229,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 		selectedIDs = append(selectedIDs, related.ID)
 	}
 	{{- end }}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
+	loaded, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -236,7 +237,8 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 		Name:       "{{ $member.Name }}",
 		Label:      "{{ $member.Label }}",
 		Editable:   {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
-		Options:    options,
+		Options:    loaded.Options,
+		Chips:      loaded.Chips,
 		OptionsURL: requestctx.MustAdminPath(ctx) + "{{ $rc.RouteName }}/options/{{ $member.Name }}/",
 	})
 	{{- else }}
@@ -392,7 +394,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 }
 
 {{ if isMemberKindEdge $member }}
-func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context, search string, selectedIDs []int) (gui.FKOptions, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.{{ $member.EdgeTypeName }}.Query().Order({{ lower $member.EdgeTypeName }}.ByID())
 	{{- if $member.OptionSearchColumns }}
@@ -427,7 +429,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 	{{- end }}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
-		return nil, err
+		return gui.FKOptions{}, err
 	}
 
 	var selected []*ent.{{ $member.EdgeTypeName }}
@@ -440,11 +442,14 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 		{{- end }}
 		selected, err = selectedQuery.All(ctx)
 		if err != nil {
-			return nil, err
+			return gui.FKOptions{}, err
 		}
 	}
 
-	entities := vent.UnionByID(hits, selected, func(entity *ent.{{ $member.EdgeTypeName }}) int { return entity.ID })
+	entities := hits
+	if search == "" {
+		entities = vent.UnionByID(hits, selected, func(entity *ent.{{ $member.EdgeTypeName }}) int { return entity.ID })
+	}
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
 	for _, id := range selectedIDs {
 		selectedSet[id] = struct{}{}
@@ -458,7 +463,15 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 			Selected: isSelected,
 		}
 	}
-	return options, nil
+	chips := make([]gui.SelectOption, len(selected))
+	for i, entity := range selected {
+		chips[i] = gui.SelectOption{
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).{{ $member.EdgeTypeName }}().Name(entity),
+			Selected: true,
+		}
+	}
+	return gui.FKOptions{Options: options, Chips: chips}, nil
 }
 {{- end }}
 {{ end }}

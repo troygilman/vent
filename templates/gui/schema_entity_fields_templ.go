@@ -14,6 +14,12 @@ type SelectOption struct {
 	Selected bool
 }
 
+// FKOptions is a search-hit dropdown plus committed chips (not injected into hits).
+type FKOptions struct {
+	Options []SelectOption
+	Chips   []SelectOption
+}
+
 type SchemaEntityTextFieldProps struct {
 	Name        string
 	Label       string
@@ -69,6 +75,7 @@ type SchemaEntityForeignKeyUniqueFieldProps struct {
 	Editable   bool
 	Desc       string
 	Options    []SelectOption
+	Chips      []SelectOption
 	OptionsURL string
 }
 
@@ -78,6 +85,7 @@ type SchemaEntityForeignKeyFieldProps struct {
 	Editable   bool
 	Desc       string
 	Options    []SelectOption
+	Chips      []SelectOption
 	OptionsURL string
 }
 
@@ -85,6 +93,7 @@ type FkOptionListProps struct {
 	Name     string
 	Unique   bool
 	Options  []SelectOption
+	Chips    []SelectOption
 	Query    string
 	Fetch    string
 	Editable bool
@@ -118,7 +127,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOptionsElementID(props.Name))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 86, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 95, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +138,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if props.Unique {
-			selectedLabel := fkSelectedLabel(props.Options)
+			selectedLabel := fkSelectedLabel(props.Chips)
 			if selectedLabel != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"fk-chip\">")
 				if templ_7745c5c3_Err != nil {
@@ -138,7 +147,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(selectedLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 91, Col: 20}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 100, Col: 20}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -156,7 +165,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkClearUnique(props.Name) + "; " + props.Fetch)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 93, Col: 141}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 102, Col: 141}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 					if templ_7745c5c3_Err != nil {
@@ -177,48 +186,46 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, opt := range props.Options {
-				if opt.Selected {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"fk-chip\">")
+			for _, opt := range props.Chips {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"fk-chip\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 110, Col: 17}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if props.Editable {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent=\"true\" data-on:click=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var5 string
-					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
+					var templ_7745c5c3_Var6 string
+					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 102, Col: 18}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 112, Col: 152}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " ")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if props.Editable {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent=\"true\" data-on:click=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var6 string
-						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 104, Col: 153}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" aria-label=\"Remove\">×</button>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" aria-label=\"Remove\">×</button>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
 				}
 			}
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div>")
@@ -248,7 +255,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(props.Query)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 117, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 124, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -295,7 +302,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkSelectUnique(props.Name, opt.Value, opt.Label) + "; " + props.Fetch)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 129, Col: 92}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 136, Col: 92}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 					if templ_7745c5c3_Err != nil {
@@ -313,7 +320,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkAddMany(props.Name, opt.Value) + "; " + props.Fetch)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 131, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 138, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 					if templ_7745c5c3_Err != nil {
@@ -331,7 +338,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 134, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 141, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -379,7 +386,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 145, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 152, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -397,7 +404,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 150, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 157, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -415,7 +422,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(props.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 152, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 159, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -449,7 +456,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 			var templ_7745c5c3_Var17 templ.SafeURL
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(props.ActionURL))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 157, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 164, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -462,7 +469,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(props.ActionLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 157, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 164, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -485,7 +492,7 @@ func SchemaEntityTextField(props SchemaEntityTextFieldProps) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 162, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 169, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -532,7 +539,7 @@ func SchemaEntityPasswordField(props SchemaEntityPasswordFieldProps) templ.Compo
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 170, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 177, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -550,7 +557,7 @@ func SchemaEntityPasswordField(props SchemaEntityPasswordFieldProps) templ.Compo
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 175, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 182, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 			if templ_7745c5c3_Err != nil {
@@ -589,7 +596,7 @@ func SchemaEntityPasswordField(props SchemaEntityPasswordFieldProps) templ.Compo
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 184, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 191, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -636,7 +643,7 @@ func SchemaEntityIntField(props SchemaEntityIntFieldProps) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 192, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 199, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -654,7 +661,7 @@ func SchemaEntityIntField(props SchemaEntityIntFieldProps) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 198, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 205, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 			if templ_7745c5c3_Err != nil {
@@ -672,7 +679,7 @@ func SchemaEntityIntField(props SchemaEntityIntFieldProps) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(props.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 200, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 207, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -706,7 +713,7 @@ func SchemaEntityIntField(props SchemaEntityIntFieldProps) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 207, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 214, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -753,7 +760,7 @@ func SchemaEntityFloatField(props SchemaEntityFloatFieldProps) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 215, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 222, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -771,7 +778,7 @@ func SchemaEntityFloatField(props SchemaEntityFloatFieldProps) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 221, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 228, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 			if templ_7745c5c3_Err != nil {
@@ -789,7 +796,7 @@ func SchemaEntityFloatField(props SchemaEntityFloatFieldProps) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(props.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 223, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 230, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 		if templ_7745c5c3_Err != nil {
@@ -823,7 +830,7 @@ func SchemaEntityFloatField(props SchemaEntityFloatFieldProps) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 230, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 237, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -870,7 +877,7 @@ func SchemaEntityBoolField(props SchemaEntityBoolFieldProps) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 238, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 245, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -888,7 +895,7 @@ func SchemaEntityBoolField(props SchemaEntityBoolFieldProps) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 243, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 250, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 			if templ_7745c5c3_Err != nil {
@@ -923,7 +930,7 @@ func SchemaEntityBoolField(props SchemaEntityBoolFieldProps) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 250, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 257, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -970,7 +977,7 @@ func SchemaEntityTimeField(props SchemaEntityTimeFieldProps) templ.Component {
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 258, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 265, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -988,7 +995,7 @@ func SchemaEntityTimeField(props SchemaEntityTimeFieldProps) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(entitySignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 263, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 270, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 			if templ_7745c5c3_Err != nil {
@@ -1006,7 +1013,7 @@ func SchemaEntityTimeField(props SchemaEntityTimeFieldProps) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(props.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 265, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 272, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 		if templ_7745c5c3_Err != nil {
@@ -1040,7 +1047,7 @@ func SchemaEntityTimeField(props SchemaEntityTimeFieldProps) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 272, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 279, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
@@ -1081,8 +1088,8 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 		}
 		ctx = templ.ClearChildren(ctx)
 		fetch := FkOptionsFetch(props.OptionsURL, props.Name)
-		selectedID := fkSelectedID(props.Options)
-		selectedLabel := fkSelectedLabel(props.Options)
+		selectedID := fkSelectedID(props.Chips)
+		selectedLabel := fkSelectedLabel(props.Chips)
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<div class=\"field-group\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -1090,7 +1097,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.JSONString(fkUniqueSignals(props.Name, selectedID, selectedLabel)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 281, Col: 113}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 288, Col: 113}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 		if templ_7745c5c3_Err != nil {
@@ -1103,7 +1110,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 283, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 290, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -1116,7 +1123,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkIsOpenExpr(props.Name))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 284, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 291, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 		if templ_7745c5c3_Err != nil {
@@ -1130,6 +1137,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			Name:     props.Name,
 			Unique:   true,
 			Options:  props.Options,
+			Chips:    props.Chips,
 			Fetch:    fetch,
 			Editable: props.Editable,
 		}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1144,7 +1152,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOptionsElementID(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 300, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 308, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 			if templ_7745c5c3_Err != nil {
@@ -1157,7 +1165,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkSearchSignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 303, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 311, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 			if templ_7745c5c3_Err != nil {
@@ -1170,7 +1178,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOpen(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 304, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 312, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
 			if templ_7745c5c3_Err != nil {
@@ -1183,7 +1191,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(fetch)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 305, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 313, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 			if templ_7745c5c3_Err != nil {
@@ -1196,7 +1204,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOnInput(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 306, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 314, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var51)
 			if templ_7745c5c3_Err != nil {
@@ -1209,7 +1217,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(fetch)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 307, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 315, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 			if templ_7745c5c3_Err != nil {
@@ -1222,7 +1230,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkKeydown(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 308, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 316, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var53)
 			if templ_7745c5c3_Err != nil {
@@ -1235,7 +1243,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkBlur(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 309, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 317, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var54)
 			if templ_7745c5c3_Err != nil {
@@ -1254,7 +1262,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 				var templ_7745c5c3_Var55 string
 				templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(selectedLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 313, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 321, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 				if templ_7745c5c3_Err != nil {
@@ -1278,7 +1286,7 @@ func SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldPr
 			var templ_7745c5c3_Var56 string
 			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 320, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 328, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
@@ -1319,7 +1327,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 		}
 		ctx = templ.ClearChildren(ctx)
 		fetch := FkOptionsFetch(props.OptionsURL, props.Name)
-		selectedIDs := fkSelectedIDs(props.Options)
+		selectedIDs := fkSelectedIDs(props.Chips)
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 122, "<div class=\"field-group\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -1327,7 +1335,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.JSONString(fkManySignals(props.Name, selectedIDs)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 328, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 336, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var58)
 		if templ_7745c5c3_Err != nil {
@@ -1340,7 +1348,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 		var templ_7745c5c3_Var59 string
 		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 330, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 338, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 		if templ_7745c5c3_Err != nil {
@@ -1353,7 +1361,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 		var templ_7745c5c3_Var60 string
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkIsOpenExpr(props.Name))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 331, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 339, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 		if templ_7745c5c3_Err != nil {
@@ -1367,6 +1375,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			Name:     props.Name,
 			Unique:   false,
 			Options:  props.Options,
+			Chips:    props.Chips,
 			Fetch:    fetch,
 			Editable: props.Editable,
 		}).Render(ctx, templ_7745c5c3_Buffer)
@@ -1381,7 +1390,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var61 string
 			templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOptionsElementID(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 347, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 356, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var61)
 			if templ_7745c5c3_Err != nil {
@@ -1394,7 +1403,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var62 string
 			templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkSearchSignal(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 350, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 359, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var62)
 			if templ_7745c5c3_Err != nil {
@@ -1407,7 +1416,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var63 string
 			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOpen(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 351, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 360, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 			if templ_7745c5c3_Err != nil {
@@ -1420,7 +1429,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var64 string
 			templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.ResolveAttributeValue(fetch)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 352, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 361, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var64)
 			if templ_7745c5c3_Err != nil {
@@ -1433,7 +1442,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var65 string
 			templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkOnInput(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 353, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 362, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var65)
 			if templ_7745c5c3_Err != nil {
@@ -1446,7 +1455,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var66 string
 			templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.ResolveAttributeValue(fetch)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 354, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 363, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var66)
 			if templ_7745c5c3_Err != nil {
@@ -1459,7 +1468,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var67 string
 			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkKeydown(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 355, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 364, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var67)
 			if templ_7745c5c3_Err != nil {
@@ -1472,7 +1481,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var68 string
 			templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkBlur(props.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 356, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 365, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var68)
 			if templ_7745c5c3_Err != nil {
@@ -1495,7 +1504,7 @@ func SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) templ.C
 			var templ_7745c5c3_Var69 string
 			templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(props.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 363, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 372, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 			if templ_7745c5c3_Err != nil {
