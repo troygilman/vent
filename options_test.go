@@ -28,7 +28,8 @@ func TestOptionEdgeFromPath(t *testing.T) {
 	}{
 		{"/admin/reviews/options/user/", "user"},
 		{"/options/user/", "user"},
-		{"/admin/reviews/options/book/", "book"},
+		{"/admin/reviews/options/book/?q=Needle", "book"},
+		{"/admin/reviews/options/user/?q=ada&datastar=%7B%7D", "user"},
 		{"/admin/reviews/options/not-an-edge/", "not-an-edge"},
 		{"/admin/reviews/1/", ""},
 	}

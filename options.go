@@ -16,9 +16,12 @@ func OptionSearch(raw string) string {
 }
 
 // OptionEdgeFromPath returns the FK edge name from an /options/{edge}/ path.
-// Nested StripPrefix routers can leave PathValue("edge") set to another
-// group's wildcard, so callers should prefer the path over PathValue.
+// Nested StripPrefix routers can leave URL.Path and PathValue("edge") pointing
+// at another group's wildcard, so RequestURI is the reliable source.
 func OptionEdgeFromPath(path string) string {
+	if i := strings.IndexAny(path, "?#"); i >= 0 {
+		path = path[:i]
+	}
 	const marker = "/options/"
 	i := strings.LastIndex(path, marker)
 	if i < 0 {

@@ -67,6 +67,9 @@ func (h *AdminHandler) authorOptionLoader(edge string) (AuthorOptionLoader, bool
 func (h *AdminHandler) getAuthorOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
+		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
 		if edge == "" {
@@ -531,6 +534,9 @@ func (h *AdminHandler) bookOptionLoader(edge string) (BookOptionLoader, bool) {
 func (h *AdminHandler) getBookOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
+		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
 		if edge == "" {
@@ -992,6 +998,9 @@ func (h *AdminHandler) permissionOptionLoader(edge string) (PermissionOptionLoad
 func (h *AdminHandler) getPermissionOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
+		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
 		if edge == "" {
@@ -1303,6 +1312,9 @@ func (h *AdminHandler) permissiongroupOptionLoader(edge string) (PermissionGroup
 
 func (h *AdminHandler) getPermissionGroupOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
 		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
@@ -1764,6 +1776,9 @@ func (h *AdminHandler) reviewOptionLoader(edge string) (ReviewOptionLoader, bool
 func (h *AdminHandler) getReviewOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
+		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
 		if edge == "" {
@@ -2198,6 +2213,9 @@ func (h *AdminHandler) userOptionLoader(edge string) (UserOptionLoader, bool) {
 
 func (h *AdminHandler) getUserOptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
 		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}

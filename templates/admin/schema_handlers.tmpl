@@ -86,6 +86,9 @@ func (h *AdminHandler) {{ lower $node.Name }}OptionLoader(edge string) ({{ $node
 func (h *AdminHandler) get{{ $node.Name }}OptionsHandler(edge string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if edge == "" {
+			edge = vent.OptionEdgeFromPath(r.RequestURI)
+		}
+		if edge == "" {
 			edge = vent.OptionEdgeFromPath(r.URL.Path)
 		}
 		if edge == "" {
