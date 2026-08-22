@@ -51,11 +51,8 @@ func fkSelectedLabel(options []SelectOption) string {
 
 func FkOptionsFetch(optionsURL, name string) string {
 	return fmt.Sprintf(
-		`@get(%q + '?q=' + encodeURIComponent(($fksearch.%s && $fksearch.%s !== ($fklabel.%s || '')) ? $fksearch.%s : ''), {filterSignals: {include: /^entity\.%s$/}})`,
+		`@get(%q + '?q=' + encodeURIComponent($fksearch.%s || ''), {filterSignals: {include: /^entity\.%s$/}})`,
 		optionsURL,
-		name,
-		name,
-		name,
 		name,
 		name,
 	)
@@ -64,8 +61,8 @@ func FkOptionsFetch(optionsURL, name string) string {
 func fkSelectUnique(name string, id int, label string) string {
 	quoted := strconv.Quote(label)
 	return fmt.Sprintf(
-		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = %s; $fkopen.%s = false",
-		name, id, name, quoted, name, quoted, name,
+		"$entity.%s = '%d'; $fklabel.%s = %s; $fksearch.%s = ''; $fkopen.%s = false",
+		name, id, name, quoted, name, name,
 	)
 }
 
@@ -78,7 +75,7 @@ func fkOpen(name string) string {
 }
 
 func fkClose(name string) string {
-	return fmt.Sprintf("$fkopen.%s = false; $fksearch.%s = $fklabel.%s || ''", name, name, name)
+	return fmt.Sprintf("$fkopen.%s = false; $fksearch.%s = ''", name, name)
 }
 
 func fkBlur(name string) string {
@@ -94,10 +91,6 @@ func fkEscape(name string) string {
 
 func fkKeydown(name string) string {
 	return fmt.Sprintf("fkCombobox.keydown(evt, %q); %s", name, fkEscape(name))
-}
-
-func fkHasValueExpr(name string) string {
-	return "$" + entitySignal(name) + " !== ''"
 }
 
 func fkIsOpenExpr(name string) string {
@@ -124,7 +117,7 @@ func fkUniqueSignals(name, selectedID, selectedLabel string) map[string]any {
 			name: selectedID,
 		},
 		"fksearch": map[string]any{
-			name: selectedLabel,
+			name: "",
 		},
 		"fklabel": map[string]any{
 			name: selectedLabel,

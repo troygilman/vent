@@ -88,6 +88,9 @@ func seedDemoData(ctx context.Context, client *ent.Client, credentialGenerator a
 	if count, err := client.Book.Query().Count(ctx); err != nil {
 		return err
 	} else if count >= seedBulkBookCount {
+		if err := ensureNeedleTitleBook(ctx, client); err != nil {
+			return err
+		}
 		log.Printf("demo data already present (%d books), skipping seed", count)
 		return nil
 	}
@@ -176,6 +179,16 @@ func seedNamedShowcase(ctx context.Context, client *ent.Client, credentialGenera
 	}
 
 	publishedAt := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+	if _, err = seedBookByTitle(ctx, client, "Needle Title", func() *ent.BookCreate {
+		return client.Book.Create().
+			SetTitle("Needle Title").
+			SetPages(12).
+			SetPublished(true).
+			SetAuthor(author)
+	}); err != nil {
+		return nil, nil, err
+	}
+
 	showcaseBook, err := seedBookByTitle(ctx, client, "Analytical Engines", func() *ent.BookCreate {
 		return client.Book.Create().
 			SetTitle("Analytical Engines").
@@ -222,6 +235,24 @@ func seedAuthorForUser(ctx context.Context, client *ent.Client, u *ent.User, act
 		SetUser(u).
 		SetActive(active).
 		Save(ctx)
+}
+
+func ensureNeedleTitleBook(ctx context.Context, client *ent.Client) error {
+	exists, err := client.Book.Query().Where(book.TitleEQ("Needle Title")).Exist(ctx)
+	if err != nil || exists {
+		return err
+	}
+	a, err := client.Author.Query().Order(author.ByID()).First(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = client.Book.Create().
+		SetTitle("Needle Title").
+		SetPages(12).
+		SetPublished(true).
+		SetAuthor(a).
+		Save(ctx)
+	return err
 }
 
 func seedBookByTitle(ctx context.Context, client *ent.Client, title string, create func() *ent.BookCreate) (*ent.Book, error) {

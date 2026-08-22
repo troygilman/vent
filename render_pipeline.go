@@ -91,9 +91,19 @@ type SurfaceMember struct {
 	// OptionSearchColumns are ContainsFold predicates on the related schema
 	// (string FilterableColumns, plus Name when DefaultNameField is Name).
 	OptionSearchColumns []string
+	// OptionSearchEdges are HasXWith predicates used when the related schema
+	// has no string columns of its own (e.g. Author searched via User.Email).
+	OptionSearchEdges []OptionSearchEdge
 	// OptionPreloadEdges are WithX() names applied to option queries so Name()
 	// labels work without reusing list EagerLoadQuery.
 	OptionPreloadEdges []string
+}
+
+// OptionSearchEdge describes a unique-edge ContainsFold search on a related type.
+type OptionSearchEdge struct {
+	HasPredicate string
+	PackageDir   string
+	Columns      []string
 }
 
 // TableColumn describes one list-view column projected from a catalog member.
@@ -234,8 +244,12 @@ func attachEdgeOptionMeta(configs []NodeRenderConfig) {
 			if !ok {
 				continue
 			}
-			configs[i].RC.AdminSurface[j].OptionSearchColumns = optionSearchColumns(rc)
+			cols := optionSearchColumns(rc)
+			configs[i].RC.AdminSurface[j].OptionSearchColumns = cols
 			configs[i].RC.AdminSurface[j].OptionPreloadEdges = optionPreloadEdges(rc)
+			if len(cols) == 0 {
+				configs[i].RC.AdminSurface[j].OptionSearchEdges = optionSearchEdges(rc, related)
+			}
 		}
 		configs[i].RC.HasFormEdges = hasFormEdges
 	}
@@ -257,6 +271,32 @@ func optionSearchColumns(rc RenderConfig) []string {
 		}
 	}
 	return cols
+}
+
+func optionSearchEdges(rc RenderConfig, related map[string]RenderConfig) []OptionSearchEdge {
+	if rc.DefaultNameField != "ID" {
+		return nil
+	}
+	var edges []OptionSearchEdge
+	for _, member := range rc.AdminSurface {
+		if member.MemberKind != MemberEdge || !member.EdgeUnique {
+			continue
+		}
+		rel, ok := related[member.EdgeTypeName]
+		if !ok {
+			continue
+		}
+		cols := optionSearchColumns(rel)
+		if len(cols) == 0 {
+			continue
+		}
+		edges = append(edges, OptionSearchEdge{
+			HasPredicate: pascalCase(member.Name),
+			PackageDir:   rel.PackageDir,
+			Columns:      cols,
+		})
+	}
+	return edges
 }
 
 func optionPreloadEdges(rc RenderConfig) []string {

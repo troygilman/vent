@@ -73,9 +73,6 @@ func TestReviewAddFormCapsBookOptions(t *testing.T) {
 	if !strings.Contains(bookBlock, `role="combobox"`) {
 		t.Fatal("expected combobox role on the FK input")
 	}
-	if strings.Contains(bookBlock, `class="fk-selected"`) {
-		t.Fatal("selected unique label should appear in the input, not a separate selected row")
-	}
 }
 
 func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {
@@ -93,6 +90,24 @@ func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {
 	}
 	if strings.Count(body, `role="option"`) > vent.DefaultOptionLimit {
 		t.Fatal("search results exceeded DefaultOptionLimit")
+	}
+}
+
+func TestBookAuthorOptionsSearchViaUserEmail(t *testing.T) {
+	h, cookie := newAuthedAdminHandler(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin/books/options/author/?q=author@vent.com", nil)
+	req.AddCookie(cookie)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `role="option"`) {
+		t.Fatalf("author search returned no options: %s", body)
+	}
+	if strings.Contains(body, "No matches") {
+		t.Fatalf("author search should filter via user email, got %s", body)
 	}
 }
 

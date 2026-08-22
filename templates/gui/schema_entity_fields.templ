@@ -84,7 +84,17 @@ type FkOptionListProps struct {
 
 templ FkOptionList(props FkOptionListProps) {
 	<div id={ fkOptionsElementID(props.Name) } class="fk-combobox-results">
-		if !props.Unique {
+		if props.Unique {
+			{{ selectedLabel := fkSelectedLabel(props.Options) }}
+			if selectedLabel != "" {
+				<span class="fk-chip">
+					{ selectedLabel }
+					if props.Editable {
+						<button type="button" class="fk-clear" data-on:mousedown__prevent data-on:click={ fkClearUnique(props.Name) + "; " + props.Fetch } aria-label="Clear">×</button>
+					}
+				</span>
+			}
+		} else {
 			<div class="fk-chips">
 				for _, opt := range props.Options {
 					if opt.Selected {
@@ -296,14 +306,6 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 							data-on:keydown={ fkKeydown(props.Name) }
 							data-on:blur={ fkBlur(props.Name) }
 						/>
-						<button
-							type="button"
-							class="fk-clear"
-							data-show={ fkHasValueExpr(props.Name) }
-							data-on:mousedown__prevent
-							data-on:click={ fkClearUnique(props.Name) + "; " + fetch }
-							aria-label="Clear"
-						>×</button>
 					} else {
 						if selectedLabel != "" {
 							<span class="fk-combobox-static">{ selectedLabel }</span>

@@ -25,15 +25,22 @@ func TestFkOptionsFetchIncludesEntitySignal(t *testing.T) {
 	if !strings.Contains(got, `/admin/reviews/options/book/`) {
 		t.Fatalf("fetch %q missing url", got)
 	}
-	if !strings.Contains(got, `$fklabel.book`) {
-		t.Fatalf("fetch %q should omit q when the input still holds the selected label", got)
+	if !strings.Contains(got, `encodeURIComponent($fksearch.book || '')`) {
+		t.Fatalf("fetch %q should always send the search query", got)
+	}
+	if strings.Contains(got, `!== ($fklabel`) {
+		t.Fatalf("fetch must not drop q when search equals the selected label: %q", got)
 	}
 }
 
-func TestFkUniqueSignalsShowLabelWhenClosed(t *testing.T) {
+func TestFkUniqueSignalsKeepSearchEmpty(t *testing.T) {
 	got := fkUniqueSignals("book", "12", "Needle Title")
 	search, _ := got["fksearch"].(map[string]any)
-	if search["book"] != "Needle Title" {
-		t.Fatalf("closed unique input should show selected label, got %#v", search["book"])
+	if search["book"] != "" {
+		t.Fatalf("fksearch must stay the query, not the selected label, got %#v", search["book"])
+	}
+	label, _ := got["fklabel"].(map[string]any)
+	if label["book"] != "Needle Title" {
+		t.Fatalf("fklabel = %#v, want Needle Title", label["book"])
 	}
 }

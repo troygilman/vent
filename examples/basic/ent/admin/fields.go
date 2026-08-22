@@ -451,6 +451,13 @@ func (f BookAuthorField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateO
 func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
 	search = vent.OptionSearch(search)
 	query := f.client.Author.Query().Order(author.ByID())
+	if search != "" {
+		query = query.Where(author.Or(
+			author.HasUserWith(
+				user.EmailContainsFold(search),
+			),
+		))
+	}
 	query = query.WithUser()
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {

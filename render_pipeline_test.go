@@ -567,6 +567,33 @@ func TestOptionSearchColumns(t *testing.T) {
 	}
 }
 
+func TestOptionSearchEdgesAuthorViaUserEmail(t *testing.T) {
+	authorLike := RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "active", Type: "bool", PredicateName: "Active"},
+		},
+		AdminSurface: []SurfaceMember{
+			{Name: "user", MemberKind: MemberEdge, EdgeUnique: true, EdgeTypeName: "User"},
+		},
+	}
+	related := map[string]RenderConfig{
+		"User": {
+			SchemaMeta: SchemaMeta{PackageDir: "user", DefaultNameField: "ID"},
+			FilterableColumns: []FilterableColumnConfig{
+				{Name: "email", Type: "string", PredicateName: "Email"},
+			},
+		},
+	}
+	got := optionSearchEdges(authorLike, related)
+	if len(got) != 1 || got[0].HasPredicate != "User" || got[0].PackageDir != "user" {
+		t.Fatalf("optionSearchEdges = %#v", got)
+	}
+	if !reflect.DeepEqual(got[0].Columns, []string{"Email"}) {
+		t.Fatalf("columns = %#v, want Email", got[0].Columns)
+	}
+}
+
 func TestOptionPreloadEdges(t *testing.T) {
 	authorLike := RenderConfig{
 		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},

@@ -403,6 +403,24 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 			{{- end }}
 		))
 	}
+	{{- else if $member.OptionSearchEdges }}
+	if search != "" {
+		query = query.Where({{ lower $member.EdgeTypeName }}.Or(
+			{{- range $edge := $member.OptionSearchEdges }}
+			{{ lower $member.EdgeTypeName }}.Has{{ $edge.HasPredicate }}With(
+				{{- if eq (len $edge.Columns) 1 }}
+				{{ $edge.PackageDir }}.{{ index $edge.Columns 0 }}ContainsFold(search),
+				{{- else }}
+				{{ $edge.PackageDir }}.Or(
+					{{- range $col := $edge.Columns }}
+					{{ $edge.PackageDir }}.{{ $col }}ContainsFold(search),
+					{{- end }}
+				),
+				{{- end }}
+			),
+			{{- end }}
+		))
+	}
 	{{- end }}
 	{{- range $edge := $member.OptionPreloadEdges }}
 	query = query.With{{ $edge }}()
