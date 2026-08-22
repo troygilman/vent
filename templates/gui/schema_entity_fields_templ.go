@@ -149,14 +149,14 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if props.Editable {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent data-on:click=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent=\"true\" data-on:click=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkClearUnique(props.Name) + "; " + props.Fetch)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 93, Col: 134}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 93, Col: 141}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 					if templ_7745c5c3_Err != nil {
@@ -197,14 +197,14 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if props.Editable {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent data-on:click=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" class=\"fk-clear\" data-on:mousedown__prevent=\"true\" data-on:click=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(fkRemoveMany(props.Name, opt.Value) + "; " + props.Fetch)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 104, Col: 146}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/gui/schema_entity_fields.templ`, Line: 104, Col: 153}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 						if templ_7745c5c3_Err != nil {
@@ -283,7 +283,7 @@ func FkOptionList(props FkOptionListProps) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" role=\"option\" tabindex=\"-1\" data-on:mousedown__prevent")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" role=\"option\" tabindex=\"-1\" data-on:mousedown__prevent=\"true\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

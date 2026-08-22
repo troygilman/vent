@@ -73,6 +73,9 @@ func TestReviewAddFormCapsBookOptions(t *testing.T) {
 	if !strings.Contains(bookBlock, `role="combobox"`) {
 		t.Fatal("expected combobox role on the FK input")
 	}
+	if strings.Contains(bookBlock, `data-on:mousedown__prevent `) || strings.Contains(bookBlock, `data-on:mousedown__prevent>`) {
+		t.Fatal("Datastar data-on requires a value; mousedown__prevent must not be a boolean attribute")
+	}
 }
 
 func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {
