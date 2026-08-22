@@ -1496,8 +1496,6 @@ select.select[multiple] option:hover {
     font-size: 0.875rem;
     cursor: pointer;
 }
-.fk-option:hover,
-.fk-option.is-active,
 .fk-option.selected {
     background: color-mix(
         in oklab,
@@ -1505,6 +1503,11 @@ select.select[multiple] option:hover {
         var(--color-surface)
     );
     color: var(--color-primary);
+}
+.fk-option:hover,
+.fk-option.is-active {
+    background: var(--color-primary);
+    color: var(--color-primary-content);
 }
 .fk-option-empty {
     padding: 0.75rem;
