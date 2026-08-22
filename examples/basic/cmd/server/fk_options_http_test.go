@@ -119,6 +119,27 @@ func TestReviewBookOptionsSearchWithSelectedStillReturnsHits(t *testing.T) {
 	}
 }
 
+func TestReviewUserOptionsSearchDoesNotUseBookEdge(t *testing.T) {
+	h, cookie := newAuthedAdminHandler(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin/reviews/options/user/?q=author@vent.com", nil)
+	req.AddCookie(cookie)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `id="entity-book-options"`) {
+		t.Fatalf("user options URL rendered book list: %s", body)
+	}
+	if !strings.Contains(body, `id="entity-user-options"`) {
+		t.Fatalf("expected entity-user-options, got %s", body)
+	}
+	if strings.Count(body, `role="option"`) < 1 {
+		t.Fatalf("user email search returned no options: %s", body)
+	}
+}
+
 func TestBookAuthorOptionsSearchViaUserEmail(t *testing.T) {
 	h, cookie := newAuthedAdminHandler(t)
 	rec := httptest.NewRecorder()

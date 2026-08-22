@@ -15,6 +15,25 @@ func OptionSearch(raw string) string {
 	return strings.TrimSpace(raw)
 }
 
+// OptionEdgeFromPath returns the FK edge name from an /options/{edge}/ path.
+// Nested StripPrefix routers can leave PathValue("edge") set to another
+// group's wildcard, so callers should prefer the path over PathValue.
+func OptionEdgeFromPath(path string) string {
+	const marker = "/options/"
+	i := strings.LastIndex(path, marker)
+	if i < 0 {
+		return ""
+	}
+	rest := strings.Trim(path[i+len(marker):], "/")
+	if rest == "" {
+		return ""
+	}
+	if j := strings.IndexByte(rest, '/'); j >= 0 {
+		rest = rest[:j]
+	}
+	return rest
+}
+
 // UnionByID merges search hits with selected entities, preserving search order
 // and appending selected rows that were outside the search window.
 func UnionByID[T any](search []T, selected []T, id func(T) int) []T {

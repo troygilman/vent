@@ -21,6 +21,24 @@ func TestOptionSearch(t *testing.T) {
 	}
 }
 
+func TestOptionEdgeFromPath(t *testing.T) {
+	tests := []struct {
+		path string
+		want string
+	}{
+		{"/admin/reviews/options/user/", "user"},
+		{"/options/user/", "user"},
+		{"/admin/reviews/options/book/", "book"},
+		{"/admin/reviews/options/not-an-edge/", "not-an-edge"},
+		{"/admin/reviews/1/", ""},
+	}
+	for _, tt := range tests {
+		if got := OptionEdgeFromPath(tt.path); got != tt.want {
+			t.Fatalf("OptionEdgeFromPath(%q) = %q, want %q", tt.path, got, tt.want)
+		}
+	}
+}
+
 func TestUnionByID(t *testing.T) {
 	type row struct{ ID int }
 	search := []row{{1}, {2}, {3}}
