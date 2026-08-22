@@ -282,7 +282,7 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
 			<div class="fk-combobox" data-class:is-open={ fkIsOpenExpr(props.Name) }>
-				<div class="fk-combobox-face">
+				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
 					@FkOptionList(FkOptionListProps{
 						Name:     props.Name,
 						Unique:   true,
@@ -302,6 +302,7 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 							spellcheck="false"
 							data-bind={ fkSearchSignal(props.Name) }
 							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:input={ fkOnInput(props.Name) }
 							data-on:input__debounce.200ms={ fetch }
 							data-on:keydown={ fkKeydown(props.Name) }
 							data-on:blur={ fkBlur(props.Name) }
@@ -327,7 +328,7 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 		<div class="field">
 			<span class="field-label">{ props.Label }</span>
 			<div class="fk-combobox fk-combobox-many" data-class:is-open={ fkIsOpenExpr(props.Name) }>
-				<div class="fk-combobox-face">
+				<div class="fk-combobox-face" data-on:mousedown="fkCombobox.focusFromFace(evt)">
 					@FkOptionList(FkOptionListProps{
 						Name:     props.Name,
 						Unique:   false,
@@ -347,6 +348,7 @@ templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
 							spellcheck="false"
 							data-bind={ fkSearchSignal(props.Name) }
 							data-on:focus={ fkOpen(props.Name) + "; " + fetch }
+							data-on:input={ fkOnInput(props.Name) }
 							data-on:input__debounce.200ms={ fetch }
 							data-on:keydown={ fkKeydown(props.Name) }
 							data-on:blur={ fkBlur(props.Name) }

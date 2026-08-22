@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -93,6 +94,28 @@ func TestReviewBookOptionsSearchAndSelectedUnion(t *testing.T) {
 	}
 	if strings.Count(body, `role="option"`) > vent.DefaultOptionLimit {
 		t.Fatal("search results exceeded DefaultOptionLimit")
+	}
+}
+
+func TestReviewBookOptionsSearchWithSelectedStillReturnsHits(t *testing.T) {
+	h, cookie := newAuthedAdminHandler(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(
+		http.MethodGet,
+		`/admin/reviews/options/book/?q=Needle&datastar=`+url.QueryEscape(`{"entity":{"book":"1"}}`),
+		nil,
+	)
+	req.AddCookie(cookie)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Needle Title") {
+		t.Fatalf("selected book must not suppress search hits: %s", body)
+	}
+	if !strings.Contains(body, "Book 001") {
+		t.Fatalf("selected book should remain in the union: %s", body)
 	}
 }
 

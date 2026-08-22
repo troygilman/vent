@@ -78,6 +78,10 @@ func fkClose(name string) string {
 	return fmt.Sprintf("$fkopen.%s = false, $fksearch.%s = \"\"", name, name)
 }
 
+func fkOnInput(name string) string {
+	return fkOpen(name)
+}
+
 func fkBlur(name string) string {
 	return fmt.Sprintf(
 		"(!evt.relatedTarget || !evt.currentTarget.closest('.fk-combobox').contains(evt.relatedTarget)) && (%s)",

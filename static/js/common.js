@@ -20,6 +20,15 @@
 })();
 
 window.fkCombobox = {
+    focusFromFace(evt) {
+        if (evt.target.closest("button")) {
+            return;
+        }
+        const input = evt.currentTarget.querySelector(".fk-combobox-input");
+        if (input && evt.target !== input) {
+            input.focus();
+        }
+    },
     keydown(evt, name) {
         const root = evt.currentTarget.closest(".fk-combobox");
         if (!root) {

@@ -45,6 +45,12 @@ func TestFkUniqueSignalsKeepSearchEmpty(t *testing.T) {
 	}
 }
 
+func TestFkOnInputReopensDropdown(t *testing.T) {
+	if got := fkOnInput("book"); got != "$fkopen.book = true" {
+		t.Fatalf("fkOnInput = %q, want open the dropdown while typing", got)
+	}
+}
+
 func TestFkBlurDoesNotEmbedSemicolons(t *testing.T) {
 	got := fkBlur("book")
 	if strings.Contains(got, ";") {
