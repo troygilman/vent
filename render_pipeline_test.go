@@ -544,6 +544,36 @@ func assertFilterableColumnNames(t *testing.T, columns []FilterableColumnConfig,
 	}
 }
 
+func TestOptionSearchColumns(t *testing.T) {
+	got := optionSearchColumns(RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "Name"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "email", Type: "string", PredicateName: "Email"},
+			{Name: "active", Type: "bool", PredicateName: "Active"},
+		},
+	})
+	if !reflect.DeepEqual(got, []string{"Email", "Name"}) {
+		t.Fatalf("optionSearchColumns = %#v, want Email+Name", got)
+	}
+
+	got = optionSearchColumns(RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "ID"},
+		FilterableColumns: []FilterableColumnConfig{
+			{Name: "title", Type: "string", PredicateName: "Title"},
+		},
+	})
+	if !reflect.DeepEqual(got, []string{"Title"}) {
+		t.Fatalf("optionSearchColumns title = %#v", got)
+	}
+
+	got = optionSearchColumns(RenderConfig{
+		SchemaMeta: SchemaMeta{DefaultNameField: "Name"},
+	})
+	if !reflect.DeepEqual(got, []string{"Name"}) {
+		t.Fatalf("optionSearchColumns name-only = %#v", got)
+	}
+}
+
 func findFilterableColumn(t *testing.T, columns []FilterableColumnConfig, name string) FilterableColumnConfig {
 	t.Helper()
 	for _, column := range columns {

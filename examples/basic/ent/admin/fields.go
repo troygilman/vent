@@ -5,7 +5,6 @@ package admin
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/troygilman/vent"
@@ -22,7 +21,6 @@ import (
 
 // Keep imports referenced even when no field uses them.
 var (
-	_ = sort.Strings
 	_ = strings.Builder{}
 	_ = author.Label
 	_ = book.Label
@@ -100,7 +98,7 @@ func (f AuthorUserField) ListCell(ctx context.Context, e *ent.Author) string {
 }
 
 func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadUserOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +111,11 @@ func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string, error) {
-	options, err := f.loadUserOptionsWithSelection(ctx, e)
+	var selectedIDs []int
+	if e.Edges.User != nil {
+		selectedIDs = []int{e.Edges.User.ID}
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -150,31 +152,44 @@ func (f AuthorUserField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdat
 	}
 	return nil
 }
-func (f AuthorUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).All(ctx)
+func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
+		Order(user.ByID())
+	if search != "" {
+		query = query.Where(user.Or(
+			user.EmailContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
+			Where(user.IDIn(selectedIDs...)).
+			Order(user.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).User().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).User().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f AuthorUserField) loadUserOptionsWithSelection(ctx context.Context, e *ent.Author) ([]gui.SelectOption, error) {
-	options, err := f.loadUserOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for i := range options {
-		options[i].Selected = e.Edges.User != nil && e.Edges.User.ID == options[i].Value
 	}
 	return options, nil
 }
@@ -374,7 +389,7 @@ func (f BookAuthorField) ListCell(ctx context.Context, e *ent.Book) string {
 }
 
 func (f BookAuthorField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadAuthorOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -387,7 +402,11 @@ func (f BookAuthorField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f BookAuthorField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
-	options, err := f.loadAuthorOptionsWithSelection(ctx, e)
+	var selectedIDs []int
+	if e.Edges.Author != nil {
+		selectedIDs = []int{e.Edges.Author.ID}
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -424,31 +443,39 @@ func (f BookAuthorField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateO
 	}
 	return nil
 }
-func (f BookAuthorField) loadAuthorOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).Author().EagerLoadQuery(f.client.Author.Query()).All(ctx)
+func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).Author().EagerLoadQuery(f.client.Author.Query()).
+		Order(author.ByID())
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).Author().EagerLoadQuery(f.client.Author.Query()).
+			Where(author.IDIn(selectedIDs...)).
+			Order(author.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Author) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Author().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Author().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f BookAuthorField) loadAuthorOptionsWithSelection(ctx context.Context, e *ent.Book) ([]gui.SelectOption, error) {
-	options, err := f.loadAuthorOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for i := range options {
-		options[i].Selected = e.Edges.Author != nil && e.Edges.Author.ID == options[i].Value
 	}
 	return options, nil
 }
@@ -757,7 +784,7 @@ func (f PermissionGroupsField) ListCell(ctx context.Context, e *ent.Permission) 
 }
 
 func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadGroupsOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -770,7 +797,11 @@ func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission) (string, error) {
-	options, err := f.loadGroupsOptionsWithSelection(ctx, e)
+	selectedIDs := make([]int, 0, len(e.Edges.Groups))
+	for _, related := range e.Edges.Groups {
+		selectedIDs = append(selectedIDs, related.ID)
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -806,35 +837,44 @@ func (f PermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.Permi
 	}
 	return nil
 }
-func (f PermissionGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).All(ctx)
+func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
+		Order(permissiongroup.ByID())
+	if search != "" {
+		query = query.Where(permissiongroup.Or(
+			permissiongroup.NameContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
+			Where(permissiongroup.IDIn(selectedIDs...)).
+			Order(permissiongroup.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).PermissionGroup().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).PermissionGroup().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f PermissionGroupsField) loadGroupsOptionsWithSelection(ctx context.Context, e *ent.Permission) ([]gui.SelectOption, error) {
-	options, err := f.loadGroupsOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.Groups {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
 	}
 	return options, nil
 }
@@ -955,7 +995,7 @@ func (f PermissionGroupPermissionsField) ListCell(ctx context.Context, e *ent.Pe
 }
 
 func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadPermissionsOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -968,7 +1008,11 @@ func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string
 }
 
 func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error) {
-	options, err := f.loadPermissionsOptionsWithSelection(ctx, e)
+	selectedIDs := make([]int, 0, len(e.Edges.Permissions))
+	for _, related := range e.Edges.Permissions {
+		selectedIDs = append(selectedIDs, related.ID)
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1004,35 +1048,44 @@ func (f PermissionGroupPermissionsField) ApplyUpdate(_ context.Context, builder 
 	}
 	return nil
 }
-func (f PermissionGroupPermissionsField) loadPermissionsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).Permission().EagerLoadQuery(f.client.Permission.Query()).All(ctx)
+func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).Permission().EagerLoadQuery(f.client.Permission.Query()).
+		Order(permission.ByID())
+	if search != "" {
+		query = query.Where(permission.Or(
+			permission.NameContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).Permission().EagerLoadQuery(f.client.Permission.Query()).
+			Where(permission.IDIn(selectedIDs...)).
+			Order(permission.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Permission) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Permission().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Permission().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f PermissionGroupPermissionsField) loadPermissionsOptionsWithSelection(ctx context.Context, e *ent.PermissionGroup) ([]gui.SelectOption, error) {
-	options, err := f.loadPermissionsOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.Permissions {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
 	}
 	return options, nil
 }
@@ -1122,7 +1175,7 @@ func (f ReviewUserField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadUserOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1135,7 +1188,11 @@ func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
-	options, err := f.loadUserOptionsWithSelection(ctx, e)
+	var selectedIDs []int
+	if e.Edges.User != nil {
+		selectedIDs = []int{e.Edges.User.ID}
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1172,31 +1229,44 @@ func (f ReviewUserField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	}
 	return nil
 }
-func (f ReviewUserField) loadUserOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).All(ctx)
+func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
+		Order(user.ByID())
+	if search != "" {
+		query = query.Where(user.Or(
+			user.EmailContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
+			Where(user.IDIn(selectedIDs...)).
+			Order(user.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).User().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).User().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f ReviewUserField) loadUserOptionsWithSelection(ctx context.Context, e *ent.Review) ([]gui.SelectOption, error) {
-	options, err := f.loadUserOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for i := range options {
-		options[i].Selected = e.Edges.User != nil && e.Edges.User.ID == options[i].Value
 	}
 	return options, nil
 }
@@ -1315,7 +1385,7 @@ func (f ReviewBookField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewBookField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadBookOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1328,7 +1398,11 @@ func (f ReviewBookField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f ReviewBookField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
-	options, err := f.loadBookOptionsWithSelection(ctx, e)
+	var selectedIDs []int
+	if e.Edges.Book != nil {
+		selectedIDs = []int{e.Edges.Book.ID}
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1365,31 +1439,44 @@ func (f ReviewBookField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	}
 	return nil
 }
-func (f ReviewBookField) loadBookOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).Book().EagerLoadQuery(f.client.Book.Query()).All(ctx)
+func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).Book().EagerLoadQuery(f.client.Book.Query()).
+		Order(book.ByID())
+	if search != "" {
+		query = query.Where(book.Or(
+			book.TitleContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).Book().EagerLoadQuery(f.client.Book.Query()).
+			Where(book.IDIn(selectedIDs...)).
+			Order(book.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.Book) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).Book().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).Book().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f ReviewBookField) loadBookOptionsWithSelection(ctx context.Context, e *ent.Review) ([]gui.SelectOption, error) {
-	options, err := f.loadBookOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for i := range options {
-		options[i].Selected = e.Edges.Book != nil && e.Edges.Book.ID == options[i].Value
 	}
 	return options, nil
 }
@@ -1775,7 +1862,7 @@ func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
 }
 
 func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.loadGroupsOptions(ctx)
+	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
@@ -1788,7 +1875,11 @@ func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
 }
 
 func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
-	options, err := f.loadGroupsOptionsWithSelection(ctx, e)
+	selectedIDs := make([]int, 0, len(e.Edges.Groups))
+	for _, related := range e.Edges.Groups {
+		selectedIDs = append(selectedIDs, related.ID)
+	}
+	options, err := f.LoadOptions(ctx, "", selectedIDs)
 	if err != nil {
 		return "", err
 	}
@@ -1824,35 +1915,44 @@ func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateO
 	}
 	return nil
 }
-func (f UserGroupsField) loadGroupsOptions(ctx context.Context) ([]gui.SelectOption, error) {
-	entities, err := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).All(ctx)
+func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+	search = vent.OptionSearch(search)
+	query := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
+		Order(permissiongroup.ByID())
+	if search != "" {
+		query = query.Where(permissiongroup.Or(
+			permissiongroup.NameContainsFold(search),
+		))
+	}
+	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	entities := hits
+	if search == "" && len(selectedIDs) > 0 {
+		selectedQuery := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
+			Where(permissiongroup.IDIn(selectedIDs...)).
+			Order(permissiongroup.ByID())
+		selected, err := selectedQuery.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+	}
+
+	selectedSet := make(map[int]struct{}, len(selectedIDs))
+	for _, id := range selectedIDs {
+		selectedSet[id] = struct{}{}
 	}
 	options := make([]gui.SelectOption, len(entities))
 	for i, entity := range entities {
+		_, isSelected := selectedSet[entity.ID]
 		options[i] = gui.SelectOption{
-			Value: entity.ID,
-			Label: MustAdmin(ctx).PermissionGroup().Name(entity),
+			Value:    entity.ID,
+			Label:    MustAdmin(ctx).PermissionGroup().Name(entity),
+			Selected: isSelected,
 		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		return options[i].Label < options[j].Label
-	})
-	return options, nil
-}
-
-func (f UserGroupsField) loadGroupsOptionsWithSelection(ctx context.Context, e *ent.User) ([]gui.SelectOption, error) {
-	options, err := f.loadGroupsOptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	selected := make(map[int]struct{})
-	for _, related := range e.Edges.Groups {
-		selected[related.ID] = struct{}{}
-	}
-	for i := range options {
-		_, options[i].Selected = selected[options[i].Value]
 	}
 	return options, nil
 }
