@@ -84,6 +84,10 @@ type SurfaceMember struct {
 	// IsCustomField is true for virtual admin members (MemberCustom), including
 	// builtins like password and user-declared CustomFields entries.
 	IsCustomField bool
+
+	// OptionSearchColumns are ContainsFold predicates on the related schema
+	// (string FilterableColumns, plus Name when DefaultNameField is Name).
+	OptionSearchColumns []string
 }
 
 // TableColumn describes one list-view column projected from a catalog member.
@@ -204,7 +208,45 @@ func buildRenderConfigs(nodes []*gen.Type) ([]NodeRenderConfig, error) {
 			})
 		}
 	}
+	attachEdgeOptionMetadata(configs)
 	return configs, nil
+}
+
+func attachEdgeOptionMetadata(configs []NodeRenderConfig) {
+	related := make(map[string]RenderConfig, len(configs))
+	for _, cfg := range configs {
+		related[cfg.Node.Name] = cfg.RC
+	}
+	for i := range configs {
+		for j, member := range configs[i].RC.AdminSurface {
+			if member.MemberKind != MemberEdge {
+				continue
+			}
+			rc, ok := related[member.EdgeTypeName]
+			if !ok {
+				continue
+			}
+			configs[i].RC.AdminSurface[j].OptionSearchColumns = optionSearchColumns(rc)
+		}
+	}
+}
+
+func optionSearchColumns(rc RenderConfig) []string {
+	cols := make([]string, 0, len(rc.FilterableColumns)+1)
+	seen := make(map[string]struct{}, len(rc.FilterableColumns)+1)
+	for _, filter := range rc.FilterableColumns {
+		if filter.Type != "string" {
+			continue
+		}
+		cols = append(cols, filter.PredicateName)
+		seen[filter.PredicateName] = struct{}{}
+	}
+	if rc.DefaultNameField == "Name" {
+		if _, ok := seen["Name"]; !ok {
+			cols = append(cols, "Name")
+		}
+	}
+	return cols
 }
 
 func resolveSchemaMeta(node *gen.Type) SchemaMeta {
