@@ -417,7 +417,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.{{ $member.EdgeTypeName }}) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.{{ $member.EdgeTypeName }}) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))

@@ -175,7 +175,7 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.User) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -461,7 +461,7 @@ func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selecte
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.Author) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.Author) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -860,7 +860,7 @@ func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, s
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -1071,7 +1071,7 @@ func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.Permission) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.Permission) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -1252,7 +1252,7 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.User) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.User) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -1462,7 +1462,7 @@ func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selecte
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.Book) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.Book) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
@@ -1938,7 +1938,7 @@ func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selecte
 		if err != nil {
 			return nil, err
 		}
-		entities = vent.UnionByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
+		entities = vent.UnionSearchResultsByID(hits, selected, func(entity *ent.PermissionGroup) int { return entity.ID })
 	}
 
 	selectedSet := make(map[int]struct{}, len(selectedIDs))
