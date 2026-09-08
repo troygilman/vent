@@ -97,8 +97,8 @@ func TestFKOptionsHTTPRoute(t *testing.T) {
 	}
 
 	unknown := get("/admin/reviews/options/not-an-edge/", true)
-	if unknown.Code != http.StatusBadRequest {
-		t.Fatalf("unknown edge status = %d body = %q, want 400", unknown.Code, unknown.Body.String())
+	if unknown.Code != http.StatusNotFound && unknown.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("unknown edge status = %d body = %q, want 404 or 405", unknown.Code, unknown.Body.String())
 	}
 
 	userOpts := decodeOptions(t, get("/admin/reviews/options/user/?q=alice", true))

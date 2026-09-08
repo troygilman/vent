@@ -47,7 +47,8 @@ type {{ $node.Name }}Field interface {
 	ApplyUpdate(ctx context.Context, builder *ent.{{ $node.Name }}UpdateOne, input {{ $node.Name }}UpdateInput) error
 }
 
-type {{ $node.Name }}OptionLoader interface {
+type {{ $node.Name }}OptionField interface {
+	{{ $node.Name }}Field
 	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
 }
 
@@ -58,7 +59,11 @@ type {{ $node.Name }}Fields struct {
 	updateFormFields []{{ $node.Name }}Field
 	createBindFields []{{ $node.Name }}Field
 	updateBindFields []{{ $node.Name }}Field
-	optionLoaders    map[string]{{ $node.Name }}OptionLoader
+	{{- range $member := $rc.AdminSurface }}
+	{{- if isMemberKindEdge $member }}
+	{{ $member.SlotName }}Options {{ $node.Name }}OptionField
+	{{- end }}
+	{{- end }}
 }
 
 func new{{ $node.Name }}Fields(schemaAdmin {{ $node.Name }}Admin) ({{ $node.Name }}Fields, error) {
@@ -106,14 +111,9 @@ func new{{ $node.Name }}Fields(schemaAdmin {{ $node.Name }}Admin) ({{ $node.Name
 		{{- end }}
 		{{- end }}
 	}
-	f.optionLoaders = map[string]{{ $node.Name }}OptionLoader{}
 	{{- range $member := $rc.AdminSurface }}
 	{{- if isMemberKindEdge $member }}
-	{{ $member.SlotName }}Loader, {{ $member.SlotName }}OK := {{ $member.SlotName }}.({{ $node.Name }}OptionLoader)
-	if !{{ $member.SlotName }}OK {
-		return {{ $node.Name }}Fields{}, fmt.Errorf("{{ $node.Name }}Admin.Field{{ $member.Label }}() must implement LoadOptions")
-	}
-	f.optionLoaders["{{ $member.Name }}"] = {{ $member.SlotName }}Loader
+	f.{{ $member.SlotName }}Options = {{ $member.SlotName }}
 	{{- end }}
 	{{- end }}
 	return f, nil

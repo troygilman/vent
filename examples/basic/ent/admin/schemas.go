@@ -75,7 +75,7 @@ func (a Admin) User() UserAdmin {
 // entity. CanCreate and schema CRUD permissions (read_/create_/...) own
 // schema-level access for routes, menu visibility, and create.
 type AuthorAdmin interface {
-	FieldUser() AuthorField
+	FieldUser() AuthorOptionField
 	FieldActive() AuthorField
 	Name(e *ent.Author) string
 	EagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery
@@ -109,7 +109,7 @@ func (DefaultAuthorAdmin) EagerLoadQuery(q *ent.AuthorQuery) *ent.AuthorQuery {
 	return q
 }
 
-func (a DefaultAuthorAdmin) FieldUser() AuthorField {
+func (a DefaultAuthorAdmin) FieldUser() AuthorOptionField {
 	return NewAuthorUserField(a.Client)
 }
 
@@ -163,7 +163,7 @@ func (DefaultAuthorAdmin) CanDelete(ctx context.Context, e *ent.Author) (bool, e
 // schema-level access for routes, menu visibility, and create.
 type BookAdmin interface {
 	FieldTitle() BookField
-	FieldAuthor() BookField
+	FieldAuthor() BookOptionField
 	FieldPages() BookField
 	FieldPublished() BookField
 	FieldPublishedAt() BookField
@@ -205,7 +205,7 @@ func (a DefaultBookAdmin) FieldTitle() BookField {
 	return NewBookTitleField(a.Client)
 }
 
-func (a DefaultBookAdmin) FieldAuthor() BookField {
+func (a DefaultBookAdmin) FieldAuthor() BookOptionField {
 	return NewBookAuthorField(a.Client)
 }
 
@@ -275,7 +275,7 @@ func (DefaultBookAdmin) CanDelete(ctx context.Context, e *ent.Book) (bool, error
 // schema-level access for routes, menu visibility, and create.
 type PermissionAdmin interface {
 	FieldName() PermissionField
-	FieldGroups() PermissionField
+	FieldGroups() PermissionOptionField
 	Name(e *ent.Permission) string
 	EagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery
 	ValidateCreate(ctx context.Context, input PermissionCreateInput) error
@@ -320,7 +320,7 @@ func (a DefaultPermissionAdmin) FieldName() PermissionField {
 	return NewPermissionNameField(a.Client)
 }
 
-func (a DefaultPermissionAdmin) FieldGroups() PermissionField {
+func (a DefaultPermissionAdmin) FieldGroups() PermissionOptionField {
 	return NewPermissionGroupsField(a.Client)
 }
 
@@ -366,7 +366,7 @@ func (DefaultPermissionAdmin) CanDelete(ctx context.Context, e *ent.Permission) 
 // schema-level access for routes, menu visibility, and create.
 type PermissionGroupAdmin interface {
 	FieldName() PermissionGroupField
-	FieldPermissions() PermissionGroupField
+	FieldPermissions() PermissionGroupOptionField
 	Name(e *ent.PermissionGroup) string
 	EagerLoadQuery(q *ent.PermissionGroupQuery) *ent.PermissionGroupQuery
 	ValidateCreate(ctx context.Context, input PermissionGroupCreateInput) error
@@ -403,7 +403,7 @@ func (a DefaultPermissionGroupAdmin) FieldName() PermissionGroupField {
 	return NewPermissionGroupNameField(a.Client)
 }
 
-func (a DefaultPermissionGroupAdmin) FieldPermissions() PermissionGroupField {
+func (a DefaultPermissionGroupAdmin) FieldPermissions() PermissionGroupOptionField {
 	return NewPermissionGroupPermissionsField(a.Client)
 }
 
@@ -452,10 +452,10 @@ func (DefaultPermissionGroupAdmin) CanDelete(ctx context.Context, e *ent.Permiss
 // entity. CanCreate and schema CRUD permissions (read_/create_/...) own
 // schema-level access for routes, menu visibility, and create.
 type ReviewAdmin interface {
-	FieldUser() ReviewField
+	FieldUser() ReviewOptionField
 	FieldRating() ReviewField
 	FieldBody() ReviewField
-	FieldBook() ReviewField
+	FieldBook() ReviewOptionField
 	Name(e *ent.Review) string
 	EagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery
 	ValidateCreate(ctx context.Context, input ReviewCreateInput) error
@@ -489,7 +489,7 @@ func (DefaultReviewAdmin) EagerLoadQuery(q *ent.ReviewQuery) *ent.ReviewQuery {
 	return q
 }
 
-func (a DefaultReviewAdmin) FieldUser() ReviewField {
+func (a DefaultReviewAdmin) FieldUser() ReviewOptionField {
 	return NewReviewUserField(a.Client)
 }
 
@@ -501,7 +501,7 @@ func (a DefaultReviewAdmin) FieldBody() ReviewField {
 	return NewReviewBodyField(a.Client)
 }
 
-func (a DefaultReviewAdmin) FieldBook() ReviewField {
+func (a DefaultReviewAdmin) FieldBook() ReviewOptionField {
 	return NewReviewBookField(a.Client)
 }
 
@@ -552,7 +552,7 @@ type UserAdmin interface {
 	FieldIsStaff() UserField
 	FieldIsSuperuser() UserField
 	FieldIsActive() UserField
-	FieldGroups() UserField
+	FieldGroups() UserOptionField
 	FieldLastLogin() UserField
 	Name(e *ent.User) string
 	EagerLoadQuery(q *ent.UserQuery) *ent.UserQuery
@@ -610,7 +610,7 @@ func (a DefaultUserAdmin) FieldIsActive() UserField {
 	return NewUserIsActiveField(a.Client)
 }
 
-func (a DefaultUserAdmin) FieldGroups() UserField {
+func (a DefaultUserAdmin) FieldGroups() UserOptionField {
 	return NewUserGroupsField(a.Client)
 }
 

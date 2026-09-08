@@ -50,10 +50,11 @@ func TestNormalizePattern(t *testing.T) {
 		{"/", "/"},
 		{"/login", "/login/"},
 		{"/{id}", "/{id}/"},
+		{"/{id}/{$}", "/{id}/{$}"},
 		{"/add/{$}", "/add/{$}"},
 		{"/{id}/password", "/{id}/password/"},
-		{"/options/{edge}", "/options/{edge}/"},
 		{"/options/groups", "/options/groups/"},
+		{"/options/user", "/options/user/"},
 	}
 
 	for _, tt := range tests {
@@ -71,19 +72,21 @@ func TestNormalizePatternRejectsUnknownParam(t *testing.T) {
 	if _, err := NormalizePattern("/{slug}/"); err == nil {
 		t.Fatal("expected error for unknown parameter")
 	}
+	if _, err := NormalizePattern("/options/{edge}/"); err == nil {
+		t.Fatal("expected error for {edge} parameter")
+	}
 }
 
 func TestPasswordAndWildcardOptionsConflict(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected ServeMux panic for /{id}/password/ and /options/{edge}/")
-		}
-	}()
 	root := New()
-	_ = root.Group("users", func(users *Router) {
+	if err := root.Group("users", func(users *Router) {
 		_ = users.GET("/{id}/password/", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-		_ = users.GET("/options/{edge}/", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	})
+		if err := users.GET("/options/{edge}/", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})); err == nil {
+			t.Fatal("expected NormalizePattern error for {edge}")
+		}
+	}); err != nil {
+		t.Fatalf("group: %v", err)
+	}
 }
 
 func TestPasswordAndLiteralOptionsRegister(t *testing.T) {
@@ -107,14 +110,16 @@ func TestPasswordAndLiteralOptionsRegister(t *testing.T) {
 	}
 }
 
-func TestOptionsHandlerReadsEdgePerRequest(t *testing.T) {
+func TestLiteralOptionsDoNotShareAHandler(t *testing.T) {
 	root := New()
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(r.PathValue("edge")))
-	})
 	if err := root.Group("reviews", func(schema *Router) {
-		schema.GET("/options/{edge}/", handler)
-		schema.GET("/{id}/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		schema.GET("/options/user/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("user"))
+		}))
+		schema.GET("/options/book/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("book"))
+		}))
+		schema.GET("/{id}/{$}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 	}); err != nil {
@@ -133,6 +138,13 @@ func TestOptionsHandlerReadsEdgePerRequest(t *testing.T) {
 	root.Handler().ServeHTTP(rec, req)
 	if rec.Body.String() != "book" {
 		t.Fatalf("second edge = %q, want book", rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/reviews/options/not-an-edge/", nil)
+	root.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown edge status = %d, want 404", rec.Code)
 	}
 }
 

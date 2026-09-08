@@ -7,7 +7,6 @@ package admin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -175,26 +174,17 @@ func (h *AdminHandler) canReadOrCreate{{ $node.Name }}(ctx context.Context) (boo
 	return h.schemas.{{ $node.Name }}.CanCreate(ctx)
 }
 
-// get{{ $node.Name }}OptionsHandler returns the handler for GET /admin/{{ $rc.RouteName }}/options/{edge}/
-func (h *AdminHandler) get{{ $node.Name }}OptionsHandler() http.Handler {
+{{- range $member := $rc.AdminSurface }}
+{{- if isMemberKindEdge $member }}
+// get{{ $node.Name }}{{ $member.Label }}OptionsHandler returns the handler for GET /admin/{{ $rc.RouteName }}/options/{{ $member.Name }}/
+func (h *AdminHandler) get{{ $node.Name }}{{ $member.Label }}OptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		edge := vent.OptionEdgeFromRequest(r)
-		loader, ok := h.{{ fieldsVarName $node.Name }}.optionLoaders[edge]
-		if !ok {
-			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
-			return
-		}
-		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		if err != nil {
-			vent.HandleError(w, r, normalizeError(err))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(options); err != nil {
-			vent.HandleError(w, r, err)
-		}
+		options, err := h.{{ fieldsVarName $node.Name }}.{{ $member.SlotName }}Options.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		h.writeSelectOptions(w, r, options, err)
 	})
 }
+{{- end }}
+{{- end }}
 {{- end }}
 
 	{{- if not $rc.DisableCreate }}

@@ -1,8 +1,6 @@
 package vent
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -30,18 +28,5 @@ func TestUnionSearchResultsByID(t *testing.T) {
 	want := []row{{1}, {2}, {3}, {2502}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("UnionSearchResultsByID = %#v, want %#v", got, want)
-	}
-}
-
-func TestOptionEdgeFromRequest(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/options/user/", nil)
-	req.SetPathValue("edge", "user")
-	if got := OptionEdgeFromRequest(req); got != "user" {
-		t.Fatalf("PathValue edge = %q, want user", got)
-	}
-
-	req = httptest.NewRequest(http.MethodGet, "/users/options/groups/", nil)
-	if got := OptionEdgeFromRequest(req); got != "groups" {
-		t.Fatalf("literal path edge = %q, want groups", got)
 	}
 }
