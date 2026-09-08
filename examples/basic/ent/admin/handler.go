@@ -192,56 +192,63 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			authed.GET("/{$}", h.getAdminHandler())
 
 			authed.Group("authors", func(schema *route.Router) {
-				schema.GET("/", h.getAuthorListHandler(), h.authorizePermission("read_author"))
-				schema.GET("/{id}/", h.getAuthorHandler(), h.authorizePermission("read_author"))
-				schema.POST("/", h.postAuthorHandler(), h.authorize(h.schemas.Author.CanCreate))
+				schema.GET("/{$}", h.getAuthorListHandler(), h.authorizePermission("read_author"))
+				schema.GET("/options/user/", h.getAuthorUserOptionsHandler(), h.authorize(h.canReadOrCreateAuthor))
+				schema.GET("/{id}/{$}", h.getAuthorHandler(), h.authorizePermission("read_author"))
+				schema.POST("/{$}", h.postAuthorHandler(), h.authorize(h.schemas.Author.CanCreate))
 				schema.GET("/add/{$}", h.getAuthorAddHandler(), h.authorize(h.schemas.Author.CanCreate))
-				schema.PATCH("/{id}/", h.patchAuthorHandler(), h.authorizePermission("update_author"))
-				schema.DELETE("/{id}/", h.deleteAuthorHandler(), h.authorizePermission("delete_author"))
+				schema.PATCH("/{id}/{$}", h.patchAuthorHandler(), h.authorizePermission("update_author"))
+				schema.DELETE("/{id}/{$}", h.deleteAuthorHandler(), h.authorizePermission("delete_author"))
 			})
 
 			authed.Group("books", func(schema *route.Router) {
-				schema.GET("/", h.getBookListHandler(), h.authorizePermission("read_book"))
-				schema.GET("/{id}/", h.getBookHandler(), h.authorizePermission("read_book"))
-				schema.POST("/", h.postBookHandler(), h.authorize(h.schemas.Book.CanCreate))
+				schema.GET("/{$}", h.getBookListHandler(), h.authorizePermission("read_book"))
+				schema.GET("/options/author/", h.getBookAuthorOptionsHandler(), h.authorize(h.canReadOrCreateBook))
+				schema.GET("/{id}/{$}", h.getBookHandler(), h.authorizePermission("read_book"))
+				schema.POST("/{$}", h.postBookHandler(), h.authorize(h.schemas.Book.CanCreate))
 				schema.GET("/add/{$}", h.getBookAddHandler(), h.authorize(h.schemas.Book.CanCreate))
-				schema.PATCH("/{id}/", h.patchBookHandler(), h.authorizePermission("update_book"))
-				schema.DELETE("/{id}/", h.deleteBookHandler(), h.authorizePermission("delete_book"))
+				schema.PATCH("/{id}/{$}", h.patchBookHandler(), h.authorizePermission("update_book"))
+				schema.DELETE("/{id}/{$}", h.deleteBookHandler(), h.authorizePermission("delete_book"))
 			})
 
 			authed.Group("permissions", func(schema *route.Router) {
-				schema.GET("/", h.getPermissionListHandler(), h.authorizePermission("read_permission"))
-				schema.GET("/{id}/", h.getPermissionHandler(), h.authorizePermission("read_permission"))
-				schema.PATCH("/{id}/", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
+				schema.GET("/{$}", h.getPermissionListHandler(), h.authorizePermission("read_permission"))
+				schema.GET("/options/groups/", h.getPermissionGroupsOptionsHandler(), h.authorize(h.canReadOrCreatePermission))
+				schema.GET("/{id}/{$}", h.getPermissionHandler(), h.authorizePermission("read_permission"))
+				schema.PATCH("/{id}/{$}", h.patchPermissionHandler(), h.authorizePermission("update_permission"))
 			})
 
 			authed.Group("permission-groups", func(schema *route.Router) {
-				schema.GET("/", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
-				schema.GET("/{id}/", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
-				schema.POST("/", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
+				schema.GET("/{$}", h.getPermissionGroupListHandler(), h.authorizePermission("read_permission_group"))
+				schema.GET("/options/permissions/", h.getPermissionGroupPermissionsOptionsHandler(), h.authorize(h.canReadOrCreatePermissionGroup))
+				schema.GET("/{id}/{$}", h.getPermissionGroupHandler(), h.authorizePermission("read_permission_group"))
+				schema.POST("/{$}", h.postPermissionGroupHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
 				schema.GET("/add/{$}", h.getPermissionGroupAddHandler(), h.authorize(h.schemas.PermissionGroup.CanCreate))
-				schema.PATCH("/{id}/", h.patchPermissionGroupHandler(), h.authorizePermission("update_permission_group"))
-				schema.DELETE("/{id}/", h.deletePermissionGroupHandler(), h.authorizePermission("delete_permission_group"))
+				schema.PATCH("/{id}/{$}", h.patchPermissionGroupHandler(), h.authorizePermission("update_permission_group"))
+				schema.DELETE("/{id}/{$}", h.deletePermissionGroupHandler(), h.authorizePermission("delete_permission_group"))
 			})
 
 			authed.Group("reviews", func(schema *route.Router) {
-				schema.GET("/", h.getReviewListHandler(), h.authorizePermission("read_review"))
-				schema.GET("/{id}/", h.getReviewHandler(), h.authorizePermission("read_review"))
-				schema.POST("/", h.postReviewHandler(), h.authorize(h.schemas.Review.CanCreate))
+				schema.GET("/{$}", h.getReviewListHandler(), h.authorizePermission("read_review"))
+				schema.GET("/options/user/", h.getReviewUserOptionsHandler(), h.authorize(h.canReadOrCreateReview))
+				schema.GET("/options/book/", h.getReviewBookOptionsHandler(), h.authorize(h.canReadOrCreateReview))
+				schema.GET("/{id}/{$}", h.getReviewHandler(), h.authorizePermission("read_review"))
+				schema.POST("/{$}", h.postReviewHandler(), h.authorize(h.schemas.Review.CanCreate))
 				schema.GET("/add/{$}", h.getReviewAddHandler(), h.authorize(h.schemas.Review.CanCreate))
-				schema.PATCH("/{id}/", h.patchReviewHandler(), h.authorizePermission("update_review"))
+				schema.PATCH("/{id}/{$}", h.patchReviewHandler(), h.authorizePermission("update_review"))
 			})
 
 			authed.Group("users", func(schema *route.Router) {
-				schema.GET("/", h.getUserListHandler(), h.authorizePermission("read_user"))
-				schema.GET("/{id}/", h.getUserHandler(), h.authorizePermission("read_user"))
-				schema.POST("/", h.postUserHandler(), h.authorize(h.schemas.User.CanCreate))
+				schema.GET("/{$}", h.getUserListHandler(), h.authorizePermission("read_user"))
+				schema.GET("/options/groups/", h.getUserGroupsOptionsHandler(), h.authorize(h.canReadOrCreateUser))
+				schema.GET("/{id}/{$}", h.getUserHandler(), h.authorizePermission("read_user"))
+				schema.POST("/{$}", h.postUserHandler(), h.authorize(h.schemas.User.CanCreate))
 				schema.GET("/add/{$}", h.getUserAddHandler(), h.authorize(h.schemas.User.CanCreate))
-				schema.PATCH("/{id}/", h.patchUserHandler(), h.authorizePermission("update_user"))
+				schema.PATCH("/{id}/{$}", h.patchUserHandler(), h.authorizePermission("update_user"))
 				schema.GET("/{id}/password/", h.getUserPasswordHandler(), h.authorizePermission("read_user"))
 				schema.PUT("/{id}/password/", h.putUserPasswordHandler(), h.authorizePermission("update_user"))
 				schema.DELETE("/{id}/password/", h.deleteUserPasswordHandler(), h.authorizePermission("update_user"))
-				schema.DELETE("/{id}/", h.deleteUserHandler(), h.authorizePermission("delete_user"))
+				schema.DELETE("/{id}/{$}", h.deleteUserHandler(), h.authorizePermission("delete_user"))
 			})
 
 		})
@@ -274,6 +281,24 @@ func validateAdminConfig(config AdminConfig) error {
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.routes.ServeHTTP(w, r)
+}
+
+func (h *AdminHandler) writeFKFieldHTML(w http.ResponseWriter, r *http.Request, html string, err error) {
+	if err != nil {
+		vent.HandleError(w, r, normalizeError(err))
+		return
+	}
+	if vent.IsDatastarRequest(r) {
+		sse := datastar.NewSSE(w, r)
+		if err := sse.PatchElements(html); err != nil {
+			vent.HandleError(w, r, err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := w.Write([]byte(html)); err != nil {
+		vent.HandleError(w, r, err)
+	}
 }
 
 // buildLayoutProps creates LayoutProps with schema metadata visible to the current user.

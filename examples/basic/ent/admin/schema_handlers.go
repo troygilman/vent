@@ -119,6 +119,35 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreateAuthor(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_author")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Author.CanCreate(ctx)
+}
+
+// getAuthorUserOptionsHandler returns the handler for GET /admin/authors/options/user/
+func (h *AdminHandler) getAuthorUserOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.Author.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_author")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.authorFields.UserFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
 
 // buildAuthorAddPageProps builds the add page props for Author.
 func (h *AdminHandler) buildAuthorAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
@@ -521,6 +550,35 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreateBook(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_book")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Book.CanCreate(ctx)
+}
+
+// getBookAuthorOptionsHandler returns the handler for GET /admin/books/options/author/
+func (h *AdminHandler) getBookAuthorOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.Book.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_book")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.bookFields.AuthorFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
 
 // buildBookAddPageProps builds the add page props for Book.
 func (h *AdminHandler) buildBookAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
@@ -884,6 +942,35 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreatePermission(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_permission")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Permission.CanCreate(ctx)
+}
+
+// getPermissionGroupsOptionsHandler returns the handler for GET /admin/permissions/options/groups/
+func (h *AdminHandler) getPermissionGroupsOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.Permission.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_permission")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.permissionFields.GroupsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
 
 // buildPermissionPageProps builds the edit page props for Permission.
 func (h *AdminHandler) buildPermissionPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
@@ -1125,6 +1212,35 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
 			vent.HandleError(w, r, err)
 		}
+	})
+}
+func (h *AdminHandler) canReadOrCreatePermissionGroup(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_permission_group")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.PermissionGroup.CanCreate(ctx)
+}
+
+// getPermissionGroupPermissionsOptionsHandler returns the handler for GET /admin/permission-groups/options/permissions/
+func (h *AdminHandler) getPermissionGroupPermissionsOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.PermissionGroup.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_permission_group")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.permissionGroupFields.PermissionsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -1512,6 +1628,57 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreateReview(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_review")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Review.CanCreate(ctx)
+}
+
+// getReviewUserOptionsHandler returns the handler for GET /admin/reviews/options/user/
+func (h *AdminHandler) getReviewUserOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.Review.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_review")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.reviewFields.UserFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
+
+// getReviewBookOptionsHandler returns the handler for GET /admin/reviews/options/book/
+func (h *AdminHandler) getReviewBookOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.Review.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_review")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.reviewFields.BookFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
 
 // buildReviewAddPageProps builds the add page props for Review.
 func (h *AdminHandler) buildReviewAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
@@ -1877,6 +2044,35 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
 			vent.HandleError(w, r, err)
 		}
+	})
+}
+func (h *AdminHandler) canReadOrCreateUser(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_user")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.User.CanCreate(ctx)
+}
+
+// getUserGroupsOptionsHandler returns the handler for GET /admin/users/options/groups/
+func (h *AdminHandler) getUserGroupsOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.User.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_user")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.userFields.GroupsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 

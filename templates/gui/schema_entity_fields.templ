@@ -212,7 +212,7 @@ templ SchemaEntityTimeField(props SchemaEntityTimeFieldProps) {
 }
 
 templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldProps) {
-	<div class="field-group">
+	<div class="field-group" id={ "fk-field-" + props.Name }>
 		<label class="field">
 			<span class="field-label">{ props.Label }</span>
 			<select
@@ -240,7 +240,7 @@ templ SchemaEntityForeignKeyUniqueField(props SchemaEntityForeignKeyUniqueFieldP
 }
 
 templ SchemaEntityForeignKeyField(props SchemaEntityForeignKeyFieldProps) {
-	<div class="field-group">
+	<div class="field-group" id={ "fk-field-" + props.Name }>
 		<label class="field">
 			<span class="field-label">{ props.Label }</span>
 			<div class="fk-select-group">

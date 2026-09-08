@@ -143,14 +143,19 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 			{{ $node := $item.Node }}
 			{{ $rc := $item.RC }}
 			authed.Group("{{ $rc.RouteName }}", func(schema *route.Router) {
-				schema.GET("/", h.get{{ $node.Name }}ListHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
-				schema.GET("/{id}/", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				schema.GET("/{$}", h.get{{ $node.Name }}ListHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
+				{{- range $member := $rc.AdminSurface }}
+				{{- if isMemberKindEdge $member }}
+				schema.GET("/options/{{ $member.Name }}/", h.get{{ $node.Name }}{{ $member.Label }}OptionsHandler(), h.authorize(h.canReadOrCreate{{ $node.Name }}))
+				{{- end }}
+				{{- end }}
+				schema.GET("/{id}/{$}", h.get{{ $node.Name }}Handler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
 				{{- if not $rc.DisableCreate }}
-				schema.POST("/", h.post{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
+				schema.POST("/{$}", h.post{{ $node.Name }}Handler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
 				schema.GET("/add/{$}", h.get{{ $node.Name }}AddHandler(), h.authorize(h.schemas.{{ $node.Name }}.CanCreate))
 				{{- end }}
 				{{- if not $rc.ReadOnly }}
-				schema.PATCH("/{id}/", h.patch{{ $node.Name }}Handler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
+				schema.PATCH("/{id}/{$}", h.patch{{ $node.Name }}Handler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
 				{{- if $rc.HasPasswordRoutes }}
 				schema.GET("/{id}/password/", h.get{{ $node.Name }}PasswordHandler(), h.authorizePermission("read_{{ resourceName $node.Name }}"))
 				schema.PUT("/{id}/password/", h.put{{ $node.Name }}PasswordHandler(), h.authorizePermission("update_{{ resourceName $node.Name }}"))
@@ -158,7 +163,7 @@ func (h *AdminHandler) registerRoutes(secretProvider auth.SecretProvider) (http.
 				{{- end }}
 				{{- end }}
 				{{- if not $rc.DisableDelete }}
-				schema.DELETE("/{id}/", h.delete{{ $node.Name }}Handler(), h.authorizePermission("delete_{{ resourceName $node.Name }}"))
+				schema.DELETE("/{id}/{$}", h.delete{{ $node.Name }}Handler(), h.authorizePermission("delete_{{ resourceName $node.Name }}"))
 				{{- end }}
 			})
 			{{ end }}
@@ -192,6 +197,24 @@ func validateAdminConfig(config AdminConfig) error {
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.routes.ServeHTTP(w, r)
+}
+
+func (h *AdminHandler) writeFKFieldHTML(w http.ResponseWriter, r *http.Request, html string, err error) {
+	if err != nil {
+		vent.HandleError(w, r, normalizeError(err))
+		return
+	}
+	if vent.IsDatastarRequest(r) {
+		sse := datastar.NewSSE(w, r)
+		if err := sse.PatchElements(html); err != nil {
+			vent.HandleError(w, r, err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := w.Write([]byte(html)); err != nil {
+		vent.HandleError(w, r, err)
+	}
 }
 
 	// buildLayoutProps creates LayoutProps with schema metadata visible to the current user.

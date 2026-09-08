@@ -165,6 +165,42 @@ func (h *AdminHandler) get{{ $node.Name }}ListHandler() http.Handler {
 	})
 }
 
+{{- if hasOptionEdges $rc }}
+func (h *AdminHandler) canReadOrCreate{{ $node.Name }}(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_{{ resourceName $node.Name }}")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.{{ $node.Name }}.CanCreate(ctx)
+}
+
+{{- range $member := $rc.AdminSurface }}
+{{- if isMemberKindEdge $member }}
+// get{{ $node.Name }}{{ $member.Label }}OptionsHandler returns the handler for GET /admin/{{ $rc.RouteName }}/options/{{ $member.Name }}/
+func (h *AdminHandler) get{{ $node.Name }}{{ $member.Label }}OptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_{{ resourceName $node.Name }}")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.{{ fieldsVarName $node.Name }}.{{ $member.SlotName }}Options.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
+	})
+}
+{{- end }}
+{{- end }}
+{{- end }}
+
 	{{- if not $rc.DisableCreate }}
 	// build{{ $node.Name }}AddPageProps builds the add page props for {{ $node.Name }}.
 	func (h *AdminHandler) build{{ $node.Name }}AddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {

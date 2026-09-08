@@ -68,7 +68,7 @@ func (a Admin) {{ $item.Node.Name }}() {{ $item.Node.Name }}Admin {
 // schema-level access for routes, menu visibility, and create.
 type {{ $node.Name }}Admin interface {
 	{{- range $member := $rc.AdminSurface }}
-	Field{{ $member.Label }}() {{ $node.Name }}Field
+	Field{{ $member.Label }}() {{ fieldInterface $node.Name $member }}
 	{{- end }}
 	Name(e *ent.{{ $node.Name }}) string
 	EagerLoadQuery(q *ent.{{ $node.Name }}Query) *ent.{{ $node.Name }}Query
@@ -123,7 +123,7 @@ func (Default{{ $node.Name }}Admin) EagerLoadQuery(q *ent.{{ $node.Name }}Query)
 
 	{{- range $member := $rc.AdminSurface }}
 
-func (a Default{{ $node.Name }}Admin) Field{{ $member.Label }}() {{ $node.Name }}Field {
+func (a Default{{ $node.Name }}Admin) Field{{ $member.Label }}() {{ fieldInterface $node.Name $member }} {
 	{{- if hasGeneratedFieldDefault $member }}
 	return New{{ $node.Name }}{{ $member.SlotName }}(a.Client)
 	{{- else }}

@@ -39,6 +39,12 @@ type AuthorField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error
 }
 
+type AuthorOptionField interface {
+	AuthorField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // AuthorFields holds the resolved admin field implementations for Author.
 type AuthorFields struct {
 	listColumns      []AuthorField
@@ -46,6 +52,7 @@ type AuthorFields struct {
 	updateFormFields []AuthorField
 	createBindFields []AuthorField
 	updateBindFields []AuthorField
+	UserFieldOptions AuthorOptionField
 }
 
 func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
@@ -78,6 +85,7 @@ func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 		UserField,
 		ActiveField,
 	}
+	f.UserFieldOptions = UserField
 	return f, nil
 }
 
@@ -98,16 +106,7 @@ func (f AuthorUserField) ListCell(ctx context.Context, e *ent.Author) string {
 }
 
 func (f AuthorUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "user",
-		Label:    "User",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string, error) {
@@ -115,16 +114,7 @@ func (f AuthorUserField) UpdateHTML(ctx context.Context, e *ent.Author) (string,
 	if e.Edges.User != nil {
 		selectedIDs = []int{e.Edges.User.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "user",
-		Label:    "User",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f AuthorUserField) ApplyCreate(_ context.Context, builder *ent.AuthorCreate, input AuthorCreateInput) error {
@@ -194,6 +184,19 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 	return options, nil
 }
 
+func (f AuthorUserField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
 type AuthorActiveField struct {
 	client *ent.Client
 }
@@ -248,13 +251,20 @@ type BookField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error
 }
 
+type BookOptionField interface {
+	BookField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // BookFields holds the resolved admin field implementations for Book.
 type BookFields struct {
-	listColumns      []BookField
-	createFormFields []BookField
-	updateFormFields []BookField
-	createBindFields []BookField
-	updateBindFields []BookField
+	listColumns        []BookField
+	createFormFields   []BookField
+	updateFormFields   []BookField
+	createBindFields   []BookField
+	updateBindFields   []BookField
+	AuthorFieldOptions BookOptionField
 }
 
 func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
@@ -327,6 +337,7 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 		PublishedAtField,
 		NotesField,
 	}
+	f.AuthorFieldOptions = AuthorField
 	return f, nil
 }
 
@@ -389,16 +400,7 @@ func (f BookAuthorField) ListCell(ctx context.Context, e *ent.Book) string {
 }
 
 func (f BookAuthorField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "author",
-		Label:    "Author",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f BookAuthorField) UpdateHTML(ctx context.Context, e *ent.Book) (string, error) {
@@ -406,16 +408,7 @@ func (f BookAuthorField) UpdateHTML(ctx context.Context, e *ent.Book) (string, e
 	if e.Edges.Author != nil {
 		selectedIDs = []int{e.Edges.Author.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "author",
-		Label:    "Author",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f BookAuthorField) ApplyCreate(_ context.Context, builder *ent.BookCreate, input BookCreateInput) error {
@@ -478,6 +471,19 @@ func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selecte
 		}
 	}
 	return options, nil
+}
+
+func (f BookAuthorField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "author",
+		Label:    "Author",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
 }
 
 type BookPagesField struct {
@@ -682,13 +688,20 @@ type PermissionField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.PermissionUpdateOne, input PermissionUpdateInput) error
 }
 
+type PermissionOptionField interface {
+	PermissionField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // PermissionFields holds the resolved admin field implementations for Permission.
 type PermissionFields struct {
-	listColumns      []PermissionField
-	createFormFields []PermissionField
-	updateFormFields []PermissionField
-	createBindFields []PermissionField
-	updateBindFields []PermissionField
+	listColumns        []PermissionField
+	createFormFields   []PermissionField
+	updateFormFields   []PermissionField
+	createBindFields   []PermissionField
+	updateBindFields   []PermissionField
+	GroupsFieldOptions PermissionOptionField
 }
 
 func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) {
@@ -719,6 +732,7 @@ func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) 
 	f.updateBindFields = []PermissionField{
 		GroupsField,
 	}
+	f.GroupsFieldOptions = GroupsField
 	return f, nil
 }
 
@@ -784,16 +798,7 @@ func (f PermissionGroupsField) ListCell(ctx context.Context, e *ent.Permission) 
 }
 
 func (f PermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission) (string, error) {
@@ -801,16 +806,7 @@ func (f PermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.Permission
 	for _, related := range e.Edges.Groups {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f PermissionGroupsField) ApplyCreate(_ context.Context, builder *ent.PermissionCreate, input PermissionCreateInput) error {
@@ -879,6 +875,19 @@ func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, s
 	return options, nil
 }
 
+func (f PermissionGroupsField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
+		Name:     "groups",
+		Label:    "Groups",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
 // PermissionGroupField is the typed admin field contract for PermissionGroup.
 type PermissionGroupField interface {
 	ListCell(ctx context.Context, e *ent.PermissionGroup) string
@@ -888,13 +897,20 @@ type PermissionGroupField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.PermissionGroupUpdateOne, input PermissionGroupUpdateInput) error
 }
 
+type PermissionGroupOptionField interface {
+	PermissionGroupField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // PermissionGroupFields holds the resolved admin field implementations for PermissionGroup.
 type PermissionGroupFields struct {
-	listColumns      []PermissionGroupField
-	createFormFields []PermissionGroupField
-	updateFormFields []PermissionGroupField
-	createBindFields []PermissionGroupField
-	updateBindFields []PermissionGroupField
+	listColumns             []PermissionGroupField
+	createFormFields        []PermissionGroupField
+	updateFormFields        []PermissionGroupField
+	createBindFields        []PermissionGroupField
+	updateBindFields        []PermissionGroupField
+	PermissionsFieldOptions PermissionGroupOptionField
 }
 
 func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroupFields, error) {
@@ -926,6 +942,7 @@ func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroup
 		NameField,
 		PermissionsField,
 	}
+	f.PermissionsFieldOptions = PermissionsField
 	return f, nil
 }
 
@@ -995,16 +1012,7 @@ func (f PermissionGroupPermissionsField) ListCell(ctx context.Context, e *ent.Pe
 }
 
 func (f PermissionGroupPermissionsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "permissions",
-		Label:    "Permissions",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.PermissionGroup) (string, error) {
@@ -1012,16 +1020,7 @@ func (f PermissionGroupPermissionsField) UpdateHTML(ctx context.Context, e *ent.
 	for _, related := range e.Edges.Permissions {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "permissions",
-		Label:    "Permissions",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f PermissionGroupPermissionsField) ApplyCreate(_ context.Context, builder *ent.PermissionGroupCreate, input PermissionGroupCreateInput) error {
@@ -1090,6 +1089,19 @@ func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search
 	return options, nil
 }
 
+func (f PermissionGroupPermissionsField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
+		Name:     "permissions",
+		Label:    "Permissions",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
 // ReviewField is the typed admin field contract for Review.
 type ReviewField interface {
 	ListCell(ctx context.Context, e *ent.Review) string
@@ -1099,6 +1111,12 @@ type ReviewField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.ReviewUpdateOne, input ReviewUpdateInput) error
 }
 
+type ReviewOptionField interface {
+	ReviewField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // ReviewFields holds the resolved admin field implementations for Review.
 type ReviewFields struct {
 	listColumns      []ReviewField
@@ -1106,6 +1124,8 @@ type ReviewFields struct {
 	updateFormFields []ReviewField
 	createBindFields []ReviewField
 	updateBindFields []ReviewField
+	UserFieldOptions ReviewOptionField
+	BookFieldOptions ReviewOptionField
 }
 
 func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
@@ -1155,6 +1175,8 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 		BodyField,
 		BookField,
 	}
+	f.UserFieldOptions = UserField
+	f.BookFieldOptions = BookField
 	return f, nil
 }
 
@@ -1175,16 +1197,7 @@ func (f ReviewUserField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewUserField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "user",
-		Label:    "User",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
@@ -1192,16 +1205,7 @@ func (f ReviewUserField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 	if e.Edges.User != nil {
 		selectedIDs = []int{e.Edges.User.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "user",
-		Label:    "User",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f ReviewUserField) ApplyCreate(_ context.Context, builder *ent.ReviewCreate, input ReviewCreateInput) error {
@@ -1269,6 +1273,19 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 		}
 	}
 	return options, nil
+}
+
+func (f ReviewUserField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "user",
+		Label:    "User",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
 }
 
 type ReviewRatingField struct {
@@ -1385,16 +1402,7 @@ func (f ReviewBookField) ListCell(ctx context.Context, e *ent.Review) string {
 }
 
 func (f ReviewBookField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "book",
-		Label:    "Book",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f ReviewBookField) UpdateHTML(ctx context.Context, e *ent.Review) (string, error) {
@@ -1402,16 +1410,7 @@ func (f ReviewBookField) UpdateHTML(ctx context.Context, e *ent.Review) (string,
 	if e.Edges.Book != nil {
 		selectedIDs = []int{e.Edges.Book.ID}
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
-		Name:     "book",
-		Label:    "Book",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f ReviewBookField) ApplyCreate(_ context.Context, builder *ent.ReviewCreate, input ReviewCreateInput) error {
@@ -1481,6 +1480,19 @@ func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selecte
 	return options, nil
 }
 
+func (f ReviewBookField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyUniqueFieldHTML(ctx, gui.SchemaEntityForeignKeyUniqueFieldProps{
+		Name:     "book",
+		Label:    "Book",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
+}
+
 // UserField is the typed admin field contract for User.
 type UserField interface {
 	ListCell(ctx context.Context, e *ent.User) string
@@ -1490,13 +1502,20 @@ type UserField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error
 }
 
+type UserOptionField interface {
+	UserField
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
+}
+
 // UserFields holds the resolved admin field implementations for User.
 type UserFields struct {
-	listColumns      []UserField
-	createFormFields []UserField
-	updateFormFields []UserField
-	createBindFields []UserField
-	updateBindFields []UserField
+	listColumns        []UserField
+	createFormFields   []UserField
+	updateFormFields   []UserField
+	createBindFields   []UserField
+	updateBindFields   []UserField
+	GroupsFieldOptions UserOptionField
 }
 
 func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
@@ -1574,6 +1593,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		GroupsField,
 		LastLoginField,
 	}
+	f.GroupsFieldOptions = GroupsField
 	return f, nil
 }
 
@@ -1862,16 +1882,7 @@ func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
 }
 
 func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
-	options, err := f.LoadOptions(ctx, "", nil)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", nil)
 }
 
 func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
@@ -1879,16 +1890,7 @@ func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, e
 	for _, related := range e.Edges.Groups {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
-		Editable: gui.MustRenderContext(ctx).CanUpdate,
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 }
 
 func (f UserGroupsField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
@@ -1955,6 +1957,19 @@ func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selecte
 		}
 	}
 	return options, nil
+}
+
+func (f UserGroupsField) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
+		Name:     "groups",
+		Label:    "Groups",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
 }
 
 type UserLastLoginField struct {
