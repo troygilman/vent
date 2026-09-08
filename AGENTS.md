@@ -8,7 +8,7 @@ On every change (GUI or otherwise), before you finish:
 
 1. Start the example admin demo if it is not already running: `just gen` / migrate if needed, then `go run ./examples/basic/cmd/server` (or `just dev`) on port **8080**.
 2. Open the app in the browser: `http://localhost:8080/admin/`.
-3. Log in as a sanity check with `admin@vent.com` / `test_user`.
+3. Check the session. If you are already on a logged-in admin page, that is the sanity check. Leave it alone. Do not log out. Do not log out just to log back in. Only log in when the session is not authenticated (for example the login page is showing), using `admin@vent.com` / `test_user`.
 4. Leave the server running on this agent's desktop so Troy can keep testing.
 5. Do not open a second PR just to start the server.
 
