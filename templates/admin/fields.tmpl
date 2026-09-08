@@ -50,6 +50,7 @@ type {{ $node.Name }}Field interface {
 type {{ $node.Name }}OptionField interface {
 	{{ $node.Name }}Field
 	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+	OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error)
 }
 
 // {{ $node.Name }}Fields holds the resolved admin field implementations for {{ $node.Name }}.
@@ -181,16 +182,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) CreateHTML(ctx context.Context) 
 		{{- if or (eq $member.Name "id") (isCustomFieldPassword $member) }}
 		return "", nil
 		{{- else if isMemberKindEdge $member }}
-		options, err := f.LoadOptions(ctx, "", nil)
-		if err != nil {
-			return "", err
-		}
-		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-			Name:     "{{ $member.Name }}",
-			Label:    "{{ $member.Label }}",
-			Editable: gui.MustRenderContext(ctx).CanUpdate,
-			Options:  options,
-		})
+		return f.OptionsHTML(ctx, "", nil)
 		{{- else }}
 		return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
 			Name:     "{{ $member.Name }}",
@@ -242,16 +234,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) UpdateHTML(ctx context.Context, 
 		selectedIDs = append(selectedIDs, related.ID)
 	}
 	{{- end }}
-	options, err := f.LoadOptions(ctx, "", selectedIDs)
-	if err != nil {
-		return "", err
-	}
-	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
-		Name:     "{{ $member.Name }}",
-		Label:    "{{ $member.Label }}",
-		Editable: {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }},
-		Options:  options,
-	})
+	return f.OptionsHTML(ctx, "", selectedIDs)
 	{{- else }}
 		{{- if and $rc.IsAuthUserSchema (eq $member.Name "is_active") }}
 		editable := {{ if $member.BindUpdate }}gui.MustRenderContext(ctx).CanUpdate{{ else }}false{{ end }}
@@ -449,6 +432,19 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context,
 		}
 	}
 	return options, nil
+}
+
+func (f {{ $node.Name }}{{ $member.SlotName }}) OptionsHTML(ctx context.Context, search string, selectedIDs []int) (string, error) {
+	options, err := f.LoadOptions(ctx, search, selectedIDs)
+	if err != nil {
+		return "", err
+	}
+	return gui.{{ fieldComponentRenderFunc $member }}(ctx, gui.{{ fieldComponentPropsType $member }}{
+		Name:     "{{ $member.Name }}",
+		Label:    "{{ $member.Label }}",
+		Editable: gui.MustRenderContext(ctx).CanUpdate,
+		Options:  options,
+	})
 }
 {{- end }}
 {{ end }}

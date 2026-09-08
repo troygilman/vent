@@ -2,7 +2,7 @@ package vent_test
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +11,6 @@ import (
 	"github.com/troygilman/vent/auth"
 	"github.com/troygilman/vent/examples/basic/ent"
 	"github.com/troygilman/vent/examples/basic/ent/admin"
-	"github.com/troygilman/vent/templates/gui"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -101,51 +100,60 @@ func TestFKOptionsHTTPRoute(t *testing.T) {
 		t.Fatalf("unknown edge status = %d body = %q, want 404 or 405", unknown.Code, unknown.Body.String())
 	}
 
-	userOpts := decodeOptions(t, get("/admin/reviews/options/user/?q=alice", true))
-	if !hasOptionValue(userOpts, alice.ID) {
-		t.Fatalf("user options = %#v, want alice id %d", userOpts, alice.ID)
+	userHTML := getHTML(t, get("/admin/reviews/options/user/?q=alice", true))
+	if !strings.Contains(userHTML, `id="fk-field-user"`) {
+		t.Fatalf("user field html missing id, got %s", userHTML)
+	}
+	if !strings.Contains(userHTML, fmt.Sprintf(`value="%d"`, alice.ID)) {
+		t.Fatalf("user field html missing alice id %d, got %s", alice.ID, userHTML)
 	}
 
-	bookOpts := decodeOptions(t, get("/admin/reviews/options/book/?q=Zebra", true))
-	if !hasOptionValue(bookOpts, book.ID) {
-		t.Fatalf("book options = %#v, want book id %d", bookOpts, book.ID)
+	bookHTML := getHTML(t, get("/admin/reviews/options/book/?q=Zebra", true))
+	if !strings.Contains(bookHTML, `id="fk-field-book"`) {
+		t.Fatalf("book field html missing id, got %s", bookHTML)
 	}
-	for _, opt := range bookOpts {
-		if strings.Contains(opt.Label, "alice") {
-			t.Fatalf("book options included a user: %#v", bookOpts)
-		}
+	if !strings.Contains(bookHTML, fmt.Sprintf(`value="%d"`, book.ID)) {
+		t.Fatalf("book field html missing book id %d, got %s", book.ID, bookHTML)
+	}
+	if strings.Contains(bookHTML, `id="fk-field-user"`) {
+		t.Fatalf("book field html rendered the user field: %s", bookHTML)
 	}
 
-	userAgain := decodeOptions(t, get("/admin/reviews/options/user/?q=alice", true))
-	if !hasOptionValue(userAgain, alice.ID) {
-		t.Fatalf("second user options = %#v, want alice after book request", userAgain)
+	userAgain := getHTML(t, get("/admin/reviews/options/user/?q=alice", true))
+	if !strings.Contains(userAgain, fmt.Sprintf(`value="%d"`, alice.ID)) {
+		t.Fatalf("second user field html missing alice after book request")
 	}
 
 	groups := get("/admin/users/options/groups/", true)
 	if groups.Code != http.StatusOK {
 		t.Fatalf("user groups options status = %d body = %q, want 200", groups.Code, groups.Body.String())
 	}
+	if ct := groups.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Fatalf("groups Content-Type = %q, want text/html", ct)
+	}
+
+	ds := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin/reviews/options/user/?q=alice", nil)
+	req.AddCookie(&http.Cookie{Name: "vent-auth-token", Value: token})
+	req.Header.Set("Datastar-Request", "true")
+	handler.ServeHTTP(ds, req)
+	if ds.Code != http.StatusOK {
+		t.Fatalf("datastar options status = %d, want 200", ds.Code)
+	}
+	if !strings.Contains(ds.Body.String(), fmt.Sprintf(`value="%d"`, alice.ID)) {
+		t.Fatalf("datastar patch missing alice, got %s", ds.Body.String())
+	}
 }
 
-func decodeOptions(t *testing.T, rec *httptest.ResponseRecorder) []gui.SelectOption {
+func getHTML(t *testing.T, rec *httptest.ResponseRecorder) string {
 	t.Helper()
 	if rec.Code != http.StatusOK {
 		t.Fatalf("options status = %d body = %q, want 200", rec.Code, rec.Body.String())
 	}
-	var options []gui.SelectOption
-	if err := json.Unmarshal(rec.Body.Bytes(), &options); err != nil {
-		t.Fatalf("decode options: %v body = %q", err, rec.Body.String())
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type = %q, want text/html", ct)
 	}
-	return options
-}
-
-func hasOptionValue(options []gui.SelectOption, id int) bool {
-	for _, opt := range options {
-		if opt.Value == id {
-			return true
-		}
-	}
-	return false
+	return rec.Body.String()
 }
 
 type testBookAdmin struct {

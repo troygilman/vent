@@ -199,13 +199,20 @@ func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.routes.ServeHTTP(w, r)
 }
 
-func (h *AdminHandler) writeSelectOptions(w http.ResponseWriter, r *http.Request, options []gui.SelectOption, err error) {
+func (h *AdminHandler) writeFKFieldHTML(w http.ResponseWriter, r *http.Request, html string, err error) {
 	if err != nil {
 		vent.HandleError(w, r, normalizeError(err))
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(options); err != nil {
+	if vent.IsDatastarRequest(r) {
+		sse := datastar.NewSSE(w, r)
+		if err := sse.PatchElements(html); err != nil {
+			vent.HandleError(w, r, err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := w.Write([]byte(html)); err != nil {
 		vent.HandleError(w, r, err)
 	}
 }

@@ -130,8 +130,22 @@ func (h *AdminHandler) canReadOrCreateAuthor(ctx context.Context) (bool, error) 
 // getAuthorUserOptionsHandler returns the handler for GET /admin/authors/options/user/
 func (h *AdminHandler) getAuthorUserOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.authorFields.UserFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.Author.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_author")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.authorFields.UserFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -547,8 +561,22 @@ func (h *AdminHandler) canReadOrCreateBook(ctx context.Context) (bool, error) {
 // getBookAuthorOptionsHandler returns the handler for GET /admin/books/options/author/
 func (h *AdminHandler) getBookAuthorOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.bookFields.AuthorFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.Book.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_book")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.bookFields.AuthorFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -925,8 +953,22 @@ func (h *AdminHandler) canReadOrCreatePermission(ctx context.Context) (bool, err
 // getPermissionGroupsOptionsHandler returns the handler for GET /admin/permissions/options/groups/
 func (h *AdminHandler) getPermissionGroupsOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.permissionFields.GroupsFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.Permission.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_permission")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.permissionFields.GroupsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -1183,8 +1225,22 @@ func (h *AdminHandler) canReadOrCreatePermissionGroup(ctx context.Context) (bool
 // getPermissionGroupPermissionsOptionsHandler returns the handler for GET /admin/permission-groups/options/permissions/
 func (h *AdminHandler) getPermissionGroupPermissionsOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.permissionGroupFields.PermissionsFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.PermissionGroup.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_permission_group")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.permissionGroupFields.PermissionsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -1583,16 +1639,44 @@ func (h *AdminHandler) canReadOrCreateReview(ctx context.Context) (bool, error) 
 // getReviewUserOptionsHandler returns the handler for GET /admin/reviews/options/user/
 func (h *AdminHandler) getReviewUserOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.reviewFields.UserFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.Review.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_review")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.reviewFields.UserFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
 // getReviewBookOptionsHandler returns the handler for GET /admin/reviews/options/book/
 func (h *AdminHandler) getReviewBookOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.reviewFields.BookFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.Review.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_review")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.reviewFields.BookFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 
@@ -1973,8 +2057,22 @@ func (h *AdminHandler) canReadOrCreateUser(ctx context.Context) (bool, error) {
 // getUserGroupsOptionsHandler returns the handler for GET /admin/users/options/groups/
 func (h *AdminHandler) getUserGroupsOptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.userFields.GroupsFieldOptions.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.User.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_user")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.userFields.GroupsFieldOptions.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 

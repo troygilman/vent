@@ -179,8 +179,22 @@ func (h *AdminHandler) canReadOrCreate{{ $node.Name }}(ctx context.Context) (boo
 // get{{ $node.Name }}{{ $member.Label }}OptionsHandler returns the handler for GET /admin/{{ $rc.RouteName }}/options/{{ $member.Name }}/
 func (h *AdminHandler) get{{ $node.Name }}{{ $member.Label }}OptionsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		options, err := h.{{ fieldsVarName $node.Name }}.{{ $member.SlotName }}Options.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
-		h.writeSelectOptions(w, r, options, err)
+		canCreate, err := h.schemas.{{ $node.Name }}.CanCreate(r.Context())
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		canUpdate, err := defaultCan(r.Context(), "update_{{ resourceName $node.Name }}")
+		if err != nil {
+			vent.HandleError(w, r, err)
+			return
+		}
+		ctx := gui.WithRenderContext(r.Context(), gui.RenderContext{
+			CanCreate: canCreate,
+			CanUpdate: canUpdate || canCreate,
+		})
+		html, err := h.{{ fieldsVarName $node.Name }}.{{ $member.SlotName }}Options.OptionsHTML(ctx, r.URL.Query().Get("q"), nil)
+		h.writeFKFieldHTML(w, r, html, err)
 	})
 }
 {{- end }}
