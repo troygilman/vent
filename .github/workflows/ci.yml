@@ -21,6 +21,15 @@ jobs:
       - name: Install C compiler
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
+      - name: Forbid Go tests under examples
+        run: |
+          hits=$(find examples -name '*_test.go' -print)
+          if [ -n "$hits" ]; then
+            echo "Example apps are demos only. Put package tests outside examples/."
+            echo "$hits"
+            exit 1
+          fi
+
       - name: Test
         run: go test ./...
 
