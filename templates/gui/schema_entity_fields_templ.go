@@ -14,9 +14,9 @@ import (
 )
 
 type SelectOption struct {
-	Value    int
-	Label    string
-	Selected bool
+	Value    int    `json:"value"`
+	Label    string `json:"label"`
+	Selected bool   `json:"selected"`
 }
 
 type SchemaEntityTextFieldProps struct {

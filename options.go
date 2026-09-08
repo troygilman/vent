@@ -1,6 +1,9 @@
 package vent
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 // DefaultOptionLimit is the hard cap on FK option search hits.
 // Selected IDs are loaded separately and are not counted against this cap.
@@ -9,6 +12,24 @@ const DefaultOptionLimit = 100
 // ProcessOptionSearchValue trims an FK option search query.
 func ProcessOptionSearchValue(raw string) string {
 	return strings.TrimSpace(raw)
+}
+
+// OptionEdgeFromRequest returns the FK edge name for an options GET.
+// It prefers PathValue("edge") and otherwise uses the last path segment so
+// literal /options/{edgeName}/ routes (password schemas) resolve per request.
+func OptionEdgeFromRequest(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	if edge := strings.TrimSpace(r.PathValue("edge")); edge != "" {
+		return edge
+	}
+	path := strings.Trim(r.URL.Path, "/")
+	if path == "" {
+		return ""
+	}
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
 }
 
 // UnionSearchResultsByID merges search hits with selected entities, preserving search order

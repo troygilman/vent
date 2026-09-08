@@ -39,6 +39,10 @@ type AuthorField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.AuthorUpdateOne, input AuthorUpdateInput) error
 }
 
+type AuthorOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // AuthorFields holds the resolved admin field implementations for Author.
 type AuthorFields struct {
 	listColumns      []AuthorField
@@ -46,6 +50,7 @@ type AuthorFields struct {
 	updateFormFields []AuthorField
 	createBindFields []AuthorField
 	updateBindFields []AuthorField
+	optionLoaders    map[string]AuthorOptionLoader
 }
 
 func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
@@ -78,6 +83,12 @@ func newAuthorFields(schemaAdmin AuthorAdmin) (AuthorFields, error) {
 		UserField,
 		ActiveField,
 	}
+	f.optionLoaders = map[string]AuthorOptionLoader{}
+	UserFieldLoader, UserFieldOK := UserField.(AuthorOptionLoader)
+	if !UserFieldOK {
+		return AuthorFields{}, fmt.Errorf("AuthorAdmin.FieldUser() must implement LoadOptions")
+	}
+	f.optionLoaders["user"] = UserFieldLoader
 	return f, nil
 }
 
@@ -248,6 +259,10 @@ type BookField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.BookUpdateOne, input BookUpdateInput) error
 }
 
+type BookOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // BookFields holds the resolved admin field implementations for Book.
 type BookFields struct {
 	listColumns      []BookField
@@ -255,6 +270,7 @@ type BookFields struct {
 	updateFormFields []BookField
 	createBindFields []BookField
 	updateBindFields []BookField
+	optionLoaders    map[string]BookOptionLoader
 }
 
 func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
@@ -327,6 +343,12 @@ func newBookFields(schemaAdmin BookAdmin) (BookFields, error) {
 		PublishedAtField,
 		NotesField,
 	}
+	f.optionLoaders = map[string]BookOptionLoader{}
+	AuthorFieldLoader, AuthorFieldOK := AuthorField.(BookOptionLoader)
+	if !AuthorFieldOK {
+		return BookFields{}, fmt.Errorf("BookAdmin.FieldAuthor() must implement LoadOptions")
+	}
+	f.optionLoaders["author"] = AuthorFieldLoader
 	return f, nil
 }
 
@@ -682,6 +704,10 @@ type PermissionField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.PermissionUpdateOne, input PermissionUpdateInput) error
 }
 
+type PermissionOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // PermissionFields holds the resolved admin field implementations for Permission.
 type PermissionFields struct {
 	listColumns      []PermissionField
@@ -689,6 +715,7 @@ type PermissionFields struct {
 	updateFormFields []PermissionField
 	createBindFields []PermissionField
 	updateBindFields []PermissionField
+	optionLoaders    map[string]PermissionOptionLoader
 }
 
 func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) {
@@ -719,6 +746,12 @@ func newPermissionFields(schemaAdmin PermissionAdmin) (PermissionFields, error) 
 	f.updateBindFields = []PermissionField{
 		GroupsField,
 	}
+	f.optionLoaders = map[string]PermissionOptionLoader{}
+	GroupsFieldLoader, GroupsFieldOK := GroupsField.(PermissionOptionLoader)
+	if !GroupsFieldOK {
+		return PermissionFields{}, fmt.Errorf("PermissionAdmin.FieldGroups() must implement LoadOptions")
+	}
+	f.optionLoaders["groups"] = GroupsFieldLoader
 	return f, nil
 }
 
@@ -888,6 +921,10 @@ type PermissionGroupField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.PermissionGroupUpdateOne, input PermissionGroupUpdateInput) error
 }
 
+type PermissionGroupOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // PermissionGroupFields holds the resolved admin field implementations for PermissionGroup.
 type PermissionGroupFields struct {
 	listColumns      []PermissionGroupField
@@ -895,6 +932,7 @@ type PermissionGroupFields struct {
 	updateFormFields []PermissionGroupField
 	createBindFields []PermissionGroupField
 	updateBindFields []PermissionGroupField
+	optionLoaders    map[string]PermissionGroupOptionLoader
 }
 
 func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroupFields, error) {
@@ -926,6 +964,12 @@ func newPermissionGroupFields(schemaAdmin PermissionGroupAdmin) (PermissionGroup
 		NameField,
 		PermissionsField,
 	}
+	f.optionLoaders = map[string]PermissionGroupOptionLoader{}
+	PermissionsFieldLoader, PermissionsFieldOK := PermissionsField.(PermissionGroupOptionLoader)
+	if !PermissionsFieldOK {
+		return PermissionGroupFields{}, fmt.Errorf("PermissionGroupAdmin.FieldPermissions() must implement LoadOptions")
+	}
+	f.optionLoaders["permissions"] = PermissionsFieldLoader
 	return f, nil
 }
 
@@ -1099,6 +1143,10 @@ type ReviewField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.ReviewUpdateOne, input ReviewUpdateInput) error
 }
 
+type ReviewOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // ReviewFields holds the resolved admin field implementations for Review.
 type ReviewFields struct {
 	listColumns      []ReviewField
@@ -1106,6 +1154,7 @@ type ReviewFields struct {
 	updateFormFields []ReviewField
 	createBindFields []ReviewField
 	updateBindFields []ReviewField
+	optionLoaders    map[string]ReviewOptionLoader
 }
 
 func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
@@ -1155,6 +1204,17 @@ func newReviewFields(schemaAdmin ReviewAdmin) (ReviewFields, error) {
 		BodyField,
 		BookField,
 	}
+	f.optionLoaders = map[string]ReviewOptionLoader{}
+	UserFieldLoader, UserFieldOK := UserField.(ReviewOptionLoader)
+	if !UserFieldOK {
+		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldUser() must implement LoadOptions")
+	}
+	f.optionLoaders["user"] = UserFieldLoader
+	BookFieldLoader, BookFieldOK := BookField.(ReviewOptionLoader)
+	if !BookFieldOK {
+		return ReviewFields{}, fmt.Errorf("ReviewAdmin.FieldBook() must implement LoadOptions")
+	}
+	f.optionLoaders["book"] = BookFieldLoader
 	return f, nil
 }
 
@@ -1490,6 +1550,10 @@ type UserField interface {
 	ApplyUpdate(ctx context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error
 }
 
+type UserOptionLoader interface {
+	LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error)
+}
+
 // UserFields holds the resolved admin field implementations for User.
 type UserFields struct {
 	listColumns      []UserField
@@ -1497,6 +1561,7 @@ type UserFields struct {
 	updateFormFields []UserField
 	createBindFields []UserField
 	updateBindFields []UserField
+	optionLoaders    map[string]UserOptionLoader
 }
 
 func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
@@ -1574,6 +1639,12 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		GroupsField,
 		LastLoginField,
 	}
+	f.optionLoaders = map[string]UserOptionLoader{}
+	GroupsFieldLoader, GroupsFieldOK := GroupsField.(UserOptionLoader)
+	if !GroupsFieldOK {
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldGroups() must implement LoadOptions")
+	}
+	f.optionLoaders["groups"] = GroupsFieldLoader
 	return f, nil
 }
 

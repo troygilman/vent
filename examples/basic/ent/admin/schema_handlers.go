@@ -4,6 +4,7 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -115,6 +116,34 @@ func (h *AdminHandler) getAuthorListHandler() http.Handler {
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) canReadOrCreateAuthor(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_author")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Author.CanCreate(ctx)
+}
+
+// getAuthorOptionsHandler returns the handler for GET /admin/authors/options/{edge}/
+func (h *AdminHandler) getAuthorOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.authorFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
 			vent.HandleError(w, r, err)
 		}
 	})
@@ -521,6 +550,34 @@ func (h *AdminHandler) getBookListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreateBook(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_book")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Book.CanCreate(ctx)
+}
+
+// getBookOptionsHandler returns the handler for GET /admin/books/options/{edge}/
+func (h *AdminHandler) getBookOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.bookFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
 
 // buildBookAddPageProps builds the add page props for Book.
 func (h *AdminHandler) buildBookAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
@@ -884,6 +941,34 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreatePermission(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_permission")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Permission.CanCreate(ctx)
+}
+
+// getPermissionOptionsHandler returns the handler for GET /admin/permissions/options/{edge}/
+func (h *AdminHandler) getPermissionOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.permissionFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
 
 // buildPermissionPageProps builds the edit page props for Permission.
 func (h *AdminHandler) buildPermissionPageProps(ctx context.Context, id int, errorMessage string) (gui.SchemaEntityChangeProps, error) {
@@ -1123,6 +1208,34 @@ func (h *AdminHandler) getPermissionGroupListHandler() http.Handler {
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) canReadOrCreatePermissionGroup(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_permission_group")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.PermissionGroup.CanCreate(ctx)
+}
+
+// getPermissionGroupOptionsHandler returns the handler for GET /admin/permission-groups/options/{edge}/
+func (h *AdminHandler) getPermissionGroupOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.permissionGroupFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
 			vent.HandleError(w, r, err)
 		}
 	})
@@ -1512,6 +1625,34 @@ func (h *AdminHandler) getReviewListHandler() http.Handler {
 		}
 	})
 }
+func (h *AdminHandler) canReadOrCreateReview(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_review")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.Review.CanCreate(ctx)
+}
+
+// getReviewOptionsHandler returns the handler for GET /admin/reviews/options/{edge}/
+func (h *AdminHandler) getReviewOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.reviewFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
 
 // buildReviewAddPageProps builds the add page props for Review.
 func (h *AdminHandler) buildReviewAddPageProps(ctx context.Context, errorMessage string) (gui.SchemaEntityAddProps, error) {
@@ -1875,6 +2016,34 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 		}
 
 		if err := gui.SchemaTablePage(props).Render(r.Context(), w); err != nil {
+			vent.HandleError(w, r, err)
+		}
+	})
+}
+func (h *AdminHandler) canReadOrCreateUser(ctx context.Context) (bool, error) {
+	ok, err := defaultCan(ctx, "read_user")
+	if err != nil || ok {
+		return ok, err
+	}
+	return h.schemas.User.CanCreate(ctx)
+}
+
+// getUserOptionsHandler returns the handler for GET /admin/users/options/{edge}/
+func (h *AdminHandler) getUserOptionsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		edge := vent.OptionEdgeFromRequest(r)
+		loader, ok := h.userFields.optionLoaders[edge]
+		if !ok {
+			vent.HandleError(w, r, vent.BadRequest("unknown edge"))
+			return
+		}
+		options, err := loader.LoadOptions(r.Context(), r.URL.Query().Get("q"), nil)
+		if err != nil {
+			vent.HandleError(w, r, normalizeError(err))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(options); err != nil {
 			vent.HandleError(w, r, err)
 		}
 	})

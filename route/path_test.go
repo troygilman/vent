@@ -1,6 +1,10 @@
 package route
 
-import "testing"
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
 func TestNormalizeSegment(t *testing.T) {
 	t.Run("empty allowed", func(t *testing.T) {
@@ -48,6 +52,8 @@ func TestNormalizePattern(t *testing.T) {
 		{"/{id}", "/{id}/"},
 		{"/add/{$}", "/add/{$}"},
 		{"/{id}/password", "/{id}/password/"},
+		{"/options/{edge}", "/options/{edge}/"},
+		{"/options/groups", "/options/groups/"},
 	}
 
 	for _, tt := range tests {
@@ -64,6 +70,69 @@ func TestNormalizePattern(t *testing.T) {
 func TestNormalizePatternRejectsUnknownParam(t *testing.T) {
 	if _, err := NormalizePattern("/{slug}/"); err == nil {
 		t.Fatal("expected error for unknown parameter")
+	}
+}
+
+func TestPasswordAndWildcardOptionsConflict(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("expected ServeMux panic for /{id}/password/ and /options/{edge}/")
+		}
+	}()
+	root := New()
+	_ = root.Group("users", func(users *Router) {
+		_ = users.GET("/{id}/password/", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		_ = users.GET("/options/{edge}/", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	})
+}
+
+func TestPasswordAndLiteralOptionsRegister(t *testing.T) {
+	root := New()
+	if err := root.Group("users", func(users *Router) {
+		users.GET("/{id}/password/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		users.GET("/options/groups/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusAccepted)
+		}))
+	}); err != nil {
+		t.Fatalf("literal options route with password routes: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/users/options/groups/", nil)
+	root.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("options status = %d, want 202", rec.Code)
+	}
+}
+
+func TestOptionsHandlerReadsEdgePerRequest(t *testing.T) {
+	root := New()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(r.PathValue("edge")))
+	})
+	if err := root.Group("reviews", func(schema *Router) {
+		schema.GET("/options/{edge}/", handler)
+		schema.GET("/{id}/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+	}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/reviews/options/user/", nil)
+	root.Handler().ServeHTTP(rec, req)
+	if rec.Body.String() != "user" {
+		t.Fatalf("first edge = %q, want user", rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/reviews/options/book/", nil)
+	root.Handler().ServeHTTP(rec, req)
+	if rec.Body.String() != "book" {
+		t.Fatalf("second edge = %q, want book", rec.Body.String())
 	}
 }
 

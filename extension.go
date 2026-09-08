@@ -82,6 +82,7 @@ func adminTemplateFuncs() template.FuncMap {
 		"isFieldKindTime":          isFieldKindTime,
 		"isMemberKindCustom":       isMemberKindCustom,
 		"isMemberKindEdge":         isMemberKindEdge,
+		"hasOptionEdges":           hasOptionEdges,
 		"isMemberKindEntField":     isMemberKindEntField,
 		"isCustomFieldPassword":    isCustomFieldPassword,
 		"hasGeneratedFieldDefault": hasGeneratedFieldDefault,
@@ -113,6 +114,15 @@ func isMemberKindCustom(member SurfaceMember) bool {
 
 func isMemberKindEdge(member SurfaceMember) bool {
 	return member.MemberKind == MemberEdge
+}
+
+func hasOptionEdges(rc RenderConfig) bool {
+	for _, member := range rc.AdminSurface {
+		if member.MemberKind == MemberEdge {
+			return true
+		}
+	}
+	return false
 }
 
 func isMemberKindEntField(member SurfaceMember) bool {
