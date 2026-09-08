@@ -391,7 +391,7 @@ func (f {{ $node.Name }}{{ $member.SlotName }}) ApplyUpdate(_ context.Context, b
 
 {{- if isMemberKindEdge $member }}
 func (f {{ $node.Name }}{{ $member.SlotName }}) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).{{ $member.EdgeTypeName }}().EagerLoadQuery(f.client.{{ $member.EdgeTypeName }}.Query()).
 		Order({{ lower $member.EdgeTypeName }}.ByID())
 	{{- if $member.OptionSearchColumns }}

@@ -6,8 +6,8 @@ import "strings"
 // Selected IDs are loaded separately and are not counted against this cap.
 const DefaultOptionLimit = 100
 
-// OptionSearch trims an FK option search query.
-func OptionSearch(raw string) string {
+// ProcessOptionSearchValue trims an FK option search query.
+func ProcessOptionSearchValue(raw string) string {
 	return strings.TrimSpace(raw)
 }
 

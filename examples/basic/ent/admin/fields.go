@@ -153,7 +153,7 @@ func (f AuthorUserField) ApplyUpdate(_ context.Context, builder *ent.AuthorUpdat
 	return nil
 }
 func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
 		Order(user.ByID())
 	if search != "" {
@@ -444,7 +444,7 @@ func (f BookAuthorField) ApplyUpdate(_ context.Context, builder *ent.BookUpdateO
 	return nil
 }
 func (f BookAuthorField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).Author().EagerLoadQuery(f.client.Author.Query()).
 		Order(author.ByID())
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
@@ -838,7 +838,7 @@ func (f PermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.Permi
 	return nil
 }
 func (f PermissionGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
 		Order(permissiongroup.ByID())
 	if search != "" {
@@ -1049,7 +1049,7 @@ func (f PermissionGroupPermissionsField) ApplyUpdate(_ context.Context, builder 
 	return nil
 }
 func (f PermissionGroupPermissionsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).Permission().EagerLoadQuery(f.client.Permission.Query()).
 		Order(permission.ByID())
 	if search != "" {
@@ -1230,7 +1230,7 @@ func (f ReviewUserField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).User().EagerLoadQuery(f.client.User.Query()).
 		Order(user.ByID())
 	if search != "" {
@@ -1440,7 +1440,7 @@ func (f ReviewBookField) ApplyUpdate(_ context.Context, builder *ent.ReviewUpdat
 	return nil
 }
 func (f ReviewBookField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).Book().EagerLoadQuery(f.client.Book.Query()).
 		Order(book.ByID())
 	if search != "" {
@@ -1916,7 +1916,7 @@ func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateO
 	return nil
 }
 func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
-	search = vent.OptionSearch(search)
+	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
 		Order(permissiongroup.ByID())
 	if search != "" {

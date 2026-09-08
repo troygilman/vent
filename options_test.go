@@ -11,12 +11,12 @@ func TestDefaultOptionLimit(t *testing.T) {
 	}
 }
 
-func TestOptionSearch(t *testing.T) {
-	if got := OptionSearch("  Title  "); got != "Title" {
-		t.Fatalf("OptionSearch = %q, want Title", got)
+func TestProcessOptionSearchValue(t *testing.T) {
+	if got := ProcessOptionSearchValue("  Title  "); got != "Title" {
+		t.Fatalf("ProcessOptionSearchValue = %q, want Title", got)
 	}
-	if got := OptionSearch("\n"); got != "" {
-		t.Fatalf("OptionSearch blank = %q, want empty", got)
+	if got := ProcessOptionSearchValue("\n"); got != "" {
+		t.Fatalf("ProcessOptionSearchValue blank = %q, want empty", got)
 	}
 }
 
