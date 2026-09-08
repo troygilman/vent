@@ -208,11 +208,11 @@ func buildRenderConfigs(nodes []*gen.Type) ([]NodeRenderConfig, error) {
 			})
 		}
 	}
-	attachEdgeOptionMeta(configs)
+	attachEdgeOptionMetadata(configs)
 	return configs, nil
 }
 
-func attachEdgeOptionMeta(configs []NodeRenderConfig) {
+func attachEdgeOptionMetadata(configs []NodeRenderConfig) {
 	related := make(map[string]RenderConfig, len(configs))
 	for _, cfg := range configs {
 		related[cfg.Node.Name] = cfg.RC
