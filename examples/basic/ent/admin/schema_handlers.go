@@ -1764,7 +1764,7 @@ func (h *AdminHandler) patchReviewHandler() http.Handler {
 
 // UserCreateInput is the typed input for creating a User
 type UserCreateInput struct {
-	Email            string   `json:"email"`
+	Username         string   `json:"username"`
 	IsStaff          *bool    `json:"is_staff"`
 	IsSuperuser      *bool    `json:"is_superuser"`
 	IsActive         *bool    `json:"is_active"`
@@ -1774,7 +1774,7 @@ type UserCreateInput struct {
 
 // UserUpdateInput is the typed input for updating a User
 type UserUpdateInput struct {
-	Email            *string   `json:"email"`
+	Username         *string   `json:"username"`
 	IsStaff          *bool     `json:"is_staff"`
 	IsSuperuser      *bool     `json:"is_superuser"`
 	IsActive         *bool     `json:"is_active"`
@@ -1784,7 +1784,7 @@ type UserUpdateInput struct {
 
 // UserListFilter is the typed list query for listing User.
 type UserListFilter struct {
-	Email    string
+	Username string
 	IsStaff  vent.BoolFilter
 	IsActive vent.BoolFilter
 }
@@ -1793,13 +1793,13 @@ type UserListFilter struct {
 func (h *AdminHandler) getUserListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		filter := UserListFilter{
-			Email:    r.URL.Query().Get("filter.email"),
+			Username: r.URL.Query().Get("filter.username"),
 			IsStaff:  vent.BoolFilter(r.URL.Query().Get("filter.is_staff")),
 			IsActive: vent.BoolFilter(r.URL.Query().Get("filter.is_active")),
 		}
 		query := h.client.User.Query()
-		if filterVal := filter.Email; filterVal != "" {
-			query = query.Where(user.EmailContainsFold(filterVal))
+		if filterVal := filter.Username; filterVal != "" {
+			query = query.Where(user.UsernameContainsFold(filterVal))
 		}
 		if v, ok := filter.IsStaff.Bool(); ok {
 			query = query.Where(user.IsStaffEQ(v))
@@ -1857,14 +1857,14 @@ func (h *AdminHandler) getUserListHandler() http.Handler {
 			SingularDisplayName: "User",
 			PluralDisplayName:   "Users",
 			Columns: []gui.SchemaTableColumn{
-				{Name: "email", Label: "Email", Type: "string"},
+				{Name: "username", Label: "Username", Type: "string"},
 				{Name: "is_staff", Label: "IsStaff", Type: "bool"},
 				{Name: "is_superuser", Label: "IsSuperuser", Type: "bool"},
 				{Name: "is_active", Label: "IsActive", Type: "bool"},
 				{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{
-				{Name: "email", Label: "Email", Type: "string", Value: filter.Email},
+				{Name: "username", Label: "Username", Type: "string", Value: filter.Username},
 				{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: filter.IsStaff.Normalize().String()},
 				{Name: "is_active", Label: "IsActive", Type: "bool", Value: filter.IsActive.Normalize().String()},
 			},

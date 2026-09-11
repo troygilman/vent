@@ -41,14 +41,14 @@ func (User) Annotations() []schema.Annotation {
 			SingularDisplayName: "User",
 			PluralDisplayName:   "Users",
 			TableColumns: []string{
-				"email",
+				"username",
 				"is_staff",
 				"is_superuser",
 				"is_active",
 				"last_login",
 			},
 			FilterableColumns: []string{
-				"email",
+				"username",
 				"is_staff",
 				"is_active",
 			},
@@ -59,7 +59,7 @@ func (User) Annotations() []schema.Annotation {
 				{
 					Fields: []string{
 						"id",
-						"email",
+						"username",
 						"password",
 						"is_staff",
 						"is_superuser",

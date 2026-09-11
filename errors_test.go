@@ -77,7 +77,7 @@ func TestHandleErrorUsesHttpErrorOrInternal(t *testing.T) {
 		t.Parallel()
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/admin/users/", nil)
-		HandleError(rr, req, Conflict("conflict").WithCause(errors.New("users_email_key")))
+		HandleError(rr, req, Conflict("conflict").WithCause(errors.New("users_username_key")))
 
 		if rr.Code != http.StatusConflict {
 			t.Fatalf("status = %d, want %d", rr.Code, http.StatusConflict)
@@ -86,7 +86,7 @@ func TestHandleErrorUsesHttpErrorOrInternal(t *testing.T) {
 		if body != "conflict" {
 			t.Fatalf("body = %q, want %q", body, "conflict")
 		}
-		if strings.Contains(body, "users_email_key") {
+		if strings.Contains(body, "users_username_key") {
 			t.Fatal("leaked constraint detail to client")
 		}
 	})

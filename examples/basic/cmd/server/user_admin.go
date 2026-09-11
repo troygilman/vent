@@ -12,7 +12,7 @@ type UserAdmin struct {
 }
 
 func (UserAdmin) Name(e *ent.User) string {
-	return e.Email
+	return e.Username
 }
 
 func (a UserAdmin) FieldIsSuperuser() admin.UserField {
