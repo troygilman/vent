@@ -746,13 +746,13 @@ func (h *AdminHandler) authorize(check func(context.Context) (bool, error)) func
 }
 
 // UserHasPermission reports whether user has the named permission.
-// Superusers always return true. If groups or nested permissions are not
+// Superusers always return true. If permission groups or nested permissions are not
 // already eager-loaded on user, they are queried and cached on user.Edges.PermissionGroups.
 func UserHasPermission(ctx context.Context, user *ent.User, permission string) (bool, error) {
 	if user.IsSuperuser {
 		return true, nil
 	}
-	groups, err := userGroupsWithPermissions(ctx, user)
+	groups, err := userPermissionGroupsWithPermissions(ctx, user)
 	if err != nil {
 		return false, err
 	}
@@ -766,13 +766,9 @@ func UserHasPermission(ctx context.Context, user *ent.User, permission string) (
 	return false, nil
 }
 
-// userGroupsWithPermissions returns the user's groups with permissions loaded.
-// It reuses edges already present on the user when possible; otherwise it
-// queries and caches the result on user.Edges.PermissionGroups.
-//
 // Ent represents an unloaded edge as nil and a loaded-empty edge as a non-nil
 // empty slice, so a nil check is enough to detect whether edges are available.
-func userGroupsWithPermissions(ctx context.Context, user *ent.User) ([]*ent.PermissionGroup, error) {
+func userPermissionGroupsWithPermissions(ctx context.Context, user *ent.User) ([]*ent.PermissionGroup, error) {
 	if user.Edges.PermissionGroups != nil {
 		allPermsLoaded := true
 		for _, g := range user.Edges.PermissionGroups {
