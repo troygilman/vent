@@ -15,7 +15,7 @@ type UserMixin struct {
 
 func (UserMixin) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("email").NotEmpty().Unique(),
+		field.String("username").NotEmpty().Unique(),
 		field.String("password_hash").Optional().Nillable().Sensitive(),
 		field.Bool("is_staff").Default(false),
 		field.Bool("is_superuser").Default(false),
@@ -37,13 +37,13 @@ func (UserMixin) Annotations() []schema.Annotation {
 		VentAuthMixinAnnotation{Role: AuthRoleUser},
 		VentSchemaAnnotation{
 			TableColumns: []string{
-				"email",
+				"username",
 				"is_staff",
 				"is_superuser",
 				"is_active",
 			},
 			FilterableColumns: []string{
-				"email",
+				"username",
 				"is_staff",
 				"is_active",
 			},
@@ -51,7 +51,7 @@ func (UserMixin) Annotations() []schema.Annotation {
 				{
 					Fields: []string{
 						"id",
-						"email",
+						"username",
 						"password",
 						"is_staff",
 						"is_superuser",

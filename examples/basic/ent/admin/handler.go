@@ -470,7 +470,7 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var signals struct {
 			Login struct {
-				Email    string `json:"email"`
+				Username string `json:"username"`
 				Password string `json:"password"`
 			} `json:"login"`
 		}
@@ -485,25 +485,25 @@ func (h *AdminHandler) postLoginHandler() http.Handler {
 			invalidCredentials := errors.New("invalid credentials")
 
 			user, err := h.client.User.Query().
-				Where(user.EmailEQ(signals.Login.Email)).
+				Where(user.UsernameEQ(signals.Login.Username)).
 				Only(r.Context())
 			if err != nil {
-				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Username or password is invalid")
 				return invalidCredentials
 			}
 
 			if !user.IsActive || !user.IsStaff {
-				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Username or password is invalid")
 				return invalidCredentials
 			}
 
 			if user.PasswordHash == nil || *user.PasswordHash == "" {
-				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Username or password is invalid")
 				return invalidCredentials
 			}
 
 			if err := h.credentialAuthenticator.Authenticate(signals.Login.Password, *user.PasswordHash); err != nil {
-				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Email or password is invalid")
+				loginProps.PasswordErrors = append(loginProps.PasswordErrors, "Username or password is invalid")
 				return invalidCredentials
 			}
 

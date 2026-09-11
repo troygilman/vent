@@ -3,7 +3,7 @@ package gui
 import "github.com/troygilman/vent/requestctx"
 
 type LoginProps struct {
-	EmailError     string
+	UsernameError  string
 	PasswordErrors []string
 }
 
@@ -22,7 +22,7 @@ templ Login(props LoginProps) {
 				<h1 class="login-title">Admin Login</h1>
 				<div class="login-fields">
 					<div class="login-field">
-						<label class={ "input", templ.KV("error", props.EmailError != "") }>
+						<label class={ "input", templ.KV("error", props.UsernameError != "") }>
 							<svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 								<g
 									stroke-linejoin="round"
@@ -31,14 +31,14 @@ templ Login(props LoginProps) {
 									fill="none"
 									stroke="currentColor"
 								>
-									<rect width="20" height="16" x="2" y="4" rx="2"></rect>
-									<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+									<circle cx="12" cy="8" r="4"></circle>
+									<path d="M4 20c0-4 4-6 8-6s8 2 8 6"></path>
 								</g>
 							</svg>
-							<input type="email" data-bind="login.email" placeholder="mail@site.com" required/>
+							<input type="text" data-bind="login.username" placeholder="Username" required autocomplete="username"/>
 						</label>
-						if props.EmailError != "" {
-							<div class="text-error">{ props.EmailError }</div>
+						if props.UsernameError != "" {
+							<div class="text-error">{ props.UsernameError }</div>
 						}
 					</div>
 					<div class="login-field">

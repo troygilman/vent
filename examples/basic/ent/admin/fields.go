@@ -158,7 +158,7 @@ func (f AuthorUserField) LoadOptions(ctx context.Context, search string, selecte
 		Order(user.ByID())
 	if search != "" {
 		query = query.Where(user.Or(
-			user.EmailContainsFold(search),
+			user.UsernameContainsFold(search),
 		))
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
@@ -1235,7 +1235,7 @@ func (f ReviewUserField) LoadOptions(ctx context.Context, search string, selecte
 		Order(user.ByID())
 	if search != "" {
 		query = query.Where(user.Or(
-			user.EmailContainsFold(search),
+			user.UsernameContainsFold(search),
 		))
 	}
 	hits, err := query.Limit(vent.DefaultOptionLimit).All(ctx)
@@ -1505,9 +1505,9 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 	if IdField == nil {
 		return UserFields{}, fmt.Errorf("UserAdmin.FieldID() returned nil")
 	}
-	EmailField := schemaAdmin.FieldEmail()
-	if EmailField == nil {
-		return UserFields{}, fmt.Errorf("UserAdmin.FieldEmail() returned nil")
+	UsernameField := schemaAdmin.FieldUsername()
+	if UsernameField == nil {
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldUsername() returned nil")
 	}
 	PasswordField := schemaAdmin.FieldPassword()
 	if PasswordField == nil {
@@ -1534,14 +1534,14 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		return UserFields{}, fmt.Errorf("UserAdmin.FieldLastLogin() returned nil")
 	}
 	f.listColumns = []UserField{
-		EmailField,
+		UsernameField,
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
 		LastLoginField,
 	}
 	f.createFormFields = []UserField{
-		EmailField,
+		UsernameField,
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
@@ -1550,7 +1550,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 	}
 	f.updateFormFields = []UserField{
 		IdField,
-		EmailField,
+		UsernameField,
 		PasswordField,
 		IsStaffField,
 		IsSuperuserField,
@@ -1559,7 +1559,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		LastLoginField,
 	}
 	f.createBindFields = []UserField{
-		EmailField,
+		UsernameField,
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
@@ -1567,7 +1567,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		LastLoginField,
 	}
 	f.updateBindFields = []UserField{
-		EmailField,
+		UsernameField,
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
@@ -1611,44 +1611,44 @@ func (f UserIdField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, 
 	return nil
 }
 
-type UserEmailField struct {
+type UserUsernameField struct {
 	client *ent.Client
 }
 
-// NewUserEmailField returns the generated default implementation for email.
-func NewUserEmailField(client *ent.Client) UserEmailField {
-	return UserEmailField{client: client}
+// NewUserUsernameField returns the generated default implementation for username.
+func NewUserUsernameField(client *ent.Client) UserUsernameField {
+	return UserUsernameField{client: client}
 }
 
-func (f UserEmailField) ListCell(ctx context.Context, e *ent.User) string {
-	return vent.FormatFormValue(e.Email)
+func (f UserUsernameField) ListCell(ctx context.Context, e *ent.User) string {
+	return vent.FormatFormValue(e.Username)
 }
 
-func (f UserEmailField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserUsernameField) CreateHTML(ctx context.Context) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "email",
-		Label:    "Email",
+		Name:     "username",
+		Label:    "Username",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f UserEmailField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
+func (f UserUsernameField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
 	return gui.RenderTextFieldHTML(ctx, gui.SchemaEntityTextFieldProps{
-		Name:     "email",
-		Label:    "Email",
-		Value:    vent.FormatFormValue(e.Email),
+		Name:     "username",
+		Label:    "Username",
+		Value:    vent.FormatFormValue(e.Username),
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 	})
 }
 
-func (f UserEmailField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
-	builder.SetEmail(input.Email)
+func (f UserUsernameField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
+	builder.SetUsername(input.Username)
 	return nil
 }
 
-func (f UserEmailField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
-	if input.Email != nil {
-		builder.SetEmail(*input.Email)
+func (f UserUsernameField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
+	if input.Username != nil {
+		builder.SetUsername(*input.Username)
 	}
 	return nil
 }

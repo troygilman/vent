@@ -1,7 +1,7 @@
 # Build and run the examples/basic SQLite admin app.
 #   docker build -t vent-example .
 #   docker run --rm -p 8080:8080 vent-example
-# Then open http://localhost:8080/admin/ (admin@vent.com / test_user).
+# Then open http://localhost:8080/admin/ (admin / test_user).
 
 FROM golang:1.26-bookworm AS builder
 

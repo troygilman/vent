@@ -23,7 +23,7 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 		t.Fatalf("Meta auth flags = %#v, want auth user with password routes", rc.SchemaMeta)
 	}
 	assertSurfaceMemberNames(t, rc.AdminSurface, []string{
-		"id", "email", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
+		"id", "username", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
 	})
 
 	password := findSurfaceMember(t, rc.AdminSurface, "password")
@@ -71,26 +71,26 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 		t.Fatalf("id Label = %q, want ID", id.Label)
 	}
 
-	assertTableColumnNames(t, rc.TableColumns, []string{"email", "is_staff", "is_superuser", "is_active"})
-	for _, name := range []string{"email", "is_staff", "is_superuser", "is_active"} {
+	assertTableColumnNames(t, rc.TableColumns, []string{"username", "is_staff", "is_superuser", "is_active"})
+	for _, name := range []string{"username", "is_staff", "is_superuser", "is_active"} {
 		column := findTableColumn(t, rc.TableColumns, name)
 		if column.SlotName != memberSlotName(name) {
 			t.Fatalf("column %q SlotName = %q, want %q", name, column.SlotName, memberSlotName(name))
 		}
 	}
 
-	assertFilterableColumnNames(t, rc.FilterableColumns, []string{"email", "is_staff", "is_active"})
-	emailFilter := findFilterableColumn(t, rc.FilterableColumns, "email")
-	if emailFilter.Type != "string" || emailFilter.PredicateName != "Email" || emailFilter.Label != "Email" {
-		t.Fatalf("email filter = %#v, want string/Email/Email", emailFilter)
+	assertFilterableColumnNames(t, rc.FilterableColumns, []string{"username", "is_staff", "is_active"})
+	usernameFilter := findFilterableColumn(t, rc.FilterableColumns, "username")
+	if usernameFilter.Type != "string" || usernameFilter.PredicateName != "Username" || usernameFilter.Label != "Username" {
+		t.Fatalf("username filter = %#v, want string/Username/Username", usernameFilter)
 	}
 	staffFilter := findFilterableColumn(t, rc.FilterableColumns, "is_staff")
 	if staffFilter.Type != "bool" || staffFilter.PredicateName != "IsStaff" {
 		t.Fatalf("is_staff filter = %#v, want bool/IsStaff", staffFilter)
 	}
 
-	assertInputSpecNames(t, rc.CreateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "permission_groups"})
-	assertInputSpecNames(t, rc.UpdateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "permission_groups"})
+	assertInputSpecNames(t, rc.CreateInputFields, []string{"username", "is_staff", "is_superuser", "is_active", "permission_groups"})
+	assertInputSpecNames(t, rc.UpdateInputFields, []string{"username", "is_staff", "is_superuser", "is_active", "permission_groups"})
 }
 
 func TestBuildProjectedRenderConfigDefaultSurface(t *testing.T) {
@@ -418,17 +418,17 @@ func authUserLikeNode() *gen.Type {
 		Annotations: gen.Annotations{
 			VentAuthMixinAnnotation{}.Name(): VentAuthMixinAnnotation{Role: AuthRoleUser},
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
-				TableColumns:      []string{"email", "is_staff", "is_superuser", "is_active"},
-				FilterableColumns: []string{"email", "is_staff", "is_active"},
+				TableColumns:      []string{"username", "is_staff", "is_superuser", "is_active"},
+				FilterableColumns: []string{"username", "is_staff", "is_active"},
 				FieldSets: []FieldSet{{
 					Fields: []string{
-						"id", "email", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
+						"id", "username", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
 					},
 				}},
 			},
 		},
 		Fields: []*gen.Field{
-			{Name: "email", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
+			{Name: "username", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
 			fieldWithConstantDefault("is_staff", schemafield.TypeBool),
 			fieldWithConstantDefault("is_superuser", schemafield.TypeBool),
 			fieldWithConstantDefault("is_active", schemafield.TypeBool),
@@ -548,12 +548,12 @@ func TestOptionSearchColumns(t *testing.T) {
 	got := optionSearchColumns(RenderConfig{
 		SchemaMeta: SchemaMeta{DefaultNameField: "Name"},
 		FilterableColumns: []FilterableColumnConfig{
-			{Name: "email", Type: "string", PredicateName: "Email"},
+			{Name: "username", Type: "string", PredicateName: "Username"},
 			{Name: "active", Type: "bool", PredicateName: "Active"},
 		},
 	})
-	if !reflect.DeepEqual(got, []string{"Email", "Name"}) {
-		t.Fatalf("optionSearchColumns = %#v, want Email+Name", got)
+	if !reflect.DeepEqual(got, []string{"Username", "Name"}) {
+		t.Fatalf("optionSearchColumns = %#v, want Username+Name", got)
 	}
 
 	got = optionSearchColumns(RenderConfig{

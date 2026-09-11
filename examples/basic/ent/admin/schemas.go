@@ -547,7 +547,7 @@ func (DefaultReviewAdmin) CanDelete(ctx context.Context, e *ent.Review) (bool, e
 // schema-level access for routes, menu visibility, and create.
 type UserAdmin interface {
 	FieldID() UserField
-	FieldEmail() UserField
+	FieldUsername() UserField
 	FieldPassword() UserField
 	FieldIsStaff() UserField
 	FieldIsSuperuser() UserField
@@ -590,8 +590,8 @@ func (a DefaultUserAdmin) FieldID() UserField {
 	return NewUserIdField(a.Client)
 }
 
-func (a DefaultUserAdmin) FieldEmail() UserField {
-	return NewUserEmailField(a.Client)
+func (a DefaultUserAdmin) FieldUsername() UserField {
+	return NewUserUsernameField(a.Client)
 }
 
 func (a DefaultUserAdmin) FieldPassword() UserField {

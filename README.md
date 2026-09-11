@@ -106,6 +106,8 @@ just migrations   # NamedDiff + admin.Diff for permission rows
 just migrate      # atlas migrate apply ...
 ```
 
+The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/0000_init.sql`, matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path.
+
 `admin.Diff` compares the live permission set to the generated list and writes an `update_auth_permissions` migration when needed. Today the permission differ is SQLite-oriented; use the same dialect as your Ent migrations for schema changes.
 
 ### 5. Mount the admin handler
@@ -127,7 +129,7 @@ mux := http.NewServeMux()
 mux.Handle("/admin/", adminHandler)
 ```
 
-Create at least one staff/superuser so you can sign in. The example seeds `admin@vent.com` / `test_user`, plus thousands of users, authors, books, and reviews for list/filter testing.
+Create at least one staff/superuser so you can sign in. The example seeds `admin` / `test_user`, plus thousands of users, authors, books, and reviews for list/filter testing.
 
 Then open `http://localhost:8080/admin/`.
 
@@ -231,7 +233,7 @@ type UserAdmin struct {
 }
 
 func (UserAdmin) Name(e *ent.User) string {
-    return e.Email
+    return e.Username
 }
 
 func (a UserAdmin) FieldIsSuperuser() admin.UserField {
@@ -332,7 +334,7 @@ docker build -t vent-example .
 docker run --rm -p 8080:8080 vent-example
 ```
 
-Default login after first run: `admin@vent.com` / `test_user`. The first start also seeds thousands of library rows (users, authors, books, reviews) so list views and filters have plenty of data. Re-running the server is a no-op once that bulk set is present; delete `tmp/test.db` to reseed.
+Default login after first run: `admin` / `test_user`. The first start also seeds thousands of library rows (users, authors, books, reviews) so list views and filters have plenty of data. Re-running the server is a no-op once that bulk set is present; delete `tmp/test.db` to reseed.
 
 The example is a small library domain (`Author`, `Book`, `Review`) plus Vent auth:
 

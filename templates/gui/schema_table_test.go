@@ -16,13 +16,13 @@ import (
 
 func TestTableFiltersActive(t *testing.T) {
 	if tableFiltersActive([]SchemaTableFilterableColumn{
-		{Name: "email", Type: "string", Value: ""},
+		{Name: "username", Type: "string", Value: ""},
 		{Name: "is_staff", Type: "bool", Value: vent.BoolFilterAll.String()},
 	}) {
 		t.Fatal("empty filters should be inactive")
 	}
 	if !tableFiltersActive([]SchemaTableFilterableColumn{
-		{Name: "email", Type: "string", Value: "admin"},
+		{Name: "username", Type: "string", Value: "admin"},
 	}) {
 		t.Fatal("string value should be active")
 	}
@@ -78,7 +78,7 @@ func TestTableFilterChipValue(t *testing.T) {
 
 func TestTableListURL(t *testing.T) {
 	columns := []SchemaTableFilterableColumn{
-		{Name: "email", Type: "string", Value: "admin"},
+		{Name: "username", Type: "string", Value: "admin"},
 		{Name: "is_staff", Type: "bool", Value: vent.BoolFilterFalse.String()},
 		{Name: "is_active", Type: "bool", Value: ""},
 	}
@@ -89,7 +89,7 @@ func TestTableListURL(t *testing.T) {
 	if strings.Contains(got, "page=") {
 		t.Fatalf("page 1 url = %q, must omit page", got)
 	}
-	if !strings.Contains(got, "filter.email=admin") || !strings.Contains(got, "filter.is_staff=false") {
+	if !strings.Contains(got, "filter.username=admin") || !strings.Contains(got, "filter.is_staff=false") {
 		t.Fatalf("page 1 url = %q, want active filters", got)
 	}
 	if strings.Contains(got, "filter.is_active") {
@@ -109,11 +109,11 @@ func TestTableListURL(t *testing.T) {
 
 func TestTableListURLWithoutFilter(t *testing.T) {
 	columns := []SchemaTableFilterableColumn{
-		{Name: "email", Type: "string", Value: "admin"},
+		{Name: "username", Type: "string", Value: "admin"},
 		{Name: "is_staff", Type: "bool", Value: vent.BoolFilterFalse.String()},
 	}
 	got := tableListURLWithoutFilter("/admin/users/", columns, "is_staff")
-	if !strings.Contains(got, "filter.email=admin") {
+	if !strings.Contains(got, "filter.username=admin") {
 		t.Fatalf("url = %q, want remaining filter", got)
 	}
 	if strings.Contains(got, "is_staff") || strings.Contains(got, "page=") {
@@ -173,10 +173,10 @@ func TestTableColumnWidthPercentSumsTo100(t *testing.T) {
 	if sum != 100 {
 		t.Fatalf("widths sum to %d, want 100", sum)
 	}
-	email := tableColumnWidthPercent(columns, 0)
+	textCol := tableColumnWidthPercent(columns, 0)
 	boolCol := tableColumnWidthPercent(columns, 1)
-	if email <= boolCol {
-		t.Fatalf("text column width %s should exceed bool width %s", email, boolCol)
+	if textCol <= boolCol {
+		t.Fatalf("text column width %s should exceed bool width %s", textCol, boolCol)
 	}
 }
 
@@ -218,7 +218,7 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		FilterableColumns: []SchemaTableFilterableColumn{
-			{Name: "email", Label: "Email", Type: "string", Value: "admin"},
+			{Name: "username", Label: "Username", Type: "string", Value: "admin"},
 			{Name: "is_staff", Label: "IsStaff", Type: "bool", Value: vent.BoolFilterFalse.String()},
 		},
 		RenderContext: RenderContext{CanCreate: true},
@@ -232,11 +232,11 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if !strings.Contains(html, "IsStaff: <b>No</b>") {
 		t.Fatal("active filter chips should delimit the label and value with \": \"")
 	}
-	if !strings.Contains(html, `href="/admin/users/?filter.email=admin"`) {
-		t.Fatal("removing IsStaff should keep the email filter in the list URL")
+	if !strings.Contains(html, `href="/admin/users/?filter.username=admin"`) {
+		t.Fatal("removing IsStaff should keep the username filter in the list URL")
 	}
 	if !strings.Contains(html, `href="/admin/users/?filter.is_staff=false"`) {
-		t.Fatal("removing Email should keep the IsStaff filter in the list URL")
+		t.Fatal("removing Username should keep the IsStaff filter in the list URL")
 	}
 	if !strings.Contains(html, `href="/admin/users/"`) {
 		t.Fatal("clear should link to the unfiltered list")
@@ -247,7 +247,7 @@ func TestSchemaTableFilterChipDelimiter(t *testing.T) {
 	if strings.Contains(html, `data-bind="filter.`) || strings.Contains(html, `data-bind="page"`) {
 		t.Fatal("filter fields should not bind Datastar signals")
 	}
-	if !strings.Contains(html, `name="filter.email"`) || !strings.Contains(html, `value="admin"`) {
+	if !strings.Contains(html, `name="filter.username"`) || !strings.Contains(html, `value="admin"`) {
 		t.Fatal("filter fields should keep HTML names and values for GET submit")
 	}
 	if !strings.Contains(html, `method="get"`) || !strings.Contains(html, `action="/admin/users/"`) {
@@ -294,7 +294,7 @@ func TestSchemaTableDrawerRendersOpenFromCookie(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		FilterableColumns: []SchemaTableFilterableColumn{
-			{Name: "email", Label: "Email", Type: "string", Value: ""},
+			{Name: "username", Label: "Username", Type: "string", Value: ""},
 		},
 		RenderContext: RenderContext{CanCreate: true},
 	}
@@ -329,7 +329,7 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		Columns: []SchemaTableColumn{
-			{Name: "email", Label: "Email", Type: "string"},
+			{Name: "username", Label: "Username", Type: "string"},
 			{Name: "is_staff", Label: "IsStaff", Type: "bool"},
 			{Name: "pages", Label: "Pages", Type: "int"},
 			{Name: "last_login", Label: "LastLogin", Type: "time.Time"},
@@ -337,7 +337,7 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 		},
 		Rows: []SchemaTableRow{{
 			Cells: []SchemaTableCell{
-				{Display: "admin@vent.com", LinkURL: "/admin/users/1/"},
+				{Display: "admin", LinkURL: "/admin/users/1/"},
 				{Display: "true"},
 				{Display: "412"},
 				{Display: "2026-08-20T03:43"},
@@ -362,7 +362,7 @@ func TestSchemaTableRendersFixedColumnGroup(t *testing.T) {
 			t.Fatalf("colgroup missing %s in:\n%s", width, html)
 		}
 	}
-	if !strings.Contains(html, `title="admin@vent.com"`) {
+	if !strings.Contains(html, `title="admin"`) {
 		t.Fatal("truncated cells should expose full value in title")
 	}
 }
@@ -377,10 +377,10 @@ func TestSchemaTableLoadingOmitsNoData(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		Columns: []SchemaTableColumn{
-			{Name: "email", Label: "Email", Type: "string"},
+			{Name: "username", Label: "Username", Type: "string"},
 		},
 		FilterableColumns: []SchemaTableFilterableColumn{
-			{Name: "email", Label: "Email", Type: "string", Value: ""},
+			{Name: "username", Label: "Username", Type: "string", Value: ""},
 		},
 		Loading: true,
 	}
@@ -479,7 +479,7 @@ func TestSchemaTableEmptyShowsNoDataAfterLoad(t *testing.T) {
 		SingularDisplayName: "User",
 		PluralDisplayName:   "Users",
 		Columns: []SchemaTableColumn{
-			{Name: "email", Label: "Email", Type: "string"},
+			{Name: "username", Label: "Username", Type: "string"},
 		},
 	}
 

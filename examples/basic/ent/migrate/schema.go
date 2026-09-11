@@ -106,7 +106,7 @@ var (
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "email", Type: field.TypeString, Unique: true},
+		{Name: "username", Type: field.TypeString, Unique: true},
 		{Name: "password_hash", Type: field.TypeString, Nullable: true},
 		{Name: "is_staff", Type: field.TypeBool, Default: false},
 		{Name: "is_superuser", Type: field.TypeBool, Default: false},

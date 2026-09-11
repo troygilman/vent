@@ -42,7 +42,7 @@ var (
 )
 
 func seedAdminUser(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator) error {
-	exists, err := client.User.Query().Where(user.EmailEQ("admin@vent.com")).Exist(ctx)
+	exists, err := client.User.Query().Where(user.UsernameEQ("admin")).Exist(ctx)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func seedAdminUser(ctx context.Context, client *ent.Client, credentialGenerator 
 	}
 
 	_, err = client.User.Create().
-		SetEmail("admin@vent.com").
+		SetUsername("admin").
 		SetPasswordHash(passwordHash).
 		SetIsStaff(true).
 		SetIsSuperuser(true).
@@ -64,8 +64,8 @@ func seedAdminUser(ctx context.Context, client *ent.Client, credentialGenerator 
 	return err
 }
 
-func seedUser(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator, email, password string, staff bool) (*ent.User, error) {
-	existing, err := client.User.Query().Where(user.EmailEQ(email)).Only(ctx)
+func seedUser(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator, username, password string, staff bool) (*ent.User, error) {
+	existing, err := client.User.Query().Where(user.UsernameEQ(username)).Only(ctx)
 	if err == nil {
 		return existing, nil
 	}
@@ -78,7 +78,7 @@ func seedUser(ctx context.Context, client *ent.Client, credentialGenerator auth.
 		return nil, err
 	}
 	return client.User.Create().
-		SetEmail(email).
+		SetUsername(username).
 		SetPasswordHash(passwordHash).
 		SetIsStaff(staff).
 		Save(ctx)
@@ -140,7 +140,7 @@ func seedDemoData(ctx context.Context, client *ent.Client, credentialGenerator a
 
 	log.Printf(
 		"seeded demo data: %d users, %d authors, %d books, %d reviews",
-		len(users)+1, // +1 for admin@vent.com, created separately
+		len(users)+1, // +1 for admin, created separately
 		len(authors),
 		len(books)+2, // +2 named showcase books
 		seedBulkReviewCount+2,
@@ -149,19 +149,19 @@ func seedDemoData(ctx context.Context, client *ent.Client, credentialGenerator a
 }
 
 func seedNamedShowcase(ctx context.Context, client *ent.Client, credentialGenerator auth.CredentialGenerator) ([]*ent.User, []*ent.Author, error) {
-	ada, err := seedUser(ctx, client, credentialGenerator, "ada@vent.com", seedPassword, true)
+	ada, err := seedUser(ctx, client, credentialGenerator, "ada", seedPassword, true)
 	if err != nil {
 		return nil, nil, err
 	}
-	charles, err := seedUser(ctx, client, credentialGenerator, "charles@vent.com", seedPassword, true)
+	charles, err := seedUser(ctx, client, credentialGenerator, "charles", seedPassword, true)
 	if err != nil {
 		return nil, nil, err
 	}
-	casey, err := seedUser(ctx, client, credentialGenerator, "casey@vent.com", seedPassword, false)
+	casey, err := seedUser(ctx, client, credentialGenerator, "casey", seedPassword, false)
 	if err != nil {
 		return nil, nil, err
 	}
-	riley, err := seedUser(ctx, client, credentialGenerator, "riley@vent.com", seedPassword, false)
+	riley, err := seedUser(ctx, client, credentialGenerator, "riley", seedPassword, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -259,7 +259,7 @@ func seedBulkUsers(ctx context.Context, client *ent.Client, passwordHash string)
 	builders := make([]*ent.UserCreate, 0, seedBulkUserCount)
 	for i := 1; i <= seedBulkUserCount; i++ {
 		create := client.User.Create().
-			SetEmail(fmt.Sprintf("user%04d@vent.com", i)).
+			SetUsername(fmt.Sprintf("user%04d", i)).
 			SetPasswordHash(passwordHash).
 			SetIsStaff(i%10 == 0).
 			SetIsActive(i%15 != 0)

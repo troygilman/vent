@@ -87,10 +87,10 @@ func init() {
 	_ = userMixinFields0
 	userFields := schema.User{}.Fields()
 	_ = userFields
-	// userDescEmail is the schema descriptor for email field.
-	userDescEmail := userMixinFields0[0].Descriptor()
-	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
-	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
+	// userDescUsername is the schema descriptor for username field.
+	userDescUsername := userMixinFields0[0].Descriptor()
+	// user.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	user.UsernameValidator = userDescUsername.Validators[0].(func(string) error)
 	// userDescIsStaff is the schema descriptor for is_staff field.
 	userDescIsStaff := userMixinFields0[2].Descriptor()
 	// user.DefaultIsStaff holds the default value on creation for the is_staff field.
