@@ -238,14 +238,14 @@ func TestBuildProjectedRenderConfigReadOnly(t *testing.T) {
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
 				ReadOnly:     true,
 				TableColumns: []string{"name"},
-				FieldSets:    []FieldSet{{Fields: []string{"name", "permission_groups"}}},
+				FieldSets:    []FieldSet{{Fields: []string{"name", "groups"}}},
 			},
 		},
 		Fields: []*gen.Field{
 			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
 		},
 		Edges: []*gen.Edge{
-			{Name: "permission_groups", Type: &gen.Type{Name: "PermissionGroup"}},
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
 		},
 	}
 
@@ -262,7 +262,7 @@ func TestBuildProjectedRenderConfigReadOnly(t *testing.T) {
 	if !rc.DisableCreate || !rc.DisableDelete {
 		t.Fatalf("ReadOnly schema flags = create %v delete %v, want both true", rc.DisableCreate, rc.DisableDelete)
 	}
-	assertSurfaceMemberNames(t, rc.AdminSurface, []string{"name", "permission_groups"})
+	assertSurfaceMemberNames(t, rc.AdminSurface, []string{"name", "groups"})
 	assertTableColumnNames(t, rc.TableColumns, []string{"name"})
 }
 
@@ -338,14 +338,14 @@ func TestBuildProjectedRenderConfigReadOnlyFields(t *testing.T) {
 				DisableDelete:  true,
 				ReadOnlyFields: []string{"name"},
 				TableColumns:   []string{"name"},
-				FieldSets:      []FieldSet{{Fields: []string{"name", "permission_groups"}}},
+				FieldSets:      []FieldSet{{Fields: []string{"name", "groups"}}},
 			},
 		},
 		Fields: []*gen.Field{
 			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
 		},
 		Edges: []*gen.Edge{
-			{Name: "permission_groups", Type: &gen.Type{Name: "PermissionGroup"}},
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
 		},
 	}
 
@@ -363,7 +363,7 @@ func TestBuildProjectedRenderConfigReadOnlyFields(t *testing.T) {
 	if name.BindCreate || name.BindUpdate {
 		t.Fatalf("name bind flags = create %v update %v, want false/false", name.BindCreate, name.BindUpdate)
 	}
-	groups := findSurfaceMember(t, rc.AdminSurface, "permission_groups")
+	groups := findSurfaceMember(t, rc.AdminSurface, "groups")
 	if !groups.BindUpdate {
 		t.Fatal("groups BindUpdate = false, want true")
 	}

@@ -224,11 +224,11 @@ func TestTableColumnAllowsEdges(t *testing.T) {
 			{Name: "name", Type: &schemafield.TypeInfo{Type: schemafield.TypeString}},
 		},
 		Edges: []*gen.Edge{
-			{Name: "permission_groups", Type: &gen.Type{Name: "PermissionGroup"}},
+			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
 		},
 		Annotations: gen.Annotations{
 			VentSchemaAnnotation{}.Name(): VentSchemaAnnotation{
-				TableColumns: []string{"name", "permission_groups"},
+				TableColumns: []string{"name", "groups"},
 			},
 		},
 	}

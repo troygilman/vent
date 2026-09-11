@@ -7,7 +7,7 @@ package admin
 {{ $adminPath := $.Annotations.VentConfig.AdminPath }}
 {{ $authSchemas := $.Annotations.VentConfig.AuthSchemas }}
 {{ $userSchema := $authSchemas.User }}
-{{ $permissionGroupSchema := $authSchemas.PermissionGroup }}
+{{ $groupSchema := $authSchemas.Group }}
 {{ $permissionSchema := $authSchemas.Permission }}
 
 {{/* Build render configs once for all admin-enabled nodes */}}
@@ -36,7 +36,7 @@ import (
 
 	ent "{{ $.Config.Package }}"
 	"{{ $.Config.Package }}/{{ lower $userSchema }}"
-	"{{ $.Config.Package }}/{{ lower $permissionGroupSchema }}"
+	"{{ $.Config.Package }}/{{ lower $groupSchema }}"
 )
 
 // AdminConfig contains configuration for the admin handler.
@@ -539,7 +539,7 @@ func NewUserMiddleware(client *ent.Client, secureCookies bool) func(http.Handler
 
 			user, err := client.{{ $userSchema }}.Query().
 				Where({{ lower $userSchema }}.IDEQ(userID)).
-				WithPermissionGroups(func(q *ent.{{ $permissionGroupSchema }}Query) {
+				WithPermissionGroups(func(q *ent.{{ $groupSchema }}Query) {
 					q.WithPermissions()
 				}).
 				Only(r.Context())
@@ -633,7 +633,7 @@ func UserHasPermission(ctx context.Context, user *ent.{{ $userSchema }}, permiss
 
 // Ent represents an unloaded edge as nil and a loaded-empty edge as a non-nil
 // empty slice, so a nil check is enough to detect whether edges are available.
-func userPermissionGroupsWithPermissions(ctx context.Context, user *ent.{{ $userSchema }}) ([]*ent.{{ $permissionGroupSchema }}, error) {
+func userPermissionGroupsWithPermissions(ctx context.Context, user *ent.{{ $userSchema }}) ([]*ent.{{ $groupSchema }}, error) {
 	if user.Edges.PermissionGroups != nil {
 		allPermsLoaded := true
 		for _, g := range user.Edges.PermissionGroups {

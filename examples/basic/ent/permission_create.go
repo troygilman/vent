@@ -28,19 +28,19 @@ func (_c *PermissionCreate) SetName(v string) *PermissionCreate {
 	return _c
 }
 
-// AddPermissionGroupIDs adds the "permission_groups" edge to the PermissionGroup entity by IDs.
-func (_c *PermissionCreate) AddPermissionGroupIDs(ids ...int) *PermissionCreate {
-	_c.mutation.AddPermissionGroupIDs(ids...)
+// AddGroupIDs adds the "groups" edge to the PermissionGroup entity by IDs.
+func (_c *PermissionCreate) AddGroupIDs(ids ...int) *PermissionCreate {
+	_c.mutation.AddGroupIDs(ids...)
 	return _c
 }
 
-// AddPermissionGroups adds the "permission_groups" edges to the PermissionGroup entity.
-func (_c *PermissionCreate) AddPermissionGroups(v ...*PermissionGroup) *PermissionCreate {
+// AddGroups adds the "groups" edges to the PermissionGroup entity.
+func (_c *PermissionCreate) AddGroups(v ...*PermissionGroup) *PermissionCreate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddPermissionGroupIDs(ids...)
+	return _c.AddGroupIDs(ids...)
 }
 
 // Mutation returns the PermissionMutation object of the builder.
@@ -116,12 +116,12 @@ func (_c *PermissionCreate) createSpec() (*Permission, *sqlgraph.CreateSpec) {
 		_spec.SetField(permission.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if nodes := _c.mutation.PermissionGroupsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.GroupsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   permission.PermissionGroupsTable,
-			Columns: permission.PermissionGroupsPrimaryKey,
+			Table:   permission.GroupsTable,
+			Columns: permission.GroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
