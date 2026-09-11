@@ -106,6 +106,8 @@ just migrations   # NamedDiff + admin.Diff for permission rows
 just migrate      # atlas migrate apply ...
 ```
 
+The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/0000_init.sql`, matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path.
+
 `admin.Diff` compares the live permission set to the generated list and writes an `update_auth_permissions` migration when needed. Today the permission differ is SQLite-oriented; use the same dialect as your Ent migrations for schema changes.
 
 ### 5. Mount the admin handler
