@@ -1525,9 +1525,9 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 	if IsActiveField == nil {
 		return UserFields{}, fmt.Errorf("UserAdmin.FieldIsActive() returned nil")
 	}
-	GroupsField := schemaAdmin.FieldGroups()
-	if GroupsField == nil {
-		return UserFields{}, fmt.Errorf("UserAdmin.FieldGroups() returned nil")
+	PermissionGroupsField := schemaAdmin.FieldPermissionGroups()
+	if PermissionGroupsField == nil {
+		return UserFields{}, fmt.Errorf("UserAdmin.FieldPermissionGroups() returned nil")
 	}
 	LastLoginField := schemaAdmin.FieldLastLogin()
 	if LastLoginField == nil {
@@ -1545,7 +1545,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
-		GroupsField,
+		PermissionGroupsField,
 		LastLoginField,
 	}
 	f.updateFormFields = []UserField{
@@ -1555,7 +1555,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
-		GroupsField,
+		PermissionGroupsField,
 		LastLoginField,
 	}
 	f.createBindFields = []UserField{
@@ -1563,7 +1563,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
-		GroupsField,
+		PermissionGroupsField,
 		LastLoginField,
 	}
 	f.updateBindFields = []UserField{
@@ -1571,7 +1571,7 @@ func newUserFields(schemaAdmin UserAdmin) (UserFields, error) {
 		IsStaffField,
 		IsSuperuserField,
 		IsActiveField,
-		GroupsField,
+		PermissionGroupsField,
 		LastLoginField,
 	}
 	return f, nil
@@ -1838,21 +1838,21 @@ func (f UserIsActiveField) ApplyUpdate(_ context.Context, builder *ent.UserUpdat
 	return nil
 }
 
-type UserGroupsField struct {
+type UserPermissionGroupsField struct {
 	client *ent.Client
 }
 
-// NewUserGroupsField returns the generated default implementation for groups.
-func NewUserGroupsField(client *ent.Client) UserGroupsField {
-	return UserGroupsField{client: client}
+// NewUserPermissionGroupsField returns the generated default implementation for permission_groups.
+func NewUserPermissionGroupsField(client *ent.Client) UserPermissionGroupsField {
+	return UserPermissionGroupsField{client: client}
 }
 
-func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
-	if len(e.Edges.Groups) == 0 {
+func (f UserPermissionGroupsField) ListCell(ctx context.Context, e *ent.User) string {
+	if len(e.Edges.PermissionGroups) == 0 {
 		return ""
 	}
 	var labels strings.Builder
-	for i, related := range e.Edges.Groups {
+	for i, related := range e.Edges.PermissionGroups {
 		if i > 0 {
 			labels.WriteString(", ")
 		}
@@ -1861,22 +1861,22 @@ func (f UserGroupsField) ListCell(ctx context.Context, e *ent.User) string {
 	return labels.String()
 }
 
-func (f UserGroupsField) CreateHTML(ctx context.Context) (string, error) {
+func (f UserPermissionGroupsField) CreateHTML(ctx context.Context) (string, error) {
 	options, err := f.LoadOptions(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
+		Name:     "permission_groups",
+		Label:    "PermissionGroups",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
 
-func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
-	selectedIDs := make([]int, 0, len(e.Edges.Groups))
-	for _, related := range e.Edges.Groups {
+func (f UserPermissionGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, error) {
+	selectedIDs := make([]int, 0, len(e.Edges.PermissionGroups))
+	for _, related := range e.Edges.PermissionGroups {
 		selectedIDs = append(selectedIDs, related.ID)
 	}
 	options, err := f.LoadOptions(ctx, "", selectedIDs)
@@ -1884,38 +1884,38 @@ func (f UserGroupsField) UpdateHTML(ctx context.Context, e *ent.User) (string, e
 		return "", err
 	}
 	return gui.RenderForeignKeyFieldHTML(ctx, gui.SchemaEntityForeignKeyFieldProps{
-		Name:     "groups",
-		Label:    "Groups",
+		Name:     "permission_groups",
+		Label:    "PermissionGroups",
 		Editable: gui.MustRenderContext(ctx).CanUpdate,
 		Options:  options,
 	})
 }
 
-func (f UserGroupsField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
-	if len(input.Groups) > 0 {
-		ids, err := parseIDList(input.Groups, "groups")
+func (f UserPermissionGroupsField) ApplyCreate(_ context.Context, builder *ent.UserCreate, input UserCreateInput) error {
+	if len(input.PermissionGroups) > 0 {
+		ids, err := parseIDList(input.PermissionGroups, "permission_groups")
 		if err != nil {
 			return err
 		}
-		builder.AddGroupIDs(ids...)
+		builder.AddPermissionGroupIDs(ids...)
 	}
 	return nil
 }
 
-func (f UserGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
-	if input.Groups != nil {
-		builder.ClearGroups()
-		if len(*input.Groups) > 0 {
-			ids, err := parseIDList(*input.Groups, "groups")
+func (f UserPermissionGroupsField) ApplyUpdate(_ context.Context, builder *ent.UserUpdateOne, input UserUpdateInput) error {
+	if input.PermissionGroups != nil {
+		builder.ClearPermissionGroups()
+		if len(*input.PermissionGroups) > 0 {
+			ids, err := parseIDList(*input.PermissionGroups, "permission_groups")
 			if err != nil {
 				return err
 			}
-			builder.AddGroupIDs(ids...)
+			builder.AddPermissionGroupIDs(ids...)
 		}
 	}
 	return nil
 }
-func (f UserGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
+func (f UserPermissionGroupsField) LoadOptions(ctx context.Context, search string, selectedIDs []int) ([]gui.SelectOption, error) {
 	search = vent.ProcessOptionSearchValue(search)
 	query := MustAdmin(ctx).PermissionGroup().EagerLoadQuery(f.client.PermissionGroup.Query()).
 		Order(permissiongroup.ByID())

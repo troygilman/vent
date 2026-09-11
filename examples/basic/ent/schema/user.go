@@ -64,7 +64,7 @@ func (User) Annotations() []schema.Annotation {
 						"is_staff",
 						"is_superuser",
 						"is_active",
-						"groups",
+						"permission_groups",
 						"last_login",
 					},
 				},

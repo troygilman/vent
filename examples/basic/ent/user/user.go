@@ -24,19 +24,19 @@ const (
 	FieldIsActive = "is_active"
 	// FieldLastLogin holds the string denoting the last_login field in the database.
 	FieldLastLogin = "last_login"
-	// EdgeGroups holds the string denoting the groups edge name in mutations.
-	EdgeGroups = "groups"
+	// EdgePermissionGroups holds the string denoting the permission_groups edge name in mutations.
+	EdgePermissionGroups = "permission_groups"
 	// EdgeAuthor holds the string denoting the author edge name in mutations.
 	EdgeAuthor = "author"
 	// EdgeReviews holds the string denoting the reviews edge name in mutations.
 	EdgeReviews = "reviews"
 	// Table holds the table name of the user in the database.
 	Table = "users"
-	// GroupsTable is the table that holds the groups relation/edge. The primary key declared below.
-	GroupsTable = "user_groups"
-	// GroupsInverseTable is the table name for the PermissionGroup entity.
+	// PermissionGroupsTable is the table that holds the permission_groups relation/edge. The primary key declared below.
+	PermissionGroupsTable = "user_groups"
+	// PermissionGroupsInverseTable is the table name for the PermissionGroup entity.
 	// It exists in this package in order to avoid circular dependency with the "permissiongroup" package.
-	GroupsInverseTable = "permission_groups"
+	PermissionGroupsInverseTable = "permission_groups"
 	// AuthorTable is the table that holds the author relation/edge.
 	AuthorTable = "authors"
 	// AuthorInverseTable is the table name for the Author entity.
@@ -65,9 +65,9 @@ var Columns = []string{
 }
 
 var (
-	// GroupsPrimaryKey and GroupsColumn2 are the table columns denoting the
-	// primary key for the groups relation (M2M).
-	GroupsPrimaryKey = []string{"user_id", "permission_group_id"}
+	// PermissionGroupsPrimaryKey and PermissionGroupsColumn2 are the table columns denoting the
+	// primary key for the permission_groups relation (M2M).
+	PermissionGroupsPrimaryKey = []string{"user_id", "permission_group_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -129,17 +129,17 @@ func ByLastLogin(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastLogin, opts...).ToFunc()
 }
 
-// ByGroupsCount orders the results by groups count.
-func ByGroupsCount(opts ...sql.OrderTermOption) OrderOption {
+// ByPermissionGroupsCount orders the results by permission_groups count.
+func ByPermissionGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newGroupsStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newPermissionGroupsStep(), opts...)
 	}
 }
 
-// ByGroups orders the results by groups terms.
-func ByGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByPermissionGroups orders the results by permission_groups terms.
+func ByPermissionGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newPermissionGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -163,11 +163,11 @@ func ByReviews(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newReviewsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newGroupsStep() *sqlgraph.Step {
+func newPermissionGroupsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(GroupsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, GroupsTable, GroupsPrimaryKey...),
+		sqlgraph.To(PermissionGroupsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, PermissionGroupsTable, PermissionGroupsPrimaryKey...),
 	)
 }
 func newAuthorStep() *sqlgraph.Step {

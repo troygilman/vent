@@ -1162,15 +1162,15 @@ func (c *UserClient) GetX(ctx context.Context, id int) *User {
 	return obj
 }
 
-// QueryGroups queries the groups edge of a User.
-func (c *UserClient) QueryGroups(_m *User) *PermissionGroupQuery {
+// QueryPermissionGroups queries the permission_groups edge of a User.
+func (c *UserClient) QueryPermissionGroups(_m *User) *PermissionGroupQuery {
 	query := (&PermissionGroupClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(permissiongroup.Table, permissiongroup.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.GroupsTable, user.GroupsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.PermissionGroupsTable, user.PermissionGroupsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

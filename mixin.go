@@ -28,7 +28,8 @@ func (m UserMixin) Edges() []ent.Edge {
 		panic("GroupSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.To("groups", m.GroupSchemaType),
+		edge.To("permission_groups", m.GroupSchemaType).
+			StorageKey(edge.Table("user_groups")),
 	}
 }
 
@@ -56,7 +57,7 @@ func (UserMixin) Annotations() []schema.Annotation {
 						"is_staff",
 						"is_superuser",
 						"is_active",
-						"groups",
+						"permission_groups",
 					},
 				},
 			},
@@ -85,7 +86,7 @@ func (m PermissionGroupMixin) Edges() []ent.Edge {
 	}
 	return []ent.Edge{
 		edge.To("permissions", m.PermissionSchemaType),
-		edge.From("users", m.UserSchemaType).Ref("groups"),
+		edge.From("users", m.UserSchemaType).Ref("permission_groups"),
 	}
 }
 

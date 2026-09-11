@@ -22,13 +22,13 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx         *QueryContext
-	order       []user.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.User
-	withGroups  *PermissionGroupQuery
-	withAuthor  *AuthorQuery
-	withReviews *ReviewQuery
+	ctx                  *QueryContext
+	order                []user.OrderOption
+	inters               []Interceptor
+	predicates           []predicate.User
+	withPermissionGroups *PermissionGroupQuery
+	withAuthor           *AuthorQuery
+	withReviews          *ReviewQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -65,8 +65,8 @@ func (_q *UserQuery) Order(o ...user.OrderOption) *UserQuery {
 	return _q
 }
 
-// QueryGroups chains the current query on the "groups" edge.
-func (_q *UserQuery) QueryGroups() *PermissionGroupQuery {
+// QueryPermissionGroups chains the current query on the "permission_groups" edge.
+func (_q *UserQuery) QueryPermissionGroups() *PermissionGroupQuery {
 	query := (&PermissionGroupClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -79,7 +79,7 @@ func (_q *UserQuery) QueryGroups() *PermissionGroupQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(permissiongroup.Table, permissiongroup.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.GroupsTable, user.GroupsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.PermissionGroupsTable, user.PermissionGroupsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -318,28 +318,28 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]user.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.User{}, _q.predicates...),
-		withGroups:  _q.withGroups.Clone(),
-		withAuthor:  _q.withAuthor.Clone(),
-		withReviews: _q.withReviews.Clone(),
+		config:               _q.config,
+		ctx:                  _q.ctx.Clone(),
+		order:                append([]user.OrderOption{}, _q.order...),
+		inters:               append([]Interceptor{}, _q.inters...),
+		predicates:           append([]predicate.User{}, _q.predicates...),
+		withPermissionGroups: _q.withPermissionGroups.Clone(),
+		withAuthor:           _q.withAuthor.Clone(),
+		withReviews:          _q.withReviews.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithGroups tells the query-builder to eager-load the nodes that are connected to
-// the "groups" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserQuery) WithGroups(opts ...func(*PermissionGroupQuery)) *UserQuery {
+// WithPermissionGroups tells the query-builder to eager-load the nodes that are connected to
+// the "permission_groups" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithPermissionGroups(opts ...func(*PermissionGroupQuery)) *UserQuery {
 	query := (&PermissionGroupClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withGroups = query
+	_q.withPermissionGroups = query
 	return _q
 }
 
@@ -444,7 +444,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
 		loadedTypes = [3]bool{
-			_q.withGroups != nil,
+			_q.withPermissionGroups != nil,
 			_q.withAuthor != nil,
 			_q.withReviews != nil,
 		}
@@ -467,10 +467,10 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withGroups; query != nil {
-		if err := _q.loadGroups(ctx, query, nodes,
-			func(n *User) { n.Edges.Groups = []*PermissionGroup{} },
-			func(n *User, e *PermissionGroup) { n.Edges.Groups = append(n.Edges.Groups, e) }); err != nil {
+	if query := _q.withPermissionGroups; query != nil {
+		if err := _q.loadPermissionGroups(ctx, query, nodes,
+			func(n *User) { n.Edges.PermissionGroups = []*PermissionGroup{} },
+			func(n *User, e *PermissionGroup) { n.Edges.PermissionGroups = append(n.Edges.PermissionGroups, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -490,7 +490,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	return nodes, nil
 }
 
-func (_q *UserQuery) loadGroups(ctx context.Context, query *PermissionGroupQuery, nodes []*User, init func(*User), assign func(*User, *PermissionGroup)) error {
+func (_q *UserQuery) loadPermissionGroups(ctx context.Context, query *PermissionGroupQuery, nodes []*User, init func(*User), assign func(*User, *PermissionGroup)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[int]*User)
 	nids := make(map[int]map[*User]struct{})
@@ -502,11 +502,11 @@ func (_q *UserQuery) loadGroups(ctx context.Context, query *PermissionGroupQuery
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(user.GroupsTable)
-		s.Join(joinT).On(s.C(permissiongroup.FieldID), joinT.C(user.GroupsPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(user.GroupsPrimaryKey[0]), edgeIDs...))
+		joinT := sql.Table(user.PermissionGroupsTable)
+		s.Join(joinT).On(s.C(permissiongroup.FieldID), joinT.C(user.PermissionGroupsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(user.PermissionGroupsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(user.GroupsPrimaryKey[0]))
+		s.Select(joinT.C(user.PermissionGroupsPrimaryKey[0]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -543,7 +543,7 @@ func (_q *UserQuery) loadGroups(ctx context.Context, query *PermissionGroupQuery
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "groups" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "permission_groups" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
