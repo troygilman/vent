@@ -28,9 +28,9 @@ func NewAdminExtension(opts ...VentExtensionConfigOption) entc.Extension {
 	config := VentExtensionConfig{
 		AdminPath: "/admin/",
 		AuthSchemas: AuthSchemaNames{
-			User:       "User",
-			Group:      "PermissionGroup",
-			Permission: "Permission",
+			User:            "User",
+			PermissionGroup: "PermissionGroup",
+			Permission:      "Permission",
 		},
 	}
 	for _, opt := range opts {
@@ -417,7 +417,7 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	var errs []string
 
 	userNode := findNode(graph.Nodes, config.AuthSchemas.User)
-	groupNode := findNode(graph.Nodes, config.AuthSchemas.Group)
+	permissionGroupNode := findNode(graph.Nodes, config.AuthSchemas.PermissionGroup)
 	permissionNode := findNode(graph.Nodes, config.AuthSchemas.Permission)
 
 	if config.AuthSchemas.User == "" {
@@ -425,10 +425,10 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	} else if userNode == nil {
 		errs = append(errs, fmt.Sprintf("auth user schema %q was not found", config.AuthSchemas.User))
 	}
-	if config.AuthSchemas.Group == "" {
-		errs = append(errs, "auth group schema is required")
-	} else if groupNode == nil {
-		errs = append(errs, fmt.Sprintf("auth group schema %q was not found", config.AuthSchemas.Group))
+	if config.AuthSchemas.PermissionGroup == "" {
+		errs = append(errs, "auth permission group schema is required")
+	} else if permissionGroupNode == nil {
+		errs = append(errs, fmt.Sprintf("auth permission group schema %q was not found", config.AuthSchemas.PermissionGroup))
 	}
 	if config.AuthSchemas.Permission == "" {
 		errs = append(errs, "auth permission schema is required")
@@ -439,8 +439,8 @@ func validateVentGraph(graph *gen.Graph, config VentExtensionConfig) error {
 	if userNode != nil {
 		errs = append(errs, validateAuthMixinRole(userNode, AuthRoleUser)...)
 	}
-	if groupNode != nil {
-		errs = append(errs, validateAuthMixinRole(groupNode, AuthRoleGroup)...)
+	if permissionGroupNode != nil {
+		errs = append(errs, validateAuthMixinRole(permissionGroupNode, AuthRolePermissionGroup)...)
 	}
 	if permissionNode != nil {
 		errs = append(errs, validateAuthMixinRole(permissionNode, AuthRolePermission)...)
@@ -637,16 +637,16 @@ func hasEdge(node *gen.Type, name string) bool {
 // Consumers should pass schema type values, such as schema.User.Type. Vent
 // resolves those type references to schema names during code generation.
 type AuthSchemas struct {
-	User       any
-	Group      any
-	Permission any
+	User            any
+	PermissionGroup any
+	Permission      any
 }
 
 // AuthSchemaNames contains the resolved schema names for Vent's auth roles.
 type AuthSchemaNames struct {
-	User       string
-	Group      string
-	Permission string
+	User            string
+	PermissionGroup string
+	Permission      string
 }
 
 type VentExtensionConfig struct {
@@ -665,9 +665,9 @@ func WithAdminPath(path string) VentExtensionConfigOption {
 func WithAuthSchemas(authSchemas AuthSchemas) VentExtensionConfigOption {
 	return func(vec *VentExtensionConfig) {
 		vec.AuthSchemas = AuthSchemaNames{
-			User:       schemaTypeName(authSchemas.User),
-			Group:      schemaTypeName(authSchemas.Group),
-			Permission: schemaTypeName(authSchemas.Permission),
+			User:            schemaTypeName(authSchemas.User),
+			PermissionGroup: schemaTypeName(authSchemas.PermissionGroup),
+			Permission:      schemaTypeName(authSchemas.Permission),
 		}
 	}
 }

@@ -33,7 +33,7 @@ const (
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// PermissionGroupsTable is the table that holds the permission_groups relation/edge. The primary key declared below.
-	PermissionGroupsTable = "user_groups"
+	PermissionGroupsTable = "user_permission_groups"
 	// PermissionGroupsInverseTable is the table name for the PermissionGroup entity.
 	// It exists in this package in order to avoid circular dependency with the "permissiongroup" package.
 	PermissionGroupsInverseTable = "permission_groups"

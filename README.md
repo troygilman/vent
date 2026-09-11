@@ -56,7 +56,7 @@ Writes `user.go`, `permission_group.go`, and `permission.go`. Each schema uses t
 ```go
 func (User) Mixin() []ent.Mixin {
     return []ent.Mixin{
-        vent.UserMixin{GroupSchemaType: PermissionGroup.Type},
+        vent.UserMixin{PermissionGroupSchemaType: PermissionGroup.Type},
     }
 }
 ```
@@ -88,7 +88,7 @@ entc.Generate("./ent/schema", &gen.Config{ /* ... */ },
         vent.WithAdminPath("/admin/"),
         vent.WithAuthSchemas(vent.AuthSchemas{
             User:       schema.User.Type,
-            Group:      schema.PermissionGroup.Type,
+            PermissionGroup: schema.PermissionGroup.Type,
             Permission: schema.Permission.Type,
         }),
     )),

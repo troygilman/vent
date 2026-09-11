@@ -32,9 +32,9 @@ func (Permission) Annotations() []schema.Annotation {
 			DisableCreate:       true,
 			DisableDelete:       true,
 			ReadOnlyFields:      []string{"name"},
-			TableColumns:        []string{"name", "groups"},
+			TableColumns: []string{"name", "permission_groups"},
 			FieldSets: []vent.FieldSet{{
-				Fields: []string{"name", "groups"},
+				Fields: []string{"name", "permission_groups"},
 			}},
 		},
 	}
@@ -43,7 +43,7 @@ func (Permission) Annotations() []schema.Annotation {
 func (Permission) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		vent.PermissionMixin{
-			GroupSchemaType: PermissionGroup.Type,
+			PermissionGroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }

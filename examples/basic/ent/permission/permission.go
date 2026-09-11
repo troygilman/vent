@@ -14,15 +14,15 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
-	// EdgeGroups holds the string denoting the groups edge name in mutations.
-	EdgeGroups = "groups"
+	// EdgePermissionGroups holds the string denoting the permission_groups edge name in mutations.
+	EdgePermissionGroups = "permission_groups"
 	// Table holds the table name of the permission in the database.
 	Table = "permissions"
-	// GroupsTable is the table that holds the groups relation/edge. The primary key declared below.
-	GroupsTable = "permission_group_permissions"
-	// GroupsInverseTable is the table name for the PermissionGroup entity.
+	// PermissionGroupsTable is the table that holds the permission_groups relation/edge. The primary key declared below.
+	PermissionGroupsTable = "permission_group_permissions"
+	// PermissionGroupsInverseTable is the table name for the PermissionGroup entity.
 	// It exists in this package in order to avoid circular dependency with the "permissiongroup" package.
-	GroupsInverseTable = "permission_groups"
+	PermissionGroupsInverseTable = "permission_groups"
 )
 
 // Columns holds all SQL columns for permission fields.
@@ -32,9 +32,9 @@ var Columns = []string{
 }
 
 var (
-	// GroupsPrimaryKey and GroupsColumn2 are the table columns denoting the
-	// primary key for the groups relation (M2M).
-	GroupsPrimaryKey = []string{"permission_group_id", "permission_id"}
+	// PermissionGroupsPrimaryKey and PermissionGroupsColumn2 are the table columns denoting the
+	// primary key for the permission_groups relation (M2M).
+	PermissionGroupsPrimaryKey = []string{"permission_group_id", "permission_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -65,23 +65,23 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
-// ByGroupsCount orders the results by groups count.
-func ByGroupsCount(opts ...sql.OrderTermOption) OrderOption {
+// ByPermissionGroupsCount orders the results by permission_groups count.
+func ByPermissionGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newGroupsStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newPermissionGroupsStep(), opts...)
 	}
 }
 
-// ByGroups orders the results by groups terms.
-func ByGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByPermissionGroups orders the results by permission_groups terms.
+func ByPermissionGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newPermissionGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newGroupsStep() *sqlgraph.Step {
+func newPermissionGroupsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(GroupsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, GroupsTable, GroupsPrimaryKey...),
+		sqlgraph.To(PermissionGroupsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, PermissionGroupsTable, PermissionGroupsPrimaryKey...),
 	)
 }

@@ -20,6 +20,10 @@ func main() {
 	defer client.Close()
 
 	ctx := context.Background()
+	if err := client.Schema.Create(ctx); err != nil {
+		log.Fatalf("failed creating schema: %v", err)
+	}
+
 	credentialGenerator := auth.NewBCryptCredentialGenerator()
 
 	if err := seedAdminUser(ctx, client, credentialGenerator); err != nil {

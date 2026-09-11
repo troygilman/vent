@@ -71,7 +71,7 @@ type User struct {
 func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		vent.UserMixin{
-			GroupSchemaType: PermissionGroup.Type,
+			PermissionGroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }
@@ -112,7 +112,7 @@ type Permission struct {
 func (Permission) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		vent.PermissionMixin{
-			GroupSchemaType: PermissionGroup.Type,
+			PermissionGroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }
