@@ -10,7 +10,7 @@ import (
 
 type UserMixin struct {
 	mixin.Schema
-	GroupSchemaType any
+	PermissionGroupSchemaType any
 }
 
 func (UserMixin) Fields() []ent.Field {
@@ -24,11 +24,11 @@ func (UserMixin) Fields() []ent.Field {
 }
 
 func (m UserMixin) Edges() []ent.Edge {
-	if m.GroupSchemaType == nil {
-		panic("GroupSchemaType cannot be nil")
+	if m.PermissionGroupSchemaType == nil {
+		panic("PermissionGroupSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.To("permission_groups", m.GroupSchemaType),
+		edge.To("permission_groups", m.PermissionGroupSchemaType),
 	}
 }
 
@@ -91,7 +91,7 @@ func (m PermissionGroupMixin) Edges() []ent.Edge {
 
 func (PermissionGroupMixin) Annotations() []schema.Annotation {
 	return []schema.Annotation{
-		VentAuthMixinAnnotation{Role: AuthRoleGroup},
+		VentAuthMixinAnnotation{Role: AuthRolePermissionGroup},
 		VentSchemaAnnotation{
 			TableColumns: []string{
 				"name",
@@ -113,7 +113,7 @@ func (PermissionGroupMixin) Annotations() []schema.Annotation {
 
 type PermissionMixin struct {
 	mixin.Schema
-	GroupSchemaType any
+	PermissionGroupSchemaType any
 }
 
 func (PermissionMixin) Fields() []ent.Field {
@@ -123,11 +123,11 @@ func (PermissionMixin) Fields() []ent.Field {
 }
 
 func (m PermissionMixin) Edges() []ent.Edge {
-	if m.GroupSchemaType == nil {
-		panic("GroupSchemaType cannot be nil")
+	if m.PermissionGroupSchemaType == nil {
+		panic("PermissionGroupSchemaType cannot be nil")
 	}
 	return []ent.Edge{
-		edge.From("groups", m.GroupSchemaType).Ref("permissions"),
+		edge.From("permission_groups", m.PermissionGroupSchemaType).Ref("permissions"),
 	}
 }
 
@@ -140,7 +140,7 @@ func (PermissionMixin) Annotations() []schema.Annotation {
 			ReadOnlyFields: []string{"name"},
 			TableColumns: []string{
 				"name",
-				"groups",
+				"permission_groups",
 			},
 			FilterableColumns: []string{
 				"name",
@@ -149,7 +149,7 @@ func (PermissionMixin) Annotations() []schema.Annotation {
 				{
 					Fields: []string{
 						"name",
-						"groups",
+						"permission_groups",
 					},
 				},
 			},

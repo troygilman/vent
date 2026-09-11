@@ -26,20 +26,20 @@ type Permission struct {
 
 // PermissionEdges holds the relations/edges for other nodes in the graph.
 type PermissionEdges struct {
-	// Groups holds the value of the groups edge.
-	Groups []*PermissionGroup `json:"groups,omitempty"`
+	// PermissionGroups holds the value of the permission_groups edge.
+	PermissionGroups []*PermissionGroup `json:"permission_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// GroupsOrErr returns the Groups value or an error if the edge
+// PermissionGroupsOrErr returns the PermissionGroups value or an error if the edge
 // was not loaded in eager-loading.
-func (e PermissionEdges) GroupsOrErr() ([]*PermissionGroup, error) {
+func (e PermissionEdges) PermissionGroupsOrErr() ([]*PermissionGroup, error) {
 	if e.loadedTypes[0] {
-		return e.Groups, nil
+		return e.PermissionGroups, nil
 	}
-	return nil, &NotLoadedError{edge: "groups"}
+	return nil, &NotLoadedError{edge: "permission_groups"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -91,9 +91,9 @@ func (_m *Permission) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryGroups queries the "groups" edge of the Permission entity.
-func (_m *Permission) QueryGroups() *PermissionGroupQuery {
-	return NewPermissionClient(_m.config).QueryGroups(_m)
+// QueryPermissionGroups queries the "permission_groups" edge of the Permission entity.
+func (_m *Permission) QueryPermissionGroups() *PermissionGroupQuery {
+	return NewPermissionClient(_m.config).QueryPermissionGroups(_m)
 }
 
 // Update returns a builder for updating this Permission.

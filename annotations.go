@@ -25,9 +25,9 @@ type Permission struct {
 type AuthRole string
 
 const (
-	AuthRoleUser       AuthRole = "user"
-	AuthRoleGroup      AuthRole = "group"
-	AuthRolePermission AuthRole = "permission"
+	AuthRoleUser            AuthRole = "user"
+	AuthRolePermissionGroup AuthRole = "permission_group"
+	AuthRolePermission      AuthRole = "permission"
 )
 
 // VentAuthMixinAnnotation marks schemas that use Vent's auth mixins.

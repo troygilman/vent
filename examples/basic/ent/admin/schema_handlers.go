@@ -807,12 +807,12 @@ func (h *AdminHandler) deleteBookHandler() http.Handler {
 
 // PermissionCreateInput is the typed input for creating a Permission
 type PermissionCreateInput struct {
-	Groups []string `json:"groups"`
+	PermissionGroups []string `json:"permission_groups"`
 }
 
 // PermissionUpdateInput is the typed input for updating a Permission
 type PermissionUpdateInput struct {
-	Groups *[]string `json:"groups"`
+	PermissionGroups *[]string `json:"permission_groups"`
 }
 
 // getPermissionListHandler returns the handler for GET /admin/permissions/
@@ -870,7 +870,7 @@ func (h *AdminHandler) getPermissionListHandler() http.Handler {
 			PluralDisplayName:   "Permissions",
 			Columns: []gui.SchemaTableColumn{
 				{Name: "name", Label: "Name", Type: "string"},
-				{Name: "groups", Label: "Groups", Type: "edge"},
+				{Name: "permission_groups", Label: "PermissionGroups", Type: "edge"},
 			},
 			FilterableColumns: []gui.SchemaTableFilterableColumn{},
 			Rows:              rows,

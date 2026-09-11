@@ -1387,17 +1387,17 @@ func (m *BookMutation) ResetEdge(name string) error {
 // PermissionMutation represents an operation that mutates the Permission nodes in the graph.
 type PermissionMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	name          *string
-	clearedFields map[string]struct{}
-	groups        map[int]struct{}
-	removedgroups map[int]struct{}
-	clearedgroups bool
-	done          bool
-	oldValue      func(context.Context) (*Permission, error)
-	predicates    []predicate.Permission
+	op                       Op
+	typ                      string
+	id                       *int
+	name                     *string
+	clearedFields            map[string]struct{}
+	permission_groups        map[int]struct{}
+	removedpermission_groups map[int]struct{}
+	clearedpermission_groups bool
+	done                     bool
+	oldValue                 func(context.Context) (*Permission, error)
+	predicates               []predicate.Permission
 }
 
 var _ ent.Mutation = (*PermissionMutation)(nil)
@@ -1534,58 +1534,58 @@ func (m *PermissionMutation) ResetName() {
 	m.name = nil
 }
 
-// AddGroupIDs adds the "groups" edge to the PermissionGroup entity by ids.
-func (m *PermissionMutation) AddGroupIDs(ids ...int) {
-	if m.groups == nil {
-		m.groups = make(map[int]struct{})
+// AddPermissionGroupIDs adds the "permission_groups" edge to the PermissionGroup entity by ids.
+func (m *PermissionMutation) AddPermissionGroupIDs(ids ...int) {
+	if m.permission_groups == nil {
+		m.permission_groups = make(map[int]struct{})
 	}
 	for i := range ids {
-		m.groups[ids[i]] = struct{}{}
+		m.permission_groups[ids[i]] = struct{}{}
 	}
 }
 
-// ClearGroups clears the "groups" edge to the PermissionGroup entity.
-func (m *PermissionMutation) ClearGroups() {
-	m.clearedgroups = true
+// ClearPermissionGroups clears the "permission_groups" edge to the PermissionGroup entity.
+func (m *PermissionMutation) ClearPermissionGroups() {
+	m.clearedpermission_groups = true
 }
 
-// GroupsCleared reports if the "groups" edge to the PermissionGroup entity was cleared.
-func (m *PermissionMutation) GroupsCleared() bool {
-	return m.clearedgroups
+// PermissionGroupsCleared reports if the "permission_groups" edge to the PermissionGroup entity was cleared.
+func (m *PermissionMutation) PermissionGroupsCleared() bool {
+	return m.clearedpermission_groups
 }
 
-// RemoveGroupIDs removes the "groups" edge to the PermissionGroup entity by IDs.
-func (m *PermissionMutation) RemoveGroupIDs(ids ...int) {
-	if m.removedgroups == nil {
-		m.removedgroups = make(map[int]struct{})
+// RemovePermissionGroupIDs removes the "permission_groups" edge to the PermissionGroup entity by IDs.
+func (m *PermissionMutation) RemovePermissionGroupIDs(ids ...int) {
+	if m.removedpermission_groups == nil {
+		m.removedpermission_groups = make(map[int]struct{})
 	}
 	for i := range ids {
-		delete(m.groups, ids[i])
-		m.removedgroups[ids[i]] = struct{}{}
+		delete(m.permission_groups, ids[i])
+		m.removedpermission_groups[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedGroups returns the removed IDs of the "groups" edge to the PermissionGroup entity.
-func (m *PermissionMutation) RemovedGroupsIDs() (ids []int) {
-	for id := range m.removedgroups {
+// RemovedPermissionGroups returns the removed IDs of the "permission_groups" edge to the PermissionGroup entity.
+func (m *PermissionMutation) RemovedPermissionGroupsIDs() (ids []int) {
+	for id := range m.removedpermission_groups {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// GroupsIDs returns the "groups" edge IDs in the mutation.
-func (m *PermissionMutation) GroupsIDs() (ids []int) {
-	for id := range m.groups {
+// PermissionGroupsIDs returns the "permission_groups" edge IDs in the mutation.
+func (m *PermissionMutation) PermissionGroupsIDs() (ids []int) {
+	for id := range m.permission_groups {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetGroups resets all changes to the "groups" edge.
-func (m *PermissionMutation) ResetGroups() {
-	m.groups = nil
-	m.clearedgroups = false
-	m.removedgroups = nil
+// ResetPermissionGroups resets all changes to the "permission_groups" edge.
+func (m *PermissionMutation) ResetPermissionGroups() {
+	m.permission_groups = nil
+	m.clearedpermission_groups = false
+	m.removedpermission_groups = nil
 }
 
 // Where appends a list predicates to the PermissionMutation builder.
@@ -1722,8 +1722,8 @@ func (m *PermissionMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *PermissionMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.groups != nil {
-		edges = append(edges, permission.EdgeGroups)
+	if m.permission_groups != nil {
+		edges = append(edges, permission.EdgePermissionGroups)
 	}
 	return edges
 }
@@ -1732,9 +1732,9 @@ func (m *PermissionMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *PermissionMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case permission.EdgeGroups:
-		ids := make([]ent.Value, 0, len(m.groups))
-		for id := range m.groups {
+	case permission.EdgePermissionGroups:
+		ids := make([]ent.Value, 0, len(m.permission_groups))
+		for id := range m.permission_groups {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1745,8 +1745,8 @@ func (m *PermissionMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *PermissionMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removedgroups != nil {
-		edges = append(edges, permission.EdgeGroups)
+	if m.removedpermission_groups != nil {
+		edges = append(edges, permission.EdgePermissionGroups)
 	}
 	return edges
 }
@@ -1755,9 +1755,9 @@ func (m *PermissionMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *PermissionMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case permission.EdgeGroups:
-		ids := make([]ent.Value, 0, len(m.removedgroups))
-		for id := range m.removedgroups {
+	case permission.EdgePermissionGroups:
+		ids := make([]ent.Value, 0, len(m.removedpermission_groups))
+		for id := range m.removedpermission_groups {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1768,8 +1768,8 @@ func (m *PermissionMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *PermissionMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedgroups {
-		edges = append(edges, permission.EdgeGroups)
+	if m.clearedpermission_groups {
+		edges = append(edges, permission.EdgePermissionGroups)
 	}
 	return edges
 }
@@ -1778,8 +1778,8 @@ func (m *PermissionMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *PermissionMutation) EdgeCleared(name string) bool {
 	switch name {
-	case permission.EdgeGroups:
-		return m.clearedgroups
+	case permission.EdgePermissionGroups:
+		return m.clearedpermission_groups
 	}
 	return false
 }
@@ -1796,8 +1796,8 @@ func (m *PermissionMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PermissionMutation) ResetEdge(name string) error {
 	switch name {
-	case permission.EdgeGroups:
-		m.ResetGroups()
+	case permission.EdgePermissionGroups:
+		m.ResetPermissionGroups()
 		return nil
 	}
 	return fmt.Errorf("unknown Permission edge %s", name)
