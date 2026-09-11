@@ -275,7 +275,7 @@ func (DefaultBookAdmin) CanDelete(ctx context.Context, e *ent.Book) (bool, error
 // schema-level access for routes, menu visibility, and create.
 type PermissionAdmin interface {
 	FieldName() PermissionField
-	FieldGroups() PermissionField
+	FieldPermissionGroups() PermissionField
 	Name(e *ent.Permission) string
 	EagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery
 	ValidateCreate(ctx context.Context, input PermissionCreateInput) error
@@ -312,7 +312,7 @@ func (DefaultPermissionAdmin) Name(e *ent.Permission) string {
 }
 
 func (DefaultPermissionAdmin) EagerLoadQuery(q *ent.PermissionQuery) *ent.PermissionQuery {
-	q = q.WithGroups()
+	q = q.WithPermissionGroups()
 	return q
 }
 
@@ -320,8 +320,8 @@ func (a DefaultPermissionAdmin) FieldName() PermissionField {
 	return NewPermissionNameField(a.Client)
 }
 
-func (a DefaultPermissionAdmin) FieldGroups() PermissionField {
-	return NewPermissionGroupsField(a.Client)
+func (a DefaultPermissionAdmin) FieldPermissionGroups() PermissionField {
+	return NewPermissionPermissionGroupsField(a.Client)
 }
 
 func (DefaultPermissionAdmin) ValidateCreate(context.Context, PermissionCreateInput) error {

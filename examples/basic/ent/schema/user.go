@@ -30,7 +30,7 @@ func (User) Edges() []ent.Edge {
 func (User) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		vent.UserMixin{
-			GroupSchemaType: PermissionGroup.Type,
+			PermissionGroupSchemaType: PermissionGroup.Type,
 		},
 	}
 }
