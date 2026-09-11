@@ -20,6 +20,7 @@ func main() {
 	defer client.Close()
 
 	ctx := context.Background()
+
 	credentialGenerator := auth.NewBCryptCredentialGenerator()
 
 	if err := seedAdminUser(ctx, client, credentialGenerator); err != nil {

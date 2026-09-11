@@ -144,26 +144,26 @@ var (
 			},
 		},
 	}
-	// UserGroupsColumns holds the columns for the "user_groups" table.
-	UserGroupsColumns = []*schema.Column{
+	// UserPermissionGroupsColumns holds the columns for the "user_permission_groups" table.
+	UserPermissionGroupsColumns = []*schema.Column{
 		{Name: "user_id", Type: field.TypeInt},
 		{Name: "permission_group_id", Type: field.TypeInt},
 	}
-	// UserGroupsTable holds the schema information for the "user_groups" table.
-	UserGroupsTable = &schema.Table{
-		Name:       "user_groups",
-		Columns:    UserGroupsColumns,
-		PrimaryKey: []*schema.Column{UserGroupsColumns[0], UserGroupsColumns[1]},
+	// UserPermissionGroupsTable holds the schema information for the "user_permission_groups" table.
+	UserPermissionGroupsTable = &schema.Table{
+		Name:       "user_permission_groups",
+		Columns:    UserPermissionGroupsColumns,
+		PrimaryKey: []*schema.Column{UserPermissionGroupsColumns[0], UserPermissionGroupsColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "user_groups_user_id",
-				Columns:    []*schema.Column{UserGroupsColumns[0]},
+				Symbol:     "user_permission_groups_user_id",
+				Columns:    []*schema.Column{UserPermissionGroupsColumns[0]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "user_groups_permission_group_id",
-				Columns:    []*schema.Column{UserGroupsColumns[1]},
+				Symbol:     "user_permission_groups_permission_group_id",
+				Columns:    []*schema.Column{UserPermissionGroupsColumns[1]},
 				RefColumns: []*schema.Column{PermissionGroupsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -178,7 +178,7 @@ var (
 		ReviewsTable,
 		UsersTable,
 		PermissionGroupPermissionsTable,
-		UserGroupsTable,
+		UserPermissionGroupsTable,
 	}
 )
 
@@ -189,6 +189,6 @@ func init() {
 	ReviewsTable.ForeignKeys[1].RefTable = UsersTable
 	PermissionGroupPermissionsTable.ForeignKeys[0].RefTable = PermissionGroupsTable
 	PermissionGroupPermissionsTable.ForeignKeys[1].RefTable = PermissionsTable
-	UserGroupsTable.ForeignKeys[0].RefTable = UsersTable
-	UserGroupsTable.ForeignKeys[1].RefTable = PermissionGroupsTable
+	UserPermissionGroupsTable.ForeignKeys[0].RefTable = UsersTable
+	UserPermissionGroupsTable.ForeignKeys[1].RefTable = PermissionGroupsTable
 }

@@ -1764,22 +1764,22 @@ func (h *AdminHandler) patchReviewHandler() http.Handler {
 
 // UserCreateInput is the typed input for creating a User
 type UserCreateInput struct {
-	Email       string   `json:"email"`
-	IsStaff     *bool    `json:"is_staff"`
-	IsSuperuser *bool    `json:"is_superuser"`
-	IsActive    *bool    `json:"is_active"`
-	Groups      []string `json:"groups"`
-	LastLogin   *string  `json:"last_login"`
+	Email            string   `json:"email"`
+	IsStaff          *bool    `json:"is_staff"`
+	IsSuperuser      *bool    `json:"is_superuser"`
+	IsActive         *bool    `json:"is_active"`
+	PermissionGroups []string `json:"permission_groups"`
+	LastLogin        *string  `json:"last_login"`
 }
 
 // UserUpdateInput is the typed input for updating a User
 type UserUpdateInput struct {
-	Email       *string   `json:"email"`
-	IsStaff     *bool     `json:"is_staff"`
-	IsSuperuser *bool     `json:"is_superuser"`
-	IsActive    *bool     `json:"is_active"`
-	Groups      *[]string `json:"groups"`
-	LastLogin   *string   `json:"last_login"`
+	Email            *string   `json:"email"`
+	IsStaff          *bool     `json:"is_staff"`
+	IsSuperuser      *bool     `json:"is_superuser"`
+	IsActive         *bool     `json:"is_active"`
+	PermissionGroups *[]string `json:"permission_groups"`
+	LastLogin        *string   `json:"last_login"`
 }
 
 // UserListFilter is the typed list query for listing User.

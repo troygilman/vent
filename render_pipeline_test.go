@@ -23,7 +23,7 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 		t.Fatalf("Meta auth flags = %#v, want auth user with password routes", rc.SchemaMeta)
 	}
 	assertSurfaceMemberNames(t, rc.AdminSurface, []string{
-		"id", "email", "password", "is_staff", "is_superuser", "is_active", "groups",
+		"id", "email", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
 	})
 
 	password := findSurfaceMember(t, rc.AdminSurface, "password")
@@ -89,8 +89,8 @@ func TestBuildProjectedRenderConfigAuthUserLikeSchema(t *testing.T) {
 		t.Fatalf("is_staff filter = %#v, want bool/IsStaff", staffFilter)
 	}
 
-	assertInputSpecNames(t, rc.CreateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "groups"})
-	assertInputSpecNames(t, rc.UpdateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "groups"})
+	assertInputSpecNames(t, rc.CreateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "permission_groups"})
+	assertInputSpecNames(t, rc.UpdateInputFields, []string{"email", "is_staff", "is_superuser", "is_active", "permission_groups"})
 }
 
 func TestBuildProjectedRenderConfigDefaultSurface(t *testing.T) {
@@ -422,7 +422,7 @@ func authUserLikeNode() *gen.Type {
 				FilterableColumns: []string{"email", "is_staff", "is_active"},
 				FieldSets: []FieldSet{{
 					Fields: []string{
-						"id", "email", "password", "is_staff", "is_superuser", "is_active", "groups",
+						"id", "email", "password", "is_staff", "is_superuser", "is_active", "permission_groups",
 					},
 				}},
 			},
@@ -434,7 +434,7 @@ func authUserLikeNode() *gen.Type {
 			fieldWithConstantDefault("is_active", schemafield.TypeBool),
 		},
 		Edges: []*gen.Edge{
-			{Name: "groups", Type: &gen.Type{Name: "PermissionGroup"}},
+			{Name: "permission_groups", Type: &gen.Type{Name: "PermissionGroup"}},
 		},
 	}
 }

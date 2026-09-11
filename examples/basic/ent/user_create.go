@@ -101,19 +101,19 @@ func (_c *UserCreate) SetNillableLastLogin(v *time.Time) *UserCreate {
 	return _c
 }
 
-// AddGroupIDs adds the "groups" edge to the PermissionGroup entity by IDs.
-func (_c *UserCreate) AddGroupIDs(ids ...int) *UserCreate {
-	_c.mutation.AddGroupIDs(ids...)
+// AddPermissionGroupIDs adds the "permission_groups" edge to the PermissionGroup entity by IDs.
+func (_c *UserCreate) AddPermissionGroupIDs(ids ...int) *UserCreate {
+	_c.mutation.AddPermissionGroupIDs(ids...)
 	return _c
 }
 
-// AddGroups adds the "groups" edges to the PermissionGroup entity.
-func (_c *UserCreate) AddGroups(v ...*PermissionGroup) *UserCreate {
+// AddPermissionGroups adds the "permission_groups" edges to the PermissionGroup entity.
+func (_c *UserCreate) AddPermissionGroups(v ...*PermissionGroup) *UserCreate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddGroupIDs(ids...)
+	return _c.AddPermissionGroupIDs(ids...)
 }
 
 // SetAuthorID sets the "author" edge to the Author entity by ID.
@@ -269,12 +269,12 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldLastLogin, field.TypeTime, value)
 		_node.LastLogin = value
 	}
-	if nodes := _c.mutation.GroupsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.PermissionGroupsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),

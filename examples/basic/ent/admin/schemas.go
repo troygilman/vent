@@ -552,7 +552,7 @@ type UserAdmin interface {
 	FieldIsStaff() UserField
 	FieldIsSuperuser() UserField
 	FieldIsActive() UserField
-	FieldGroups() UserField
+	FieldPermissionGroups() UserField
 	FieldLastLogin() UserField
 	Name(e *ent.User) string
 	EagerLoadQuery(q *ent.UserQuery) *ent.UserQuery
@@ -582,7 +582,7 @@ func (DefaultUserAdmin) Name(e *ent.User) string {
 }
 
 func (DefaultUserAdmin) EagerLoadQuery(q *ent.UserQuery) *ent.UserQuery {
-	q = q.WithGroups()
+	q = q.WithPermissionGroups()
 	return q
 }
 
@@ -610,8 +610,8 @@ func (a DefaultUserAdmin) FieldIsActive() UserField {
 	return NewUserIsActiveField(a.Client)
 }
 
-func (a DefaultUserAdmin) FieldGroups() UserField {
-	return NewUserGroupsField(a.Client)
+func (a DefaultUserAdmin) FieldPermissionGroups() UserField {
+	return NewUserPermissionGroupsField(a.Client)
 }
 
 func (a DefaultUserAdmin) FieldLastLogin() UserField {

@@ -305,21 +305,21 @@ func LastLoginNotNil() predicate.User {
 	return predicate.User(sql.FieldNotNull(FieldLastLogin))
 }
 
-// HasGroups applies the HasEdge predicate on the "groups" edge.
-func HasGroups() predicate.User {
+// HasPermissionGroups applies the HasEdge predicate on the "permission_groups" edge.
+func HasPermissionGroups() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, GroupsTable, GroupsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, false, PermissionGroupsTable, PermissionGroupsPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasGroupsWith applies the HasEdge predicate on the "groups" edge with a given conditions (other predicates).
-func HasGroupsWith(preds ...predicate.PermissionGroup) predicate.User {
+// HasPermissionGroupsWith applies the HasEdge predicate on the "permission_groups" edge with a given conditions (other predicates).
+func HasPermissionGroupsWith(preds ...predicate.PermissionGroup) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
-		step := newGroupsStep()
+		step := newPermissionGroupsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

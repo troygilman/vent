@@ -127,19 +127,19 @@ func (_u *UserUpdate) ClearLastLogin() *UserUpdate {
 	return _u
 }
 
-// AddGroupIDs adds the "groups" edge to the PermissionGroup entity by IDs.
-func (_u *UserUpdate) AddGroupIDs(ids ...int) *UserUpdate {
-	_u.mutation.AddGroupIDs(ids...)
+// AddPermissionGroupIDs adds the "permission_groups" edge to the PermissionGroup entity by IDs.
+func (_u *UserUpdate) AddPermissionGroupIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddPermissionGroupIDs(ids...)
 	return _u
 }
 
-// AddGroups adds the "groups" edges to the PermissionGroup entity.
-func (_u *UserUpdate) AddGroups(v ...*PermissionGroup) *UserUpdate {
+// AddPermissionGroups adds the "permission_groups" edges to the PermissionGroup entity.
+func (_u *UserUpdate) AddPermissionGroups(v ...*PermissionGroup) *UserUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddGroupIDs(ids...)
+	return _u.AddPermissionGroupIDs(ids...)
 }
 
 // SetAuthorID sets the "author" edge to the Author entity by ID.
@@ -181,25 +181,25 @@ func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearGroups clears all "groups" edges to the PermissionGroup entity.
-func (_u *UserUpdate) ClearGroups() *UserUpdate {
-	_u.mutation.ClearGroups()
+// ClearPermissionGroups clears all "permission_groups" edges to the PermissionGroup entity.
+func (_u *UserUpdate) ClearPermissionGroups() *UserUpdate {
+	_u.mutation.ClearPermissionGroups()
 	return _u
 }
 
-// RemoveGroupIDs removes the "groups" edge to PermissionGroup entities by IDs.
-func (_u *UserUpdate) RemoveGroupIDs(ids ...int) *UserUpdate {
-	_u.mutation.RemoveGroupIDs(ids...)
+// RemovePermissionGroupIDs removes the "permission_groups" edge to PermissionGroup entities by IDs.
+func (_u *UserUpdate) RemovePermissionGroupIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemovePermissionGroupIDs(ids...)
 	return _u
 }
 
-// RemoveGroups removes "groups" edges to PermissionGroup entities.
-func (_u *UserUpdate) RemoveGroups(v ...*PermissionGroup) *UserUpdate {
+// RemovePermissionGroups removes "permission_groups" edges to PermissionGroup entities.
+func (_u *UserUpdate) RemovePermissionGroups(v ...*PermissionGroup) *UserUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveGroupIDs(ids...)
+	return _u.RemovePermissionGroupIDs(ids...)
 }
 
 // ClearAuthor clears the "author" edge to the Author entity.
@@ -302,12 +302,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.LastLoginCleared() {
 		_spec.ClearField(user.FieldLastLogin, field.TypeTime)
 	}
-	if _u.mutation.GroupsCleared() {
+	if _u.mutation.PermissionGroupsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
@@ -315,12 +315,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedGroupsIDs(); len(nodes) > 0 && !_u.mutation.GroupsCleared() {
+	if nodes := _u.mutation.RemovedPermissionGroupsIDs(); len(nodes) > 0 && !_u.mutation.PermissionGroupsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
@@ -331,12 +331,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.GroupsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.PermissionGroupsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
@@ -537,19 +537,19 @@ func (_u *UserUpdateOne) ClearLastLogin() *UserUpdateOne {
 	return _u
 }
 
-// AddGroupIDs adds the "groups" edge to the PermissionGroup entity by IDs.
-func (_u *UserUpdateOne) AddGroupIDs(ids ...int) *UserUpdateOne {
-	_u.mutation.AddGroupIDs(ids...)
+// AddPermissionGroupIDs adds the "permission_groups" edge to the PermissionGroup entity by IDs.
+func (_u *UserUpdateOne) AddPermissionGroupIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddPermissionGroupIDs(ids...)
 	return _u
 }
 
-// AddGroups adds the "groups" edges to the PermissionGroup entity.
-func (_u *UserUpdateOne) AddGroups(v ...*PermissionGroup) *UserUpdateOne {
+// AddPermissionGroups adds the "permission_groups" edges to the PermissionGroup entity.
+func (_u *UserUpdateOne) AddPermissionGroups(v ...*PermissionGroup) *UserUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddGroupIDs(ids...)
+	return _u.AddPermissionGroupIDs(ids...)
 }
 
 // SetAuthorID sets the "author" edge to the Author entity by ID.
@@ -591,25 +591,25 @@ func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearGroups clears all "groups" edges to the PermissionGroup entity.
-func (_u *UserUpdateOne) ClearGroups() *UserUpdateOne {
-	_u.mutation.ClearGroups()
+// ClearPermissionGroups clears all "permission_groups" edges to the PermissionGroup entity.
+func (_u *UserUpdateOne) ClearPermissionGroups() *UserUpdateOne {
+	_u.mutation.ClearPermissionGroups()
 	return _u
 }
 
-// RemoveGroupIDs removes the "groups" edge to PermissionGroup entities by IDs.
-func (_u *UserUpdateOne) RemoveGroupIDs(ids ...int) *UserUpdateOne {
-	_u.mutation.RemoveGroupIDs(ids...)
+// RemovePermissionGroupIDs removes the "permission_groups" edge to PermissionGroup entities by IDs.
+func (_u *UserUpdateOne) RemovePermissionGroupIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemovePermissionGroupIDs(ids...)
 	return _u
 }
 
-// RemoveGroups removes "groups" edges to PermissionGroup entities.
-func (_u *UserUpdateOne) RemoveGroups(v ...*PermissionGroup) *UserUpdateOne {
+// RemovePermissionGroups removes "permission_groups" edges to PermissionGroup entities.
+func (_u *UserUpdateOne) RemovePermissionGroups(v ...*PermissionGroup) *UserUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveGroupIDs(ids...)
+	return _u.RemovePermissionGroupIDs(ids...)
 }
 
 // ClearAuthor clears the "author" edge to the Author entity.
@@ -742,12 +742,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.LastLoginCleared() {
 		_spec.ClearField(user.FieldLastLogin, field.TypeTime)
 	}
-	if _u.mutation.GroupsCleared() {
+	if _u.mutation.PermissionGroupsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
@@ -755,12 +755,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedGroupsIDs(); len(nodes) > 0 && !_u.mutation.GroupsCleared() {
+	if nodes := _u.mutation.RemovedPermissionGroupsIDs(); len(nodes) > 0 && !_u.mutation.PermissionGroupsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),
@@ -771,12 +771,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.GroupsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.PermissionGroupsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   user.GroupsTable,
-			Columns: user.GroupsPrimaryKey,
+			Table:   user.PermissionGroupsTable,
+			Columns: user.PermissionGroupsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(permissiongroup.FieldID, field.TypeInt),

@@ -38,8 +38,8 @@ type User struct {
 
 // UserEdges holds the relations/edges for other nodes in the graph.
 type UserEdges struct {
-	// Groups holds the value of the groups edge.
-	Groups []*PermissionGroup `json:"groups,omitempty"`
+	// PermissionGroups holds the value of the permission_groups edge.
+	PermissionGroups []*PermissionGroup `json:"permission_groups,omitempty"`
 	// Author holds the value of the author edge.
 	Author *Author `json:"author,omitempty"`
 	// Reviews holds the value of the reviews edge.
@@ -49,13 +49,13 @@ type UserEdges struct {
 	loadedTypes [3]bool
 }
 
-// GroupsOrErr returns the Groups value or an error if the edge
+// PermissionGroupsOrErr returns the PermissionGroups value or an error if the edge
 // was not loaded in eager-loading.
-func (e UserEdges) GroupsOrErr() ([]*PermissionGroup, error) {
+func (e UserEdges) PermissionGroupsOrErr() ([]*PermissionGroup, error) {
 	if e.loadedTypes[0] {
-		return e.Groups, nil
+		return e.PermissionGroups, nil
 	}
-	return nil, &NotLoadedError{edge: "groups"}
+	return nil, &NotLoadedError{edge: "permission_groups"}
 }
 
 // AuthorOrErr returns the Author value or an error if the edge
@@ -162,9 +162,9 @@ func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryGroups queries the "groups" edge of the User entity.
-func (_m *User) QueryGroups() *PermissionGroupQuery {
-	return NewUserClient(_m.config).QueryGroups(_m)
+// QueryPermissionGroups queries the "permission_groups" edge of the User entity.
+func (_m *User) QueryPermissionGroups() *PermissionGroupQuery {
+	return NewUserClient(_m.config).QueryPermissionGroups(_m)
 }
 
 // QueryAuthor queries the "author" edge of the User entity.
