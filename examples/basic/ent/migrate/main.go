@@ -26,7 +26,7 @@ func main() {
 		log.Fatalln("migration name is required. Use: 'go run -mod=mod examples/basic/ent/migrate/main.go <name>'")
 	}
 
-	err = migrategen.Generate(ctx, "sqlite://ent?mode=memory&cache=shared&_fk=1", os.Args[1],
+	err = migrategen.NamedDiff(ctx, "sqlite://ent?mode=memory&cache=shared&_fk=1", os.Args[1],
 		migrategen.WithDir(dir),
 		migrategen.WithDialect(dialect.SQLite),
 		migrategen.WithTables(migrate.Tables...),

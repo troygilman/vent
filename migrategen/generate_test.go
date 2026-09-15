@@ -14,12 +14,12 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
+func TestNamedDiff_schemaOnlyThenNeither(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://schemaonly?mode=memory&cache=shared&_fk=1"
 	opts := []Option{WithDir(mig), WithDialect(dialect.SQLite), WithTables(widgetTables()...)}
-	if err := Generate(context.Background(), url, "create_widgets", opts...); err != nil {
+	if err := NamedDiff(context.Background(), url, "create_widgets", opts...); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -34,7 +34,7 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 		t.Fatalf("schema SQL missing widgets: %s", body)
 	}
 
-	if err := Generate(context.Background(), url, "create_widgets", opts...); err != nil {
+	if err := NamedDiff(context.Background(), url, "create_widgets", opts...); err != nil {
 		t.Fatal(err)
 	}
 	files = mustFiles(t, mig)
@@ -43,7 +43,7 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 	}
 }
 
-func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
+func TestNamedDiff_schemaAndSyncPermissionsOneFile(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://permtest?mode=memory&cache=shared&_fk=1"
@@ -53,7 +53,7 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 		WithTables(permissionTables()...),
 		WithData(SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)),
 	}
-	if err := Generate(context.Background(), url, "create_permissions", base...); err != nil {
+	if err := NamedDiff(context.Background(), url, "create_permissions", base...); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -79,7 +79,7 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 		t.Fatalf("permission SQL should follow DDL: %s", body)
 	}
 
-	if err := Generate(context.Background(), url, "noop", base...); err != nil {
+	if err := NamedDiff(context.Background(), url, "noop", base...); err != nil {
 		t.Fatal(err)
 	}
 	if got := mustFiles(t, mig); len(got) != 1 {
@@ -87,11 +87,11 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 	}
 }
 
-func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
+func TestNamedDiff_dataOnlyUsesCLIName(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://permonly?mode=memory&cache=shared&_fk=1"
-	if err := Generate(context.Background(), url, "create_permissions",
+	if err := NamedDiff(context.Background(), url, "create_permissions",
 		WithDir(mig),
 		WithDialect(dialect.SQLite),
 		WithTables(permissionTables()...),
@@ -100,7 +100,7 @@ func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Generate(context.Background(), url, "drop_create_widget",
+	if err := NamedDiff(context.Background(), url, "drop_create_widget",
 		WithDir(mig),
 		WithDialect(dialect.SQLite),
 		WithTables(permissionTables()...),
@@ -124,7 +124,7 @@ func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 	}
 }
 
-func TestGenerate_customDataMigrateFunc(t *testing.T) {
+func TestNamedDiff_customDataMigrateFunc(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	seed := DataMigrateFunc(func(ctx context.Context, s *DataMigrateSession) error {
@@ -134,7 +134,7 @@ func TestGenerate_customDataMigrateFunc(t *testing.T) {
 		s.Change("Seed widgets")
 		return nil
 	})
-	if err := Generate(context.Background(), "sqlite://customdata?mode=memory&cache=shared&_fk=1", "create_widgets",
+	if err := NamedDiff(context.Background(), "sqlite://customdata?mode=memory&cache=shared&_fk=1", "create_widgets",
 		WithDir(mig),
 		WithDialect(dialect.SQLite),
 		WithTables(widgetTables()...),
@@ -158,10 +158,10 @@ func TestGenerate_customDataMigrateFunc(t *testing.T) {
 	}
 }
 
-func TestGenerate_atlasSumStaysValid(t *testing.T) {
+func TestNamedDiff_atlasSumStaysValid(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
-	if err := Generate(context.Background(), "sqlite://sumtest?mode=memory&cache=shared&_fk=1", "init",
+	if err := NamedDiff(context.Background(), "sqlite://sumtest?mode=memory&cache=shared&_fk=1", "init",
 		WithDir(mig),
 		WithDialect(dialect.SQLite),
 		WithTables(permissionTables()...),
@@ -268,17 +268,17 @@ func names(files []atlas.File) []string {
 	return out
 }
 
-func TestGenerate_missingDir(t *testing.T) {
-	err := Generate(context.Background(), "x", "n", WithDialect(dialect.SQLite))
+func TestNamedDiff_missingDir(t *testing.T) {
+	err := NamedDiff(context.Background(), "x", "n", WithDialect(dialect.SQLite))
 	if err == nil || !strings.Contains(err.Error(), "Dir is required") {
 		t.Fatalf("got %v", err)
 	}
 }
 
-func TestGenerate_nameRequired(t *testing.T) {
+func TestNamedDiff_nameRequired(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
-	err := Generate(context.Background(), "sqlite://x", "",
+	err := NamedDiff(context.Background(), "sqlite://x", "",
 		WithDir(mig),
 		WithDialect(dialect.SQLite),
 		WithTables(widgetTables()...),

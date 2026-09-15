@@ -77,10 +77,10 @@ func (c *config) validate() error {
 	}
 }
 
-// Generate replays existing migrations once on url, then writes at most
+// NamedDiff replays existing migrations once on url, then writes at most
 // one SQL file named from name. Schema DDL and data DML share that file
 // when both changed.
-func Generate(ctx context.Context, url, name string, opts ...Option) error {
+func NamedDiff(ctx context.Context, url, name string, opts ...Option) error {
 	cfg := config{url: url, name: name}
 	for _, opt := range opts {
 		opt(&cfg)
