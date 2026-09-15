@@ -15,7 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type DataFunc func(ctx context.Context, s *DataSession) error
+type DataMigrateFunc func(ctx context.Context, s *DataSession) error
 
 type DataSession struct {
 	Dialect     string
@@ -37,7 +37,7 @@ type Options struct {
 	Formatter migrate.Formatter
 	Name      string
 	Tables    []*schema.Table
-	Data      []DataFunc
+	Data      []DataMigrateFunc
 }
 
 func (o Options) validate() error {

@@ -32,7 +32,7 @@ func main() {
 		Dialect: dialect.SQLite,
 		Name:    os.Args[1],
 		Tables:  migrate.Tables,
-		Data: []migrategen.DataFunc{
+		Data: []migrategen.DataMigrateFunc{
 			migrategen.SyncPermissions(admin.DesiredPermissions(), admin.NewPermissionClient),
 		},
 	})

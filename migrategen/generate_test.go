@@ -63,7 +63,7 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 		Dialect: dialect.SQLite,
 		Name:    "create_permissions",
 		Tables:  permissionTables(),
-		Data:    []DataFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
 	}
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
@@ -112,14 +112,14 @@ func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 		Dialect: dialect.SQLite,
 		Name:    "create_permissions",
 		Tables:  permissionTables(),
-		Data:    []DataFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
 	}
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 
 	opts.Name = "drop_create_widget"
-	opts.Data = []DataFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)}
+	opts.Data = []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)}
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -139,13 +139,13 @@ func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 	}
 }
 
-func TestGenerate_customDataFunc(t *testing.T) {
+func TestGenerate_customDataMigrateFunc(t *testing.T) {
 	dir := t.TempDir()
 	mig, err := atlas.NewLocalDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	seed := DataFunc(func(ctx context.Context, s *DataSession) error {
+	seed := DataMigrateFunc(func(ctx context.Context, s *DataSession) error {
 		if err := s.WriteDriver.Exec(ctx, "INSERT INTO `widgets` (`name`) VALUES (?)", []any{"alpha"}, nil); err != nil {
 			return err
 		}
@@ -158,7 +158,7 @@ func TestGenerate_customDataFunc(t *testing.T) {
 		Dialect: dialect.SQLite,
 		Name:    "create_widgets",
 		Tables:  widgetTables(),
-		Data:    []DataFunc{seed},
+		Data:    []DataMigrateFunc{seed},
 	}
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
@@ -191,7 +191,7 @@ func TestGenerate_atlasSumStaysValid(t *testing.T) {
 		Dialect: dialect.SQLite,
 		Name:    "init",
 		Tables:  permissionTables(),
-		Data:    []DataFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)},
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestGenerate_nameRequiredWithData(t *testing.T) {
 		Dir:     mig,
 		DevURL:  "sqlite://x",
 		Dialect: dialect.SQLite,
-		Data:    []DataFunc{func(context.Context, *DataSession) error { return nil }},
+		Data:    []DataMigrateFunc{func(context.Context, *DataSession) error { return nil }},
 	})
 	if err == nil || !strings.Contains(err.Error(), "Name is required") {
 		t.Fatalf("got %v", err)

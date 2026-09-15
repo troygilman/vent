@@ -17,7 +17,7 @@ type PermissionClient interface {
 	DeleteID(ctx context.Context, id int) error
 }
 
-func SyncPermissions(desired []string, newClient func(dialect.Driver) PermissionClient) DataFunc {
+func SyncPermissions(desired []string, newClient func(dialect.Driver) PermissionClient) DataMigrateFunc {
 	return func(ctx context.Context, s *DataSession) error {
 		read := newClient(s.ReadDriver)
 		write := newClient(s.WriteDriver)
