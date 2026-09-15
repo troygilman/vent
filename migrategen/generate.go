@@ -89,7 +89,7 @@ func NamedDiff(ctx context.Context, url, name string, opts ...Option) error {
 		return err
 	}
 	if cfg.formatter == nil {
-		cfg.formatter = VersionFormatter(cfg.dir)
+		cfg.formatter = migrate.DefaultFormatter
 	}
 	if err := migrate.Validate(cfg.dir); err != nil {
 		return fmt.Errorf("validating migration directory: %w", err)

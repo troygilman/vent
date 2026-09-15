@@ -106,7 +106,7 @@ just migrations   # migrategen.NamedDiff: at most one SQL file (DDL + DataMigrat
 just migrate      # atlas migrate apply ...
 ```
 
-The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/0000_init.sql`, matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path.
+The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/*_init.sql` (Atlas timestamp version), matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path. When `WithFormatter` is omitted, `NamedDiff` uses Atlas `migrate.DefaultFormatter`.
 
 `migrategen.NamedDiff` takes a DevURL, a migration name, and functional options (`WithDir`, `WithDialect`, `WithTables`, `WithData`), matching Ent `NamedDiff`. It replays the migration directory once onto a shared Atlas connection, diffs Ent tables with inspect mode (so Ent does not drop the replayed schema), applies any new DDL on that connection, then runs `WithData` hooks (`DataMigrateFunc` on a `DataMigrateSession`, with `SyncPermissions` for auth rows). One generate run writes at most one SQL file. Schema DDL and data DML share that file when both changed.
 
