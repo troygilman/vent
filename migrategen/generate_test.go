@@ -16,18 +16,10 @@ import (
 
 func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	opts := Options{
-		Dir:     mig,
-		DevURL:  "sqlite://schemaonly?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "create_widgets",
-		Tables:  widgetTables(),
-	}
-	if err := Generate(context.Background(), opts); err != nil {
+	mig := mustDir(t, dir)
+	url := "sqlite://schemaonly?mode=memory&cache=shared&_fk=1"
+	opts := []Option{WithDir(mig), WithDialect(dialect.SQLite), WithTables(widgetTables()...)}
+	if err := Generate(context.Background(), url, "create_widgets", opts...); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -42,7 +34,7 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 		t.Fatalf("schema SQL missing widgets: %s", body)
 	}
 
-	if err := Generate(context.Background(), opts); err != nil {
+	if err := Generate(context.Background(), url, "create_widgets", opts...); err != nil {
 		t.Fatal(err)
 	}
 	files = mustFiles(t, mig)
@@ -53,19 +45,15 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 
 func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	mig := mustDir(t, dir)
+	url := "sqlite://permtest?mode=memory&cache=shared&_fk=1"
+	base := []Option{
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(permissionTables()...),
+		WithData(SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)),
 	}
-	opts := Options{
-		Dir:     mig,
-		DevURL:  "sqlite://permtest?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "create_permissions",
-		Tables:  permissionTables(),
-		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
-	}
-	if err := Generate(context.Background(), opts); err != nil {
+	if err := Generate(context.Background(), url, "create_permissions", base...); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -91,8 +79,7 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 		t.Fatalf("permission SQL should follow DDL: %s", body)
 	}
 
-	opts.Name = "noop"
-	if err := Generate(context.Background(), opts); err != nil {
+	if err := Generate(context.Background(), url, "noop", base...); err != nil {
 		t.Fatal(err)
 	}
 	if got := mustFiles(t, mig); len(got) != 1 {
@@ -102,25 +89,23 @@ func TestGenerate_schemaAndSyncPermissionsOneFile(t *testing.T) {
 
 func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	opts := Options{
-		Dir:     mig,
-		DevURL:  "sqlite://permonly?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "create_permissions",
-		Tables:  permissionTables(),
-		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
-	}
-	if err := Generate(context.Background(), opts); err != nil {
+	mig := mustDir(t, dir)
+	url := "sqlite://permonly?mode=memory&cache=shared&_fk=1"
+	if err := Generate(context.Background(), url, "create_permissions",
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(permissionTables()...),
+		WithData(SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)),
+	); err != nil {
 		t.Fatal(err)
 	}
 
-	opts.Name = "drop_create_widget"
-	opts.Data = []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)}
-	if err := Generate(context.Background(), opts); err != nil {
+	if err := Generate(context.Background(), url, "drop_create_widget",
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(permissionTables()...),
+		WithData(SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)),
+	); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -141,10 +126,7 @@ func TestGenerate_dataOnlyUsesCLIName(t *testing.T) {
 
 func TestGenerate_customDataMigrateFunc(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	mig := mustDir(t, dir)
 	seed := DataMigrateFunc(func(ctx context.Context, s *DataMigrateSession) error {
 		if err := s.WriteDriver.Exec(ctx, "INSERT INTO `widgets` (`name`) VALUES (?)", []any{"alpha"}, nil); err != nil {
 			return err
@@ -152,15 +134,12 @@ func TestGenerate_customDataMigrateFunc(t *testing.T) {
 		s.Change("Seed widgets")
 		return nil
 	})
-	opts := Options{
-		Dir:     mig,
-		DevURL:  "sqlite://customdata?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "create_widgets",
-		Tables:  widgetTables(),
-		Data:    []DataMigrateFunc{seed},
-	}
-	if err := Generate(context.Background(), opts); err != nil {
+	if err := Generate(context.Background(), "sqlite://customdata?mode=memory&cache=shared&_fk=1", "create_widgets",
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(widgetTables()...),
+		WithData(seed),
+	); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -181,18 +160,13 @@ func TestGenerate_customDataMigrateFunc(t *testing.T) {
 
 func TestGenerate_atlasSumStaysValid(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := Generate(context.Background(), Options{
-		Dir:     mig,
-		DevURL:  "sqlite://sumtest?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "init",
-		Tables:  permissionTables(),
-		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)},
-	}); err != nil {
+	mig := mustDir(t, dir)
+	if err := Generate(context.Background(), "sqlite://sumtest?mode=memory&cache=shared&_fk=1", "init",
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(permissionTables()...),
+		WithData(SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)),
+	); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "atlas.sum")); err != nil {
@@ -268,6 +242,15 @@ func (c sqlPermissionClient) DeleteID(ctx context.Context, id int) error {
 	return c.drv.Exec(ctx, "DELETE FROM `permissions` WHERE `id` = ?", []any{id}, nil)
 }
 
+func mustDir(t *testing.T, path string) atlas.Dir {
+	t.Helper()
+	mig, err := atlas.NewLocalDir(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return mig
+}
+
 func mustFiles(t *testing.T, dir atlas.Dir) []atlas.File {
 	t.Helper()
 	files, err := dir.Files()
@@ -286,42 +269,21 @@ func names(files []atlas.File) []string {
 }
 
 func TestGenerate_missingDir(t *testing.T) {
-	err := Generate(context.Background(), Options{DevURL: "x", Dialect: dialect.SQLite})
+	err := Generate(context.Background(), "x", "n", WithDialect(dialect.SQLite))
 	if err == nil || !strings.Contains(err.Error(), "Dir is required") {
 		t.Fatalf("got %v", err)
 	}
 }
 
-func TestGenerate_nameRequiredWithTables(t *testing.T) {
+func TestGenerate_nameRequired(t *testing.T) {
 	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = Generate(context.Background(), Options{
-		Dir:     mig,
-		DevURL:  "sqlite://x",
-		Dialect: dialect.SQLite,
-		Tables:  widgetTables(),
-	})
-	if err == nil || !strings.Contains(err.Error(), "Name is required") {
-		t.Fatalf("got %v", err)
-	}
-}
-
-func TestGenerate_nameRequiredWithData(t *testing.T) {
-	dir := t.TempDir()
-	mig, err := atlas.NewLocalDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = Generate(context.Background(), Options{
-		Dir:     mig,
-		DevURL:  "sqlite://x",
-		Dialect: dialect.SQLite,
-		Data:    []DataMigrateFunc{func(context.Context, *DataMigrateSession) error { return nil }},
-	})
-	if err == nil || !strings.Contains(err.Error(), "Name is required") {
+	mig := mustDir(t, dir)
+	err := Generate(context.Background(), "sqlite://x", "",
+		WithDir(mig),
+		WithDialect(dialect.SQLite),
+		WithTables(widgetTables()...),
+	)
+	if err == nil || !strings.Contains(err.Error(), "name is required") {
 		t.Fatalf("got %v", err)
 	}
 }
