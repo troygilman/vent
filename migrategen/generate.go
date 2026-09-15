@@ -1,7 +1,6 @@
 package migrategen
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -70,40 +69,23 @@ func Generate(ctx context.Context, opts Options) error {
 	}
 
 	held := &holdDir{Dir: opts.Dir}
-	schemaOpts := opts
-	schemaOpts.Dir = held
+	work := opts
+	work.Dir = held
 	if len(opts.Tables) > 0 {
-		if err := schemaDiff(ctx, client.DB, schemaOpts); err != nil {
+		if err := schemaDiff(ctx, client.DB, work); err != nil {
 			return err
 		}
 	}
 	if err := applyHeld(ctx, client.DB, held); err != nil {
 		return err
 	}
-
-	var perm []*migrate.Change
 	if opts.NewPermissionClient != nil {
-		perm, err = permissionChanges(ctx, client.DB, opts)
-		if err != nil {
+		if err := syncPermissions(ctx, client.DB, work); err != nil {
 			return err
 		}
 	}
-
-	switch {
-	case held.hasFile() && len(perm) > 0:
-		held.appendSQL(formatChanges(perm))
-		if err := held.commit(); err != nil {
-			return err
-		}
-	case held.hasFile():
-		if err := held.commit(); err != nil {
-			return err
-		}
-	case len(perm) > 0:
-		if err := migrate.NewPlanner(nil, opts.Dir, migrate.PlanFormat(opts.Formatter)).
-			WritePlan(&migrate.Plan{Name: opts.Name, Changes: perm}); err != nil {
-			return err
-		}
+	if err := held.commit(); err != nil {
+		return err
 	}
 	return migrate.Validate(opts.Dir)
 }
@@ -153,21 +135,6 @@ func applyHeld(ctx context.Context, db *sql.DB, held *holdDir) error {
 	return nil
 }
 
-func formatChanges(changes []*migrate.Change) string {
-	var b bytes.Buffer
-	for _, c := range changes {
-		if c.Comment != "" {
-			fmt.Fprintf(&b, "-- %s\n", c.Comment)
-		}
-		b.WriteString(c.Cmd)
-		if !bytes.HasSuffix([]byte(c.Cmd), []byte(";")) {
-			b.WriteByte(';')
-		}
-		b.WriteByte('\n')
-	}
-	return b.String()
-}
-
 type holdDir struct {
 	migrate.Dir
 	name string
@@ -182,19 +149,16 @@ func (h *holdDir) WriteFile(name string, data []byte) error {
 	if name == migrate.HashFileName {
 		return nil
 	}
-	if h.hasFile() {
-		return fmt.Errorf("migrategen: unexpected second file %q after %q", name, h.name)
+	if !h.hasFile() {
+		h.name = name
+		h.data = append([]byte(nil), data...)
+		return nil
 	}
-	h.name = name
-	h.data = append([]byte(nil), data...)
-	return nil
-}
-
-func (h *holdDir) appendSQL(sql string) {
 	if len(h.data) > 0 && h.data[len(h.data)-1] != '\n' {
 		h.data = append(h.data, '\n')
 	}
-	h.data = append(h.data, sql...)
+	h.data = append(h.data, data...)
+	return nil
 }
 
 func (h *holdDir) commit() error {

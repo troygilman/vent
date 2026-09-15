@@ -1,11 +1,9 @@
 package migrategen
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 
-	"ariga.io/atlas/sql/migrate"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 )
@@ -21,15 +19,14 @@ type PermissionClient interface {
 	DeleteID(ctx context.Context, id int) error
 }
 
-func permissionChanges(ctx context.Context, db *sql.DB, opts Options) ([]*migrate.Change, error) {
-	buf := &bytes.Buffer{}
-	writer := &captureWriter{Buffer: buf}
+func syncPermissions(ctx context.Context, db *sql.DB, opts Options) error {
+	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
 	read := opts.NewPermissionClient(entsql.OpenDB(opts.Dialect, db))
 	write := opts.NewPermissionClient(schema.NewWriteDriver(opts.Dialect, writer))
 
 	current, err := read.List(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	desired := make(map[string]struct{}, len(opts.DesiredPermissions))
@@ -42,20 +39,22 @@ func permissionChanges(ctx context.Context, db *sql.DB, opts Options) ([]*migrat
 		have[row.Name] = row
 	}
 
-	var changes []*migrate.Change
 	var toCreate []string
 	for _, name := range opts.DesiredPermissions {
 		if _, ok := have[name]; !ok {
 			toCreate = append(toCreate, name)
 		}
 	}
+
+	dirty := false
 	if len(toCreate) > 0 {
 		n, err := write.CreateNames(ctx, toCreate)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if n > 0 {
-			changes = append(changes, snapshotChange(writer, "Added permissions"))
+			writer.Change("Added permissions")
+			dirty = true
 		}
 	}
 
@@ -65,22 +64,17 @@ func permissionChanges(ctx context.Context, db *sql.DB, opts Options) ([]*migrat
 			continue
 		}
 		if err := write.DeleteID(ctx, row.ID); err != nil {
-			return nil, err
+			return err
 		}
 		removed = true
 	}
 	if removed {
-		changes = append(changes, snapshotChange(writer, "Removed permissions"))
+		writer.Change("Removed permissions")
+		dirty = true
 	}
-	return changes, nil
-}
 
-type captureWriter struct {
-	*bytes.Buffer
-}
-
-func snapshotChange(w *captureWriter, comment string) *migrate.Change {
-	cmd := bytes.TrimRight(w.Bytes(), ";\n")
-	w.Reset()
-	return &migrate.Change{Comment: comment, Cmd: string(cmd)}
+	if !dirty {
+		return nil
+	}
+	return writer.Flush(opts.Name)
 }

@@ -83,6 +83,9 @@ func TestGenerate_bothSchemaAndPermissionsOneFile(t *testing.T) {
 	if !strings.Contains(body, "read_widget") || !strings.Contains(body, "create_widget") {
 		t.Fatalf("missing permission DML: %s", body)
 	}
+	if strings.Contains(strings.ToUpper(body), "RETURNING") {
+		t.Fatalf("INSERT should not include RETURNING: %s", body)
+	}
 	ddlIdx := strings.Index(body, "CREATE TABLE")
 	dmlIdx := strings.Index(body, "read_widget")
 	if ddlIdx < 0 || dmlIdx < 0 || dmlIdx < ddlIdx {
