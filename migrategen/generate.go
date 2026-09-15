@@ -1,6 +1,7 @@
 package migrategen
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -14,8 +15,6 @@ import (
 	"entgo.io/ent/dialect/sql/schema"
 	_ "github.com/mattn/go-sqlite3"
 )
-
-const PermissionMigrationName = "update_auth_permissions"
 
 type Options struct {
 	Dir       migrate.Dir
@@ -37,8 +36,8 @@ func (o Options) validate() error {
 		return errors.New("migrategen: DevURL is required")
 	case o.Dialect == "":
 		return errors.New("migrategen: Dialect is required")
-	case len(o.Tables) > 0 && o.Name == "":
-		return errors.New("migrategen: Name is required when Tables is set")
+	case (len(o.Tables) > 0 || o.NewPermissionClient != nil) && o.Name == "":
+		return errors.New("migrategen: Name is required")
 	case o.NewPermissionClient == nil && len(o.DesiredPermissions) > 0:
 		return errors.New("migrategen: NewPermissionClient is required when DesiredPermissions is set")
 	default:
@@ -46,9 +45,9 @@ func (o Options) validate() error {
 	}
 }
 
-// Generate replays existing migrations once on DevURL, writes a schema
-// migration when DDL is needed, applies that DDL on the same connection,
-// then writes update_auth_permissions when permission rows differ.
+// Generate replays existing migrations once on DevURL, then writes at most
+// one SQL file named from Options.Name. Schema DDL and permission DML share
+// that file when both changed.
 func Generate(ctx context.Context, opts Options) error {
 	if err := opts.validate(); err != nil {
 		return err
@@ -70,28 +69,41 @@ func Generate(ctx context.Context, opts Options) error {
 		return err
 	}
 
-	before, err := opts.Dir.Files()
-	if err != nil {
-		return err
-	}
+	held := &holdDir{Dir: opts.Dir}
+	schemaOpts := opts
+	schemaOpts.Dir = held
 	if len(opts.Tables) > 0 {
-		if err := schemaDiff(ctx, client.DB, opts); err != nil {
+		if err := schemaDiff(ctx, client.DB, schemaOpts); err != nil {
 			return err
 		}
 	}
-	after, err := opts.Dir.Files()
-	if err != nil {
-		return err
-	}
-	if err := applyNewFiles(ctx, client.DB, before, after); err != nil {
+	if err := applyHeld(ctx, client.DB, held); err != nil {
 		return err
 	}
 
-	if opts.NewPermissionClient == nil {
-		return migrate.Validate(opts.Dir)
+	var perm []*migrate.Change
+	if opts.NewPermissionClient != nil {
+		perm, err = permissionChanges(ctx, client.DB, opts)
+		if err != nil {
+			return err
+		}
 	}
-	if err := syncPermissions(ctx, client.DB, opts); err != nil {
-		return err
+
+	switch {
+	case held.hasFile() && len(perm) > 0:
+		held.appendSQL(formatChanges(perm))
+		if err := held.commit(); err != nil {
+			return err
+		}
+	case held.hasFile():
+		if err := held.commit(); err != nil {
+			return err
+		}
+	case len(perm) > 0:
+		if err := migrate.NewPlanner(nil, opts.Dir, migrate.PlanFormat(opts.Formatter)).
+			WritePlan(&migrate.Plan{Name: opts.Name, Changes: perm}); err != nil {
+			return err
+		}
 	}
 	return migrate.Validate(opts.Dir)
 }
@@ -124,24 +136,77 @@ func schemaDiff(ctx context.Context, db *sql.DB, opts Options) error {
 	return m.NamedDiff(ctx, opts.Name, opts.Tables...)
 }
 
-func applyNewFiles(ctx context.Context, db *sql.DB, before, after []migrate.File) error {
-	seen := make(map[string]struct{}, len(before))
-	for _, f := range before {
-		seen[f.Name()] = struct{}{}
+func applyHeld(ctx context.Context, db *sql.DB, held *holdDir) error {
+	if !held.hasFile() {
+		return nil
 	}
-	for _, f := range after {
-		if _, ok := seen[f.Name()]; ok {
-			continue
-		}
-		stmts, err := f.Stmts()
-		if err != nil {
-			return fmt.Errorf("parse %s: %w", f.Name(), err)
-		}
-		for _, stmt := range stmts {
-			if _, err := db.ExecContext(ctx, stmt); err != nil {
-				return fmt.Errorf("apply %s: %w", f.Name(), err)
-			}
+	f := migrate.NewLocalFile(held.name, held.data)
+	stmts, err := f.Stmts()
+	if err != nil {
+		return fmt.Errorf("parse %s: %w", held.name, err)
+	}
+	for _, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("apply %s: %w", held.name, err)
 		}
 	}
 	return nil
+}
+
+func formatChanges(changes []*migrate.Change) string {
+	var b bytes.Buffer
+	for _, c := range changes {
+		if c.Comment != "" {
+			fmt.Fprintf(&b, "-- %s\n", c.Comment)
+		}
+		b.WriteString(c.Cmd)
+		if !bytes.HasSuffix([]byte(c.Cmd), []byte(";")) {
+			b.WriteByte(';')
+		}
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+type holdDir struct {
+	migrate.Dir
+	name string
+	data []byte
+}
+
+func (h *holdDir) hasFile() bool {
+	return len(h.data) > 0
+}
+
+func (h *holdDir) WriteFile(name string, data []byte) error {
+	if name == migrate.HashFileName {
+		return nil
+	}
+	if h.hasFile() {
+		return fmt.Errorf("migrategen: unexpected second file %q after %q", name, h.name)
+	}
+	h.name = name
+	h.data = append([]byte(nil), data...)
+	return nil
+}
+
+func (h *holdDir) appendSQL(sql string) {
+	if len(h.data) > 0 && h.data[len(h.data)-1] != '\n' {
+		h.data = append(h.data, '\n')
+	}
+	h.data = append(h.data, sql...)
+}
+
+func (h *holdDir) commit() error {
+	if !h.hasFile() {
+		return nil
+	}
+	if err := h.Dir.WriteFile(h.name, h.data); err != nil {
+		return err
+	}
+	sum, err := h.Dir.Checksum()
+	if err != nil {
+		return err
+	}
+	return migrate.WriteSumFile(h.Dir, sum)
 }

@@ -1,9 +1,11 @@
 package migrategen
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 
+	"ariga.io/atlas/sql/migrate"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 )
@@ -19,14 +21,15 @@ type PermissionClient interface {
 	DeleteID(ctx context.Context, id int) error
 }
 
-func syncPermissions(ctx context.Context, db *sql.DB, opts Options) error {
-	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
+func permissionChanges(ctx context.Context, db *sql.DB, opts Options) ([]*migrate.Change, error) {
+	buf := &bytes.Buffer{}
+	writer := &captureWriter{Buffer: buf}
 	read := opts.NewPermissionClient(entsql.OpenDB(opts.Dialect, db))
 	write := opts.NewPermissionClient(schema.NewWriteDriver(opts.Dialect, writer))
 
 	current, err := read.List(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	desired := make(map[string]struct{}, len(opts.DesiredPermissions))
@@ -39,22 +42,20 @@ func syncPermissions(ctx context.Context, db *sql.DB, opts Options) error {
 		have[row.Name] = row
 	}
 
+	var changes []*migrate.Change
 	var toCreate []string
 	for _, name := range opts.DesiredPermissions {
 		if _, ok := have[name]; !ok {
 			toCreate = append(toCreate, name)
 		}
 	}
-
-	dirty := false
 	if len(toCreate) > 0 {
 		n, err := write.CreateNames(ctx, toCreate)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if n > 0 {
-			writer.Change("Added permissions")
-			dirty = true
+			changes = append(changes, snapshotChange(writer, "Added permissions"))
 		}
 	}
 
@@ -64,17 +65,22 @@ func syncPermissions(ctx context.Context, db *sql.DB, opts Options) error {
 			continue
 		}
 		if err := write.DeleteID(ctx, row.ID); err != nil {
-			return err
+			return nil, err
 		}
 		removed = true
 	}
 	if removed {
-		writer.Change("Removed permissions")
-		dirty = true
+		changes = append(changes, snapshotChange(writer, "Removed permissions"))
 	}
+	return changes, nil
+}
 
-	if !dirty {
-		return nil
-	}
-	return writer.Flush(PermissionMigrationName)
+type captureWriter struct {
+	*bytes.Buffer
+}
+
+func snapshotChange(w *captureWriter, comment string) *migrate.Change {
+	cmd := bytes.TrimRight(w.Bytes(), ";\n")
+	w.Reset()
+	return &migrate.Change{Comment: comment, Cmd: string(cmd)}
 }

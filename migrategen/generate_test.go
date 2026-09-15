@@ -32,10 +32,10 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 	}
 	files := mustFiles(t, mig)
 	if len(files) != 1 {
-		t.Fatalf("got %d files, want 1 schema file: %v", len(files), names(files))
+		t.Fatalf("got %d files, want 1: %v", len(files), names(files))
 	}
 	if !strings.Contains(files[0].Name(), "create_widgets") {
-		t.Fatalf("schema file %q", files[0].Name())
+		t.Fatalf("file %q", files[0].Name())
 	}
 	body := string(files[0].Bytes())
 	if !strings.Contains(body, "widgets") {
@@ -51,7 +51,7 @@ func TestGenerate_schemaOnlyThenNeither(t *testing.T) {
 	}
 }
 
-func TestGenerate_permissionOnlyAndBoth(t *testing.T) {
+func TestGenerate_bothSchemaAndPermissionsOneFile(t *testing.T) {
 	dir := t.TempDir()
 	mig, err := atlas.NewLocalDir(dir)
 	if err != nil {
@@ -70,39 +70,74 @@ func TestGenerate_permissionOnlyAndBoth(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
-	if len(files) != 2 {
-		t.Fatalf("want schema + permissions, got %v", names(files))
+	if len(files) != 1 {
+		t.Fatalf("want one combined file, got %v", names(files))
 	}
 	if !strings.Contains(files[0].Name(), "create_permissions") {
-		t.Fatalf("first file %q", files[0].Name())
+		t.Fatalf("file %q", files[0].Name())
 	}
-	if !strings.Contains(files[1].Name(), PermissionMigrationName) {
-		t.Fatalf("second file %q", files[1].Name())
+	body := string(files[0].Bytes())
+	if !strings.Contains(body, "CREATE TABLE") || !strings.Contains(body, "`permissions`") {
+		t.Fatalf("missing DDL: %s", body)
 	}
-	permSQL := string(files[1].Bytes())
-	if !strings.Contains(permSQL, "read_widget") || !strings.Contains(permSQL, "create_widget") {
-		t.Fatalf("permission SQL: %s", permSQL)
+	if !strings.Contains(body, "read_widget") || !strings.Contains(body, "create_widget") {
+		t.Fatalf("missing permission DML: %s", body)
+	}
+	ddlIdx := strings.Index(body, "CREATE TABLE")
+	dmlIdx := strings.Index(body, "read_widget")
+	if ddlIdx < 0 || dmlIdx < 0 || dmlIdx < ddlIdx {
+		t.Fatalf("permission SQL should follow DDL: %s", body)
 	}
 
 	opts.Name = "noop"
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
-	if got := mustFiles(t, mig); len(got) != 2 {
-		t.Fatalf("permission-only no-op added files: %v", names(got))
+	if got := mustFiles(t, mig); len(got) != 1 {
+		t.Fatalf("neither should add files, got %v", names(got))
+	}
+}
+
+func TestGenerate_permissionOnlyUsesCLIName(t *testing.T) {
+	dir := t.TempDir()
+	mig, err := atlas.NewLocalDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := Options{
+		Dir:                 mig,
+		DevURL:              "sqlite://permonly?mode=memory&cache=shared&_fk=1",
+		Dialect:             dialect.SQLite,
+		Name:                "create_permissions",
+		Tables:              permissionTables(),
+		DesiredPermissions:  []string{"read_widget", "create_widget"},
+		NewPermissionClient: newSQLPermissionClient,
+	}
+	if err := Generate(context.Background(), opts); err != nil {
+		t.Fatal(err)
 	}
 
+	opts.Name = "drop_create_widget"
 	opts.DesiredPermissions = []string{"read_widget"}
 	if err := Generate(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
-	files = mustFiles(t, mig)
-	if len(files) != 3 {
-		t.Fatalf("want delete migration, got %v", names(files))
+	files := mustFiles(t, mig)
+	if len(files) != 2 {
+		t.Fatalf("want permission-only second file, got %v", names(files))
 	}
-	got := string(files[2].Bytes())
+	if !strings.Contains(files[1].Name(), "drop_create_widget") {
+		t.Fatalf("permission-only file should use CLI name, got %q", files[1].Name())
+	}
+	if strings.Contains(files[1].Name(), "update_auth_permissions") {
+		t.Fatalf("separate permission filename: %q", files[1].Name())
+	}
+	got := string(files[1].Bytes())
 	if !strings.Contains(got, "DELETE FROM `permissions`") {
 		t.Fatalf("expected permission delete SQL: %s", got)
+	}
+	if strings.Contains(strings.ToUpper(got), "CREATE TABLE") {
+		t.Fatalf("permission-only file should not include DDL: %s", got)
 	}
 }
 
@@ -113,11 +148,13 @@ func TestGenerate_atlasSumStaysValid(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := Generate(context.Background(), Options{
-		Dir:     mig,
-		DevURL:  "sqlite://sumtest?mode=memory&cache=shared&_fk=1",
-		Dialect: dialect.SQLite,
-		Name:    "init",
-		Tables:  widgetTables(),
+		Dir:                 mig,
+		DevURL:              "sqlite://sumtest?mode=memory&cache=shared&_fk=1",
+		Dialect:             dialect.SQLite,
+		Name:                "init",
+		Tables:              permissionTables(),
+		DesiredPermissions:  []string{"read_widget"},
+		NewPermissionClient: newSQLPermissionClient,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +163,9 @@ func TestGenerate_atlasSumStaysValid(t *testing.T) {
 	}
 	if err := atlas.Validate(mig); err != nil {
 		t.Fatal(err)
+	}
+	if n := len(mustFiles(t, mig)); n != 1 {
+		t.Fatalf("want 1 file, got %d", n)
 	}
 }
 
