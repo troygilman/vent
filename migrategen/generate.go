@@ -17,7 +17,6 @@ import (
 
 const PermissionMigrationName = "update_auth_permissions"
 
-// Options is the single generate API for schema SQL and permission-row SQL.
 type Options struct {
 	Dir       migrate.Dir
 	DevURL    string
