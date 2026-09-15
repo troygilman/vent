@@ -15,9 +15,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type DataMigrateFunc func(ctx context.Context, s *DataSession) error
+type DataMigrateFunc func(ctx context.Context, s *DataMigrateSession) error
 
-type DataSession struct {
+type DataMigrateSession struct {
 	Dialect     string
 	ReadDriver  dialect.Driver
 	WriteDriver dialect.Driver
@@ -25,7 +25,7 @@ type DataSession struct {
 	dirty       bool
 }
 
-func (s *DataSession) Change(description string) {
+func (s *DataMigrateSession) Change(description string) {
 	s.writer.Change(description)
 	s.dirty = true
 }
@@ -104,7 +104,7 @@ func runData(ctx context.Context, db *sql.DB, opts Options) error {
 		return nil
 	}
 	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
-	session := &DataSession{
+	session := &DataMigrateSession{
 		Dialect:     opts.Dialect,
 		ReadDriver:  entsql.OpenDB(opts.Dialect, db),
 		WriteDriver: schema.NewWriteDriver(opts.Dialect, writer),

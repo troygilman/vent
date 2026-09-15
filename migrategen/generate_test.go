@@ -145,7 +145,7 @@ func TestGenerate_customDataMigrateFunc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seed := DataMigrateFunc(func(ctx context.Context, s *DataSession) error {
+	seed := DataMigrateFunc(func(ctx context.Context, s *DataMigrateSession) error {
 		if err := s.WriteDriver.Exec(ctx, "INSERT INTO `widgets` (`name`) VALUES (?)", []any{"alpha"}, nil); err != nil {
 			return err
 		}
@@ -319,7 +319,7 @@ func TestGenerate_nameRequiredWithData(t *testing.T) {
 		Dir:     mig,
 		DevURL:  "sqlite://x",
 		Dialect: dialect.SQLite,
-		Data:    []DataMigrateFunc{func(context.Context, *DataSession) error { return nil }},
+		Data:    []DataMigrateFunc{func(context.Context, *DataMigrateSession) error { return nil }},
 	})
 	if err == nil || !strings.Contains(err.Error(), "Name is required") {
 		t.Fatalf("got %v", err)

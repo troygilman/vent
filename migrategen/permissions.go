@@ -18,7 +18,7 @@ type PermissionClient interface {
 }
 
 func SyncPermissions(desired []string, newClient func(dialect.Driver) PermissionClient) DataMigrateFunc {
-	return func(ctx context.Context, s *DataSession) error {
+	return func(ctx context.Context, s *DataMigrateSession) error {
 		read := newClient(s.ReadDriver)
 		write := newClient(s.WriteDriver)
 
