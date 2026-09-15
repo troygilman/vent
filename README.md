@@ -102,13 +102,13 @@ entc.Generate("./ent/schema", &gen.Config{ /* ... */ },
 Apply your Ent/Atlas migrations as usual. When schemas or custom permissions change, regenerate migrations so permission rows stay current. The example project does:
 
 ```bash
-just migrations   # migrategen.Generate: at most one SQL file (DDL + permission DML)
+just migrations   # migrategen.Generate: at most one SQL file (DDL + DataFunc DML)
 just migrate      # atlas migrate apply ...
 ```
 
 The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/0000_init.sql`, matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path.
 
-`migrategen.Generate` replays the migration directory once onto a shared Atlas connection, diffs Ent tables with inspect mode (so Ent does not drop the replayed schema), applies any new DDL on that connection, then diffs permission rows. One generate run writes at most one SQL file, named from the CLI migration name. Schema DDL and permission DML share that file when both changed. Pass `Dialect` matching your Ent migrations.
+`migrategen.Generate` replays the migration directory once onto a shared Atlas connection, diffs Ent tables with inspect mode (so Ent does not drop the replayed schema), applies any new DDL on that connection, then runs `Options.Data` hooks (`SyncPermissions` for auth rows). One generate run writes at most one SQL file, named from the CLI migration name. Schema DDL and data DML share that file when both changed. Pass `Dialect` matching your Ent migrations.
 
 ### 5. Mount the admin handler
 

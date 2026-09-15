@@ -15,6 +15,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type DataFunc func(ctx context.Context, s *DataSession) error
+
+type DataSession struct {
+	Dialect     string
+	ReadDriver  dialect.Driver
+	WriteDriver dialect.Driver
+	writer      *schema.DirWriter
+	dirty       bool
+}
+
+func (s *DataSession) Change(description string) {
+	s.writer.Change(description)
+	s.dirty = true
+}
+
 type Options struct {
 	Dir       migrate.Dir
 	DevURL    string
@@ -22,9 +37,7 @@ type Options struct {
 	Formatter migrate.Formatter
 	Name      string
 	Tables    []*schema.Table
-
-	DesiredPermissions  []string
-	NewPermissionClient func(drv dialect.Driver) PermissionClient
+	Data      []DataFunc
 }
 
 func (o Options) validate() error {
@@ -35,18 +48,16 @@ func (o Options) validate() error {
 		return errors.New("migrategen: DevURL is required")
 	case o.Dialect == "":
 		return errors.New("migrategen: Dialect is required")
-	case (len(o.Tables) > 0 || o.NewPermissionClient != nil) && o.Name == "":
+	case (len(o.Tables) > 0 || len(o.Data) > 0) && o.Name == "":
 		return errors.New("migrategen: Name is required")
-	case o.NewPermissionClient == nil && len(o.DesiredPermissions) > 0:
-		return errors.New("migrategen: NewPermissionClient is required when DesiredPermissions is set")
 	default:
 		return nil
 	}
 }
 
 // Generate replays existing migrations once on DevURL, then writes at most
-// one SQL file named from Options.Name. Schema DDL and permission DML share
-// that file when both changed.
+// one SQL file named from Options.Name. Schema DDL and data DML share that
+// file when both changed.
 func Generate(ctx context.Context, opts Options) error {
 	if err := opts.validate(); err != nil {
 		return err
@@ -79,15 +90,35 @@ func Generate(ctx context.Context, opts Options) error {
 	if err := applyHeld(ctx, client.DB, held); err != nil {
 		return err
 	}
-	if opts.NewPermissionClient != nil {
-		if err := syncPermissions(ctx, client.DB, work); err != nil {
-			return err
-		}
+	if err := runData(ctx, client.DB, work); err != nil {
+		return err
 	}
 	if err := held.commit(); err != nil {
 		return err
 	}
 	return migrate.Validate(opts.Dir)
+}
+
+func runData(ctx context.Context, db *sql.DB, opts Options) error {
+	if len(opts.Data) == 0 {
+		return nil
+	}
+	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
+	session := &DataSession{
+		Dialect:     opts.Dialect,
+		ReadDriver:  entsql.OpenDB(opts.Dialect, db),
+		WriteDriver: schema.NewWriteDriver(opts.Dialect, writer),
+		writer:      writer,
+	}
+	for _, fn := range opts.Data {
+		if err := fn(ctx, session); err != nil {
+			return err
+		}
+	}
+	if !session.dirty {
+		return nil
+	}
+	return writer.Flush(opts.Name)
 }
 
 func replay(ctx context.Context, drv migrate.Driver, dir migrate.Dir) error {

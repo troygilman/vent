@@ -2,10 +2,8 @@ package migrategen
 
 import (
 	"context"
-	"database/sql"
 
-	entsql "entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/schema"
+	"entgo.io/ent/dialect"
 )
 
 type PermissionRow struct {
@@ -19,62 +17,55 @@ type PermissionClient interface {
 	DeleteID(ctx context.Context, id int) error
 }
 
-func syncPermissions(ctx context.Context, db *sql.DB, opts Options) error {
-	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
-	read := opts.NewPermissionClient(entsql.OpenDB(opts.Dialect, db))
-	write := opts.NewPermissionClient(schema.NewWriteDriver(opts.Dialect, writer))
+func SyncPermissions(desired []string, newClient func(dialect.Driver) PermissionClient) DataFunc {
+	return func(ctx context.Context, s *DataSession) error {
+		read := newClient(s.ReadDriver)
+		write := newClient(s.WriteDriver)
 
-	current, err := read.List(ctx)
-	if err != nil {
-		return err
-	}
-
-	desired := make(map[string]struct{}, len(opts.DesiredPermissions))
-	for _, name := range opts.DesiredPermissions {
-		desired[name] = struct{}{}
-	}
-
-	have := make(map[string]PermissionRow, len(current))
-	for _, row := range current {
-		have[row.Name] = row
-	}
-
-	var toCreate []string
-	for _, name := range opts.DesiredPermissions {
-		if _, ok := have[name]; !ok {
-			toCreate = append(toCreate, name)
-		}
-	}
-
-	dirty := false
-	if len(toCreate) > 0 {
-		n, err := write.CreateNames(ctx, toCreate)
+		current, err := read.List(ctx)
 		if err != nil {
 			return err
 		}
-		if n > 0 {
-			writer.Change("Added permissions")
-			dirty = true
-		}
-	}
 
-	removed := false
-	for _, row := range current {
-		if _, ok := desired[row.Name]; ok {
-			continue
+		want := make(map[string]struct{}, len(desired))
+		for _, name := range desired {
+			want[name] = struct{}{}
 		}
-		if err := write.DeleteID(ctx, row.ID); err != nil {
-			return err
-		}
-		removed = true
-	}
-	if removed {
-		writer.Change("Removed permissions")
-		dirty = true
-	}
 
-	if !dirty {
+		have := make(map[string]PermissionRow, len(current))
+		for _, row := range current {
+			have[row.Name] = row
+		}
+
+		var toCreate []string
+		for _, name := range desired {
+			if _, ok := have[name]; !ok {
+				toCreate = append(toCreate, name)
+			}
+		}
+		if len(toCreate) > 0 {
+			n, err := write.CreateNames(ctx, toCreate)
+			if err != nil {
+				return err
+			}
+			if n > 0 {
+				s.Change("Added permissions")
+			}
+		}
+
+		removed := false
+		for _, row := range current {
+			if _, ok := want[row.Name]; ok {
+				continue
+			}
+			if err := write.DeleteID(ctx, row.ID); err != nil {
+				return err
+			}
+			removed = true
+		}
+		if removed {
+			s.Change("Removed permissions")
+		}
 		return nil
 	}
-	return writer.Flush(opts.Name)
 }

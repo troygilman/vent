@@ -27,13 +27,14 @@ func main() {
 	}
 
 	err = migrategen.Generate(ctx, migrategen.Options{
-		Dir:                 dir,
-		DevURL:              "sqlite://ent?mode=memory&cache=shared&_fk=1",
-		Dialect:             dialect.SQLite,
-		Name:                os.Args[1],
-		Tables:              migrate.Tables,
-		DesiredPermissions:  admin.DesiredPermissions(),
-		NewPermissionClient: admin.NewPermissionClient,
+		Dir:     dir,
+		DevURL:  "sqlite://ent?mode=memory&cache=shared&_fk=1",
+		Dialect: dialect.SQLite,
+		Name:    os.Args[1],
+		Tables:  migrate.Tables,
+		Data: []migrategen.DataFunc{
+			migrategen.SyncPermissions(admin.DesiredPermissions(), admin.NewPermissionClient),
+		},
 	})
 	if err != nil {
 		log.Fatalf("failed generating migration files: %v", err)
