@@ -26,12 +26,14 @@ func main() {
 		log.Fatalln("migration name is required. Use: 'go run -mod=mod examples/basic/ent/migrate/main.go <name>'")
 	}
 
-	err = migrategen.NamedDiff(ctx, "sqlite://ent?mode=memory&cache=shared&_fk=1", os.Args[1],
-		migrategen.WithDir(dir),
-		migrategen.WithDialect(dialect.SQLite),
-		migrategen.WithTables(migrate.Tables...),
-		migrategen.WithData(migrategen.SyncPermissions(admin.DesiredPermissions(), admin.NewPermissionClient)),
-	)
+	err = migrategen.NamedDiff(ctx, migrategen.NamedDiffOptions{
+		URL:     "sqlite://ent?mode=memory&cache=shared&_fk=1",
+		Name:    os.Args[1],
+		Dir:     dir,
+		Dialect: dialect.SQLite,
+		Tables:  migrate.Tables,
+		Data:    []migrategen.DataMigrateFunc{migrategen.SyncPermissions(admin.DesiredPermissions(), admin.NewPermissionClient)},
+	})
 	if err != nil {
 		log.Fatalf("failed generating migration files: %v", err)
 	}

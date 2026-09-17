@@ -30,113 +30,87 @@ func (s *DataMigrateSession) Change(description string) {
 	s.dirty = true
 }
 
-type Option func(*config)
-
-type config struct {
-	url       string
-	name      string
-	dir       migrate.Dir
-	dialect   string
-	formatter migrate.Formatter
-	tables    []*schema.Table
-	data      []DataMigrateFunc
+type NamedDiffOptions struct {
+	URL       string
+	Name      string
+	Dir       migrate.Dir
+	Dialect   string
+	Formatter migrate.Formatter // optional; default migrate.DefaultFormatter when nil
+	Tables    []*schema.Table
+	Data      []DataMigrateFunc
 }
 
-func WithDir(dir migrate.Dir) Option {
-	return func(c *config) { c.dir = dir }
-}
-
-func WithDialect(d string) Option {
-	return func(c *config) { c.dialect = d }
-}
-
-func WithFormatter(f migrate.Formatter) Option {
-	return func(c *config) { c.formatter = f }
-}
-
-func WithTables(tables ...*schema.Table) Option {
-	return func(c *config) { c.tables = tables }
-}
-
-func WithData(fns ...DataMigrateFunc) Option {
-	return func(c *config) { c.data = append(c.data, fns...) }
-}
-
-func (c *config) validate() error {
+func (opts NamedDiffOptions) validate() error {
 	switch {
-	case c.dir == nil:
+	case opts.Dir == nil:
 		return errors.New("migrategen: Dir is required")
-	case c.url == "":
+	case opts.URL == "":
 		return errors.New("migrategen: url is required")
-	case c.dialect == "":
+	case opts.Dialect == "":
 		return errors.New("migrategen: Dialect is required")
-	case c.name == "":
+	case opts.Name == "" && (len(opts.Tables) > 0 || len(opts.Data) > 0):
 		return errors.New("migrategen: name is required")
 	default:
 		return nil
 	}
 }
 
-// NamedDiff replays existing migrations once on url, then writes at most
-// one SQL file named from name. Schema DDL and data DML share that file
+// NamedDiff replays existing migrations once on opts.URL, then writes at most
+// one SQL file named from opts.Name. Schema DDL and data DML share that file
 // when both changed.
-func NamedDiff(ctx context.Context, url, name string, opts ...Option) error {
-	cfg := config{url: url, name: name}
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-	if err := cfg.validate(); err != nil {
+func NamedDiff(ctx context.Context, opts NamedDiffOptions) error {
+	if err := opts.validate(); err != nil {
 		return err
 	}
-	if cfg.formatter == nil {
-		cfg.formatter = migrate.DefaultFormatter
+	if opts.Formatter == nil {
+		opts.Formatter = migrate.DefaultFormatter
 	}
-	if err := migrate.Validate(cfg.dir); err != nil {
+	if err := migrate.Validate(opts.Dir); err != nil {
 		return fmt.Errorf("validating migration directory: %w", err)
 	}
 
-	client, err := sqlclient.Open(ctx, cfg.url)
+	client, err := sqlclient.Open(ctx, opts.URL)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 
-	if err := replay(ctx, client.Driver, cfg.dir); err != nil {
+	if err := replay(ctx, client.Driver, opts.Dir); err != nil {
 		return err
 	}
 
-	held := &holdDir{Dir: cfg.dir}
-	work := cfg
-	work.dir = held
-	if len(cfg.tables) > 0 {
-		if err := schemaDiff(ctx, client.DB, &work); err != nil {
+	held := &holdDir{Dir: opts.Dir}
+	work := opts
+	work.Dir = held
+	if len(opts.Tables) > 0 {
+		if err := schemaDiff(ctx, client.DB, work); err != nil {
 			return err
 		}
 	}
 	if err := applyHeld(ctx, client.DB, held); err != nil {
 		return err
 	}
-	if err := runData(ctx, client.DB, &work); err != nil {
+	if err := runData(ctx, client.DB, work); err != nil {
 		return err
 	}
 	if err := held.commit(); err != nil {
 		return err
 	}
-	return migrate.Validate(cfg.dir)
+	return migrate.Validate(opts.Dir)
 }
 
-func runData(ctx context.Context, db *sql.DB, cfg *config) error {
-	if len(cfg.data) == 0 {
+func runData(ctx context.Context, db *sql.DB, opts NamedDiffOptions) error {
+	if len(opts.Data) == 0 {
 		return nil
 	}
-	writer := &schema.DirWriter{Dir: cfg.dir, Formatter: cfg.formatter}
+	writer := &schema.DirWriter{Dir: opts.Dir, Formatter: opts.Formatter}
 	session := &DataMigrateSession{
-		Dialect:     cfg.dialect,
-		ReadDriver:  entsql.OpenDB(cfg.dialect, db),
-		WriteDriver: schema.NewWriteDriver(cfg.dialect, writer),
+		Dialect:     opts.Dialect,
+		ReadDriver:  entsql.OpenDB(opts.Dialect, db),
+		WriteDriver: schema.NewWriteDriver(opts.Dialect, writer),
 		writer:      writer,
 	}
-	for _, fn := range cfg.data {
+	for _, fn := range opts.Data {
 		if err := fn(ctx, session); err != nil {
 			return err
 		}
@@ -144,7 +118,7 @@ func runData(ctx context.Context, db *sql.DB, cfg *config) error {
 	if !session.dirty {
 		return nil
 	}
-	return writer.Flush(cfg.name)
+	return writer.Flush(opts.Name)
 }
 
 func replay(ctx context.Context, drv migrate.Driver, dir migrate.Dir) error {
@@ -158,21 +132,21 @@ func replay(ctx context.Context, drv migrate.Driver, dir migrate.Dir) error {
 	return nil
 }
 
-func schemaDiff(ctx context.Context, db *sql.DB, cfg *config) error {
+func schemaDiff(ctx context.Context, db *sql.DB, opts NamedDiffOptions) error {
 	// ModeInspect on the already-replayed *sql.DB. Ent ModeReplay would
 	// drop tables after planning (cleanSchema), which forces a second replay
 	// before permission queries.
 	m, err := schema.NewMigrate(
-		entsql.OpenDB(cfg.dialect, db),
-		schema.WithDir(cfg.dir),
-		schema.WithFormatter(cfg.formatter),
-		schema.WithDialect(cfg.dialect),
+		entsql.OpenDB(opts.Dialect, db),
+		schema.WithDir(opts.Dir),
+		schema.WithFormatter(opts.Formatter),
+		schema.WithDialect(opts.Dialect),
 		schema.WithMigrationMode(schema.ModeInspect),
 	)
 	if err != nil {
 		return err
 	}
-	return m.NamedDiff(ctx, cfg.name, cfg.tables...)
+	return m.NamedDiff(ctx, opts.Name, opts.Tables...)
 }
 
 func applyHeld(ctx context.Context, db *sql.DB, held *holdDir) error {

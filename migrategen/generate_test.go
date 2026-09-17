@@ -18,8 +18,14 @@ func TestNamedDiff_schemaOnlyThenNeither(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://schemaonly?mode=memory&cache=shared&_fk=1"
-	opts := []Option{WithDir(mig), WithDialect(dialect.SQLite), WithTables(widgetTables()...)}
-	if err := NamedDiff(context.Background(), url, "create_widgets", opts...); err != nil {
+	opts := NamedDiffOptions{
+		URL:     url,
+		Name:    "create_widgets",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  widgetTables(),
+	}
+	if err := NamedDiff(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -34,7 +40,7 @@ func TestNamedDiff_schemaOnlyThenNeither(t *testing.T) {
 		t.Fatalf("schema SQL missing widgets: %s", body)
 	}
 
-	if err := NamedDiff(context.Background(), url, "create_widgets", opts...); err != nil {
+	if err := NamedDiff(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	files = mustFiles(t, mig)
@@ -47,13 +53,15 @@ func TestNamedDiff_schemaAndSyncPermissionsOneFile(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://permtest?mode=memory&cache=shared&_fk=1"
-	base := []Option{
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(permissionTables()...),
-		WithData(SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)),
+	opts := NamedDiffOptions{
+		URL:     url,
+		Name:    "create_permissions",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  permissionTables(),
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
 	}
-	if err := NamedDiff(context.Background(), url, "create_permissions", base...); err != nil {
+	if err := NamedDiff(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -79,7 +87,8 @@ func TestNamedDiff_schemaAndSyncPermissionsOneFile(t *testing.T) {
 		t.Fatalf("permission SQL should follow DDL: %s", body)
 	}
 
-	if err := NamedDiff(context.Background(), url, "noop", base...); err != nil {
+	opts.Name = "noop"
+	if err := NamedDiff(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	if got := mustFiles(t, mig); len(got) != 1 {
@@ -91,21 +100,25 @@ func TestNamedDiff_dataOnlyUsesCLIName(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
 	url := "sqlite://permonly?mode=memory&cache=shared&_fk=1"
-	if err := NamedDiff(context.Background(), url, "create_permissions",
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(permissionTables()...),
-		WithData(SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)),
-	); err != nil {
+	if err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     url,
+		Name:    "create_permissions",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  permissionTables(),
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget", "create_widget"}, newSQLPermissionClient)},
+	}); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := NamedDiff(context.Background(), url, "drop_create_widget",
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(permissionTables()...),
-		WithData(SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)),
-	); err != nil {
+	if err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     url,
+		Name:    "drop_create_widget",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  permissionTables(),
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -134,12 +147,14 @@ func TestNamedDiff_customDataMigrateFunc(t *testing.T) {
 		s.Change("Seed widgets")
 		return nil
 	})
-	if err := NamedDiff(context.Background(), "sqlite://customdata?mode=memory&cache=shared&_fk=1", "create_widgets",
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(widgetTables()...),
-		WithData(seed),
-	); err != nil {
+	if err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "sqlite://customdata?mode=memory&cache=shared&_fk=1",
+		Name:    "create_widgets",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  widgetTables(),
+		Data:    []DataMigrateFunc{seed},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	files := mustFiles(t, mig)
@@ -161,12 +176,14 @@ func TestNamedDiff_customDataMigrateFunc(t *testing.T) {
 func TestNamedDiff_atlasSumStaysValid(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
-	if err := NamedDiff(context.Background(), "sqlite://sumtest?mode=memory&cache=shared&_fk=1", "init",
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(permissionTables()...),
-		WithData(SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)),
-	); err != nil {
+	if err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "sqlite://sumtest?mode=memory&cache=shared&_fk=1",
+		Name:    "init",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  permissionTables(),
+		Data:    []DataMigrateFunc{SyncPermissions([]string{"read_widget"}, newSQLPermissionClient)},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "atlas.sum")); err != nil {
@@ -269,7 +286,11 @@ func names(files []atlas.File) []string {
 }
 
 func TestNamedDiff_missingDir(t *testing.T) {
-	err := NamedDiff(context.Background(), "x", "n", WithDialect(dialect.SQLite))
+	err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "x",
+		Name:    "n",
+		Dialect: dialect.SQLite,
+	})
 	if err == nil || !strings.Contains(err.Error(), "Dir is required") {
 		t.Fatalf("got %v", err)
 	}
@@ -278,11 +299,12 @@ func TestNamedDiff_missingDir(t *testing.T) {
 func TestNamedDiff_nameRequired(t *testing.T) {
 	dir := t.TempDir()
 	mig := mustDir(t, dir)
-	err := NamedDiff(context.Background(), "sqlite://x", "",
-		WithDir(mig),
-		WithDialect(dialect.SQLite),
-		WithTables(widgetTables()...),
-	)
+	err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "sqlite://x",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  widgetTables(),
+	})
 	if err == nil || !strings.Contains(err.Error(), "name is required") {
 		t.Fatalf("got %v", err)
 	}
