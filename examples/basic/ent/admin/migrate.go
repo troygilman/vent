@@ -39,7 +39,7 @@ var permissions = []struct {
 	{Name: "impersonate", Schema: "User"},
 }
 
-func DesiredPermissions() []string {
+func Permissions() []string {
 	names := make([]string, len(permissions))
 	for i, p := range permissions {
 		names[i] = p.Name

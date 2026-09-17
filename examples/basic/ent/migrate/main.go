@@ -32,7 +32,7 @@ func main() {
 		Dir:     dir,
 		Dialect: dialect.SQLite,
 		Tables:  migrate.Tables,
-		Data:    []migrategen.DataMigrateFunc{migrategen.SyncPermissions(admin.DesiredPermissions(), admin.NewPermissionClient)},
+		Data:    []migrategen.DataMigrateFunc{migrategen.SyncPermissions(admin.Permissions(), admin.NewPermissionClient)},
 	})
 	if err != nil {
 		log.Fatalf("failed generating migration files: %v", err)
