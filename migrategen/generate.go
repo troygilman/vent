@@ -1,3 +1,7 @@
+// Package migrategen generates Atlas migrations from Ent schema diffs and
+// DataMigrateFunc hooks. Register an Atlas SQL driver and a database/sql
+// driver for the DevURL dialect before NamedDiff (for example
+// ariga.io/atlas/sql/sqlite and github.com/mattn/go-sqlite3).
 package migrategen
 
 import (
@@ -8,13 +12,14 @@ import (
 
 	"ariga.io/atlas/sql/migrate"
 	"ariga.io/atlas/sql/sqlclient"
-	_ "ariga.io/atlas/sql/sqlite"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
-	_ "github.com/mattn/go-sqlite3"
 )
 
+// DataMigrateFunc runs against a replayed DevURL after schema DDL is applied.
+// SQL written through WriteDriver must be followed by Change before generate
+// ends, matching Ent schema.DirWriter (Flush rejects undocumented writes).
 type DataMigrateFunc func(ctx context.Context, s *DataMigrateSession) error
 
 type DataMigrateSession struct {
@@ -22,12 +27,13 @@ type DataMigrateSession struct {
 	ReadDriver  dialect.Driver
 	WriteDriver dialect.Driver
 	writer      *schema.DirWriter
-	dirty       bool
 }
 
+// Change records a description for SQL previously written to WriteDriver.
+// Call it after writes; generate Flushes the writer with the same contract
+// as Ent DirWriter.
 func (s *DataMigrateSession) Change(description string) {
 	s.writer.Change(description)
-	s.dirty = true
 }
 
 type NamedDiffOptions struct {
@@ -99,6 +105,9 @@ func NamedDiff(ctx context.Context, opts NamedDiffOptions) error {
 	return migrate.Validate(opts.Dir)
 }
 
+// runData executes Data hooks then Flushes the DirWriter. A Flush error of
+// "writer has no changes to flush" is treated as success (no data file).
+// Any other Flush error, including "undocumented change", is returned.
 func runData(ctx context.Context, db *sql.DB, opts NamedDiffOptions) error {
 	if len(opts.Data) == 0 {
 		return nil
@@ -115,10 +124,11 @@ func runData(ctx context.Context, db *sql.DB, opts NamedDiffOptions) error {
 			return err
 		}
 	}
-	if !session.dirty {
+	err := writer.Flush(opts.Name)
+	if err == nil || err.Error() == "writer has no changes to flush" {
 		return nil
 	}
-	return writer.Flush(opts.Name)
+	return err
 }
 
 func replay(ctx context.Context, drv migrate.Driver, dir migrate.Dir) error {

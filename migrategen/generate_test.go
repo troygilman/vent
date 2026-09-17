@@ -8,10 +8,12 @@ import (
 	"testing"
 
 	atlas "ariga.io/atlas/sql/migrate"
+	_ "ariga.io/atlas/sql/sqlite"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestNamedDiff_schemaOnlyThenNeither(t *testing.T) {
@@ -170,6 +172,45 @@ func TestNamedDiff_customDataMigrateFunc(t *testing.T) {
 	}
 	if strings.Index(body, "alpha") < strings.Index(body, "CREATE TABLE") {
 		t.Fatalf("custom DML should follow DDL: %s", body)
+	}
+}
+
+func TestNamedDiff_writeWithoutChangeErrors(t *testing.T) {
+	dir := t.TempDir()
+	mig := mustDir(t, dir)
+	seed := DataMigrateFunc(func(ctx context.Context, s *DataMigrateSession) error {
+		return s.WriteDriver.Exec(ctx, "INSERT INTO `widgets` (`name`) VALUES (?)", []any{"alpha"}, nil)
+	})
+	err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "sqlite://nowritechange?mode=memory&cache=shared&_fk=1",
+		Name:    "create_widgets",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Tables:  widgetTables(),
+		Data:    []DataMigrateFunc{seed},
+	})
+	if err == nil || !strings.Contains(err.Error(), "undocumented change") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestNamedDiff_dataNoWritesNoFile(t *testing.T) {
+	dir := t.TempDir()
+	mig := mustDir(t, dir)
+	noop := DataMigrateFunc(func(ctx context.Context, s *DataMigrateSession) error {
+		return nil
+	})
+	if err := NamedDiff(context.Background(), NamedDiffOptions{
+		URL:     "sqlite://dataempty?mode=memory&cache=shared&_fk=1",
+		Name:    "noop_data",
+		Dir:     mig,
+		Dialect: dialect.SQLite,
+		Data:    []DataMigrateFunc{noop},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if files := mustFiles(t, mig); len(files) != 0 {
+		t.Fatalf("no changes to flush should not write a file, got %v", names(files))
 	}
 }
 

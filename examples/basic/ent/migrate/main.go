@@ -8,6 +8,7 @@ import (
 	"os"
 
 	atlas "ariga.io/atlas/sql/migrate"
+	_ "ariga.io/atlas/sql/sqlite"
 	"entgo.io/ent/dialect"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/troygilman/vent/examples/basic/ent/admin"
