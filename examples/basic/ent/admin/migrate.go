@@ -4,17 +4,10 @@ package admin
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"net/url"
-	"text/template"
 
-	"ariga.io/atlas/sql/migrate"
-	"ariga.io/atlas/sql/sqlclient"
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/schema"
 	ent "github.com/troygilman/vent/examples/basic/ent"
+	"github.com/troygilman/vent/migrategen"
 )
 
 var permissions = []struct {
@@ -46,130 +39,49 @@ var permissions = []struct {
 	{Name: "impersonate", Schema: "User"},
 }
 
-func Diff(ctx context.Context, u string, dir migrate.Dir, formatter migrate.Formatter) error {
-	parsedUrl, err := url.Parse(u)
+func Permissions() []string {
+	names := make([]string, len(permissions))
+	for i, p := range permissions {
+		names[i] = p.Name
+	}
+	return names
+}
+
+func NewPermissionClient(drv dialect.Driver) migrategen.PermissionClient {
+	return permissionClient{c: ent.NewClient(ent.Driver(drv))}
+}
+
+type permissionClient struct {
+	c *ent.Client
+}
+
+func (p permissionClient) List(ctx context.Context) ([]migrategen.PermissionRow, error) {
+	rows, err := p.c.Permission.Query().All(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	out := make([]migrategen.PermissionRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, migrategen.PermissionRow{ID: row.ID, Name: row.Name})
+	}
+	return out, nil
+}
 
-	client, err := sqlclient.OpenURL(ctx, parsedUrl)
+func (p permissionClient) CreateNames(ctx context.Context, names []string) (int, error) {
+	if len(names) == 0 {
+		return 0, nil
+	}
+	builders := make([]*ent.PermissionCreate, 0, len(names))
+	for _, name := range names {
+		builders = append(builders, p.c.Permission.Create().SetName(name))
+	}
+	created, err := p.c.Permission.CreateBulk(builders...).Save(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	defer client.Close()
-
-	return NewDiffer(client, dir, formatter).Diff(ctx)
+	return len(created), nil
 }
 
-type Differ struct {
-	flush       bool
-	dir         migrate.Dir
-	writer      *schema.DirWriter
-	driver      migrate.Driver
-	readClient  *ent.Client
-	writeClient *ent.Client
-}
-
-func NewDiffer(client *sqlclient.Client, dir migrate.Dir, formatter migrate.Formatter) *Differ {
-	writer := &schema.DirWriter{Dir: dir, Formatter: formatter}
-	return &Differ{
-		driver:      client.Driver,
-		writer:      writer,
-		dir:         dir,
-		readClient:  ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, client.DB))),
-		writeClient: ent.NewClient(ent.Driver(schema.NewWriteDriver(dialect.SQLite, writer))),
-	}
-}
-
-func (d *Differ) Diff(ctx context.Context) error {
-	if err := d.replayMigrations(ctx); err != nil {
-		return err
-	}
-
-	if err := d.diffAuthPermissions(ctx); err != nil {
-		return err
-	}
-
-	if d.flush {
-		return d.writer.Flush("update_auth_permissions")
-	}
-	return nil
-
-}
-
-func (d *Differ) replayMigrations(ctx context.Context) error {
-	ex, err := migrate.NewExecutor(d.driver, d.dir, &migrate.NopRevisionReadWriter{})
-	if err != nil {
-		return err
-	}
-	if err := ex.ExecuteN(ctx, 0); err != nil && !errors.Is(err, migrate.ErrNoPendingFiles) {
-		return err
-	}
-	return nil
-}
-
-func (d *Differ) diffAuthPermissions(ctx context.Context) error {
-	currentPermissions, err := d.readClient.Permission.Query().All(ctx)
-	if err != nil {
-		return err
-	}
-
-	desired := make(map[string]struct{}, len(permissions))
-	for _, permission := range permissions {
-		desired[permission.Name] = struct{}{}
-	}
-
-	currentPermissionsMap := make(map[string]*ent.Permission)
-	for _, permission := range currentPermissions {
-		currentPermissionsMap[permission.Name] = permission
-	}
-
-	permissionBuilders := []*ent.PermissionCreate{}
-	for _, permission := range permissions {
-		if _, ok := currentPermissionsMap[permission.Name]; ok {
-			continue
-		}
-		permissionBuilders = append(permissionBuilders, d.writeClient.Permission.Create().SetName(permission.Name))
-	}
-
-	if len(permissionBuilders) > 0 {
-		created, err := d.writeClient.Permission.CreateBulk(permissionBuilders...).Save(ctx)
-		if err != nil {
-			return err
-		}
-		if len(created) > 0 {
-			d.writer.Change("Added permissions")
-			d.flush = true
-		}
-	}
-
-	removed := false
-	for _, permission := range currentPermissions {
-		if _, ok := desired[permission.Name]; ok {
-			continue
-		}
-		if err := d.writeClient.Permission.DeleteOneID(permission.ID).Exec(ctx); err != nil {
-			return err
-		}
-		removed = true
-	}
-	if removed {
-		d.writer.Change("Removed permissions")
-		d.flush = true
-	}
-
-	return nil
-}
-
-func MigrationFormatter(dir migrate.Dir) migrate.Formatter {
-	newVersionFunc := func() string {
-		files, err := dir.Files()
-		if err != nil {
-			panic(err)
-		}
-		return fmt.Sprintf("%04d", len(files))
-	}
-	formatter := migrate.DefaultFormatter
-	formatter[0].N = formatter[0].N.Funcs(template.FuncMap{"now": newVersionFunc})
-	return formatter
+func (p permissionClient) DeleteID(ctx context.Context, id int) error {
+	return p.c.Permission.DeleteOneID(id).Exec(ctx)
 }

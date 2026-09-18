@@ -102,13 +102,15 @@ entc.Generate("./ent/schema", &gen.Config{ /* ... */ },
 Apply your Ent/Atlas migrations as usual. When schemas or custom permissions change, regenerate migrations so permission rows stay current. The example project does:
 
 ```bash
-just migrations   # NamedDiff + admin.Diff for permission rows
+just migrations   # migrategen.NamedDiff: at most one SQL file (DDL + DataMigrateFunc DML)
 just migrate      # atlas migrate apply ...
 ```
 
-The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/0000_init.sql`, matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path.
+The example app ships a single Atlas baseline, `examples/basic/ent/migrate/migrations/*_init.sql` (Atlas timestamp version), matching the current schema (`username`, `permission_groups`, library tables) plus generated permission rows. There is no historical `email` / `auth_users` path. When `NamedDiffOptions.Formatter` is nil, `NamedDiff` uses Atlas `migrate.DefaultFormatter`.
 
-`admin.Diff` compares the live permission set to the generated list and writes an `update_auth_permissions` migration when needed. Today the permission differ is SQLite-oriented; use the same dialect as your Ent migrations for schema changes.
+`migrategen.NamedDiff` takes `context.Context` and `NamedDiffOptions` (`URL`, `Name`, `Dir`, `Dialect`, optional `Formatter`, `Tables`, `Data`). It replays the migration directory once onto a shared Atlas connection, diffs Ent tables with inspect mode (so Ent does not drop the replayed schema), applies any new DDL on that connection, then runs `Data` hooks (`DataMigrateFunc` on a `DataMigrateSession`, with `SyncPermissions` for auth rows). One generate run writes at most one SQL file. Schema DDL and data DML share that file when both changed. `Dir`, `URL`, and `Dialect` are required. `Name` is required when `Tables` or `Data` is non-empty.
+
+Register an Atlas SQL driver and a `database/sql` driver for the DevURL dialect before `NamedDiff` (the library does not import a specific dialect). SQL written through `WriteDriver` must call `Change` before generate ends; that matches Ent `schema.DirWriter.Flush` (writes without `Change` fail; no writes is a successful no-op).
 
 ### 5. Mount the admin handler
 

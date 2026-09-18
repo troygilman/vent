@@ -7,7 +7,7 @@ gen:
     # CSS is now native (static/css/style.css). No Tailwind build step required.
 
 migrations:
-    go run examples/basic/ent/migrate/main.go create_users
+    go run examples/basic/ent/migrate/main.go init
 
 migrate:
     atlas migrate apply --dir "file://examples/basic/ent/migrate/migrations" --url "sqlite://tmp/test.db?_fk=1"
